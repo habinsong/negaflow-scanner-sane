@@ -1,0 +1,29 @@
+negaflow-scanner-sane
+Copyright (C) 2026 negaflow-scanner-sane contributors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, see <https://www.gnu.org/licenses/gpl-2.0.html>.
+
+------------------------------------------------------------------------------
+Why GPL, and why this is a SEPARATE project from negaflow
+------------------------------------------------------------------------------
+This plugin drives SANE (Scanner Access Now Easy). The SANE `genesys` backend
+used by Plustek OpticFilm scanners is distributed under GPL-2.0-or-later WITHOUT
+the SANE linking exception. To keep negaflow itself under the Apache License 2.0
+free of GPL obligations, all SANE-related code lives here, in this independent
+program. negaflow communicates with this program only at arm's length — via a
+separate OS process, command-line arguments, pipes, and JSON — which is mere
+aggregation, not a combined/derivative work.
+
+The full text of the GNU General Public License, version 2, should be
+distributed alongside this software as the file COPYING. It is available at
+https://www.gnu.org/licenses/gpl-2.0.txt

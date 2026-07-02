@@ -1,0 +1,16 @@
+.build/
+.swiftpm/
+.DS_Store
+*.profraw
+*.tiff
+*.tif
+
+# Local editor / agent state
+.omo/
+.debug-journal.md
+
+# Archives and temporary files
+*.zip
+*.tar
+*.tar.gz
+*.tmp
