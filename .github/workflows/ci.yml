@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Swift and provenance
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+      - name: Verify provenance
+        run: python3 scripts/verify-provenance.py
+      - name: Test
+        run: swift test -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
+
+  release-smoke:
+    name: Unsigned installer smoke
+    needs: quality
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain
+        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+      - name: Build Apple Silicon and Universal installers
+        env:
+          NEGAFLOW_INSTALLER_MODE: local
+          NEGAFLOW_OVERWRITE_INSTALLER: 1
+        run: bash scripts/build-installer.sh
+      - name: Verify checksums
+        run: shasum -a 256 -c .build/release-artifacts/*-installer-SHA256SUMS.txt
+      - name: Upload installer smoke artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: negaflow-scanner-sane-installers-${{ github.sha }}
+          path: .build/release-artifacts/*-installer*
+          if-no-files-found: error
+          retention-days: 14
