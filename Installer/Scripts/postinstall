@@ -1,0 +1,74 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "[negaflow-installer] ERROR: package postinstall must run as root." >&2
+  exit 1
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+plugin_source="$script_dir/sane"
+
+case "$(uname -m)" in
+  arm64) brew="/opt/homebrew/bin/brew" ;;
+  x86_64) brew="/usr/local/bin/brew" ;;
+  *)
+    echo "[negaflow-installer] ERROR: unsupported architecture: $(uname -m)" >&2
+    exit 1
+    ;;
+esac
+
+if [[ ! -x "$brew" ]]; then
+  echo "[negaflow-installer] ERROR: Homebrew was not installed at the supported prefix." >&2
+  exit 1
+fi
+
+console_user="$(stat -f "%Su" /dev/console 2>/dev/null || true)"
+case "$console_user" in
+  ""|root|loginwindow|_mbsetupuser)
+    echo "[negaflow-installer] ERROR: no supported logged-in user was found." >&2
+    exit 1
+    ;;
+esac
+
+console_home="$(dscl . -read "/Users/$console_user" NFSHomeDirectory 2>/dev/null \
+  | sed 's/^NFSHomeDirectory: //')"
+if [[ -z "$console_home" || "$console_home" != /* || "$console_home" == "/" \
+      || ! -d "$console_home" ]]; then
+  echo "[negaflow-installer] ERROR: could not determine the logged-in user's home." >&2
+  exit 1
+fi
+
+run_brew_as_console_user() {
+  if "$brew" help as-console-user >/dev/null 2>&1; then
+    "$brew" as-console-user "$@"
+    return
+  fi
+
+  /usr/bin/sudo -H -u "$console_user" /usr/bin/env -i \
+    "HOME=$console_home" \
+    "USER=$console_user" \
+    "LOGNAME=$console_user" \
+    "PATH=${brew%/brew}:/usr/bin:/bin:/usr/sbin:/sbin" \
+    "$brew" "$@"
+}
+
+echo "[negaflow-installer] installing SANE backends for the logged-in user..."
+run_brew_as_console_user install sane-backends
+run_brew_as_console_user list --versions sane-backends
+
+scanimage="${brew%/brew}/scanimage"
+if [[ ! -x "$scanimage" ]]; then
+  echo "[negaflow-installer] ERROR: scanimage was not installed by sane-backends." >&2
+  exit 1
+fi
+
+echo "[negaflow-installer] installing the Negaflow scanner plug-in for $console_user..."
+/usr/bin/sudo -H -u "$console_user" /usr/bin/env -i \
+  "HOME=$console_home" \
+  "USER=$console_user" \
+  "LOGNAME=$console_user" \
+  "PATH=/usr/bin:/bin:/usr/sbin:/sbin" \
+  /bin/bash "$script_dir/install-plugin-user.sh" "$plugin_source"
+
+echo "[negaflow-installer] complete. Restart Negaflow and approve the scanner plug-in."

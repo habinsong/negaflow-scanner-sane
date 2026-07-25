@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 2,
+  "id": "sane",
+  "name": "SANE Film Scanner",
+  "executable": "negaflow-scanner-sane",
+  "kind": "scanner",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/habinsong/negaflow-scanner-sane",
+  "pluginVersion": "1.0.0"
+}

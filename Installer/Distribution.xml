@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Negaflow SANE Scanner</title>
+    <organization>com.habinsong.negaflow</organization>
+    <options customize="never" hostArchitectures="x86_64,arm64" rootVolumeOnly="true"/>
+
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="14.0.0"/>
+        </allowed-os-versions>
+    </volume-check>
+
+    <choices-outline>
+        <line choice="default">
+            <line choice="sh.brew.homebrew"/>
+            <line choice="com.habinsong.negaflow.scanner-sane.setup"/>
+        </line>
+    </choices-outline>
+
+    <choice id="default"/>
+    <choice
+        id="sh.brew.homebrew"
+        visible="false"
+        selected="homebrew_required()">
+        <pkg-ref id="sh.brew.homebrew"/>
+    </choice>
+    <choice
+        id="com.habinsong.negaflow.scanner-sane.setup"
+        visible="false"
+        selected="true">
+        <pkg-ref id="com.habinsong.negaflow.scanner-sane.setup"/>
+    </choice>
+
+    <pkg-ref
+        id="sh.brew.homebrew"
+        onConclusion="none"
+        version="@HOMEBREW_VERSION@">#HomebrewComponent.pkg</pkg-ref>
+    <pkg-ref
+        id="com.habinsong.negaflow.scanner-sane.setup"
+        onConclusion="none"
+        version="@PLUGIN_VERSION@">#NegaflowScannerSetup.pkg</pkg-ref>
+
+    <welcome file="WELCOME.html" mime-type="text/html"/>
+    <license file="LICENSE.html" mime-type="text/html"/>
+    <conclusion file="CONCLUSION.html" mime-type="text/html"/>
+
+    <script>
+        function is_apple_silicon() {
+            return system.sysctl("hw.optional.arm64") == "1";
+        }
+
+        function homebrew_required() {
+            if (is_apple_silicon()) {
+                return !system.files.fileExistsAtPath("/opt/homebrew/bin/brew");
+            }
+            return !system.files.fileExistsAtPath("/usr/local/bin/brew");
+        }
+
+        function installation_check() {
+            if (!system.files.fileExistsAtPath("/Library/Developer/CommandLineTools/usr/bin/git")
+                &amp;&amp; !system.files.fileExistsAtPath("/Applications/Xcode.app/Contents/Developer/usr/bin/git")) {
+                my.result.title = "Xcode Command Line Tools are required";
+                my.result.message = "Install Xcode or run xcode-select --install, finish that installation, and then open this package again.";
+                my.result.type = "Fatal";
+                return false;
+            }
+            return true;
+        }
+    </script>
+    <installation-check script="installation_check()"/>
+</installer-gui-script>

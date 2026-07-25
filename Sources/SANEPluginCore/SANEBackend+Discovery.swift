@@ -1,0 +1,790 @@
+import Foundation
+
+private struct SANECapabilitySnapshot: Codable {
+    static let currentSchemaVersion = 2
+
+    var schemaVersion: Int
+    var deviceID: String
+    var backend: String
+    var acquisitionDevice: String
+    var deviceIdentity: SANEBackend.DeviceIdentity?
+    var deviceType: String?
+    var optionDump: String
+}
+
+extension SANEBackend {
+    /// 장치 문자열의 백엔드 이름. "genesys:libusb:000:010" → "genesys", "epson2:net:..." → "epson2".
+    static func backendName(of deviceString: String) -> String {
+        String(deviceString.prefix(while: { $0 != ":" }))
+    }
+
+    static func connectionType(of deviceString: String) -> ConnectionType {
+        let value = deviceString.lowercased()
+        if value.contains(":net:") { return .network }
+        if value.contains(":scsi:") || value.contains("/dev/sg") { return .scsi }
+        if value.contains(":firewire:")
+            || value.contains(":ieee1394:")
+            || value.contains(":ieee-1394:") {
+            return .fireWire
+        }
+        if value.contains(":usb:") || value.contains(":libusb:") { return .usb }
+        return .internalBus
+    }
+
+    static func isDedicatedFilmBackend(_ backend: String?) -> Bool {
+        guard let backend else { return false }
+        return ["coolscan", "coolscan2", "coolscan3", "pie", "pieusb"].contains(backend)
+    }
+
+    /// SANE 장치 목록 한 줄 파싱 결과.
+    struct ListedDevice: Sendable, Equatable {
+        var devname: String     // genesys:libusb:000:010
+        var vendor: String      // PLUSTEK / Epson / Nikon / PIE/Reflecta
+        var model: String       // OpticFilm 8100 / GT-X970 / LS-50 ED
+        var deviceType: String  // flatbed scanner / film scanner / …
+    }
+
+    /// scanimage -L 이 내는 장치 타입 접미사(백엔드 자유 문자열). 긴 것부터 매치한다.
+    private static let deviceTypeSuffixes = [
+        "multi-function peripheral", "flatbed scanner", "film scanner", "slide scanner",
+        "sheetfed scanner", "sheet-fed scanner", "handheld scanner", "hand-held scanner",
+        "frame grabber", "virtual device", "video camera", "still camera", "scanner",
+    ]
+
+    /// -L 출력 전체를 장치 목록으로 파싱한다. 형식:
+    ///   `device \`coolscan3:usb:libusb:001:002' is a Nikon LS-50 ED film scanner`
+    ///   `device \`epson2:libusb:001:005' is a Epson GT-X970 flatbed scanner`
+    /// 타입 접미사를 떼고 첫 토큰을 벤더, 나머지를 모델로 삼는다 — 모델명 하드코딩 금지(§5.3).
+    static func parseDeviceList(_ out: String) -> [ListedDevice] {
+        var devices: [ListedDevice] = []
+        guard let regex = try? NSRegularExpression(pattern: "device `([^']+)' is a (.+)$") else { return devices }
+        for line in out.split(separator: "\n") {
+            let s = String(line)
+            let range = NSRange(s.startIndex..., in: s)
+            guard let m = regex.firstMatch(in: s, range: range),
+                  let devRange = Range(m.range(at: 1), in: s),
+                  let restRange = Range(m.range(at: 2), in: s) else { continue }
+            let devname = String(s[devRange])
+            var rest = String(s[restRange]).trimmingCharacters(in: .whitespaces)
+            var deviceType = ""
+            for suffix in deviceTypeSuffixes where rest.lowercased().hasSuffix(suffix) {
+                deviceType = String(rest.suffix(suffix.count))
+                rest = String(rest.dropLast(suffix.count)).trimmingCharacters(in: .whitespaces)
+                break
+            }
+            let tokens = rest.split(separator: " ", maxSplits: 1)
+            let vendor = tokens.first.map(String.init) ?? rest
+            let model = tokens.count > 1 ? String(tokens[1]).trimmingCharacters(in: .whitespaces) : vendor
+            devices.append(ListedDevice(devname: devname, vendor: vendor, model: model, deviceType: deviceType))
+        }
+        return devices
+    }
+
+    /// scanimage 공식 `--formatted-device-list` 형식.
+    /// `%d`, `%v`, `%m`, `%t`를 탭으로 분리해 번역된 `-L` 문장을 파싱하지 않는다.
+    static func parseFormattedDeviceList(_ output: String) -> [ListedDevice] {
+        output.split(separator: "\n", omittingEmptySubsequences: true).compactMap { raw in
+            let fields = raw.split(
+                separator: "\t",
+                maxSplits: 3,
+                omittingEmptySubsequences: false
+            ).map(String.init)
+            guard fields.count == 4, !fields[0].isEmpty else { return nil }
+            return ListedDevice(
+                devname: fields[0],
+                vendor: fields[1].trimmingCharacters(in: .whitespaces),
+                model: fields[2].trimmingCharacters(in: .whitespaces),
+                deviceType: fields[3].trimmingCharacters(in: .whitespaces)
+            )
+        }
+    }
+
+    /// 최신 scanimage에서는 구조화된 목록을 사용하고, 오래된 구현·테스트 더블은 -L로
+    /// 후퇴한다. 취소와 시간 초과는 다른 프로세스를 다시 띄우지 않고 즉시 전파한다.
+    func listDevices(ownedByScanSession: Bool = false) async throws -> [ListedDevice] {
+        do {
+            let formatted = try await runScanimage(
+                args: ["-f", "%d\t%v\t%m\t%t%n"],
+                ownedByScanSession: ownedByScanSession
+            )
+            let devices = Self.parseFormattedDeviceList(formatted)
+            if !devices.isEmpty {
+                cacheListedDevices(devices)
+                return devices
+            }
+        } catch let error as ScannerError
+            where error.code == .cancelled || error.code == .timeout {
+            throw error
+        } catch {
+            // 구형 scanimage가 -f를 거부하면 아래 -L 호환 경로를 사용한다.
+        }
+        let legacy = try await runScanimage(
+            args: ["-L"],
+            ownedByScanSession: ownedByScanSession
+        )
+        let devices = Self.parseDeviceList(legacy)
+        cacheListedDevices(devices)
+        return devices
+    }
+
+    private func cacheListedDevices(_ devices: [ListedDevice]) {
+        for device in devices {
+            cachedDeviceTypes[device.devname] = device.deviceType
+            cachedDeviceIdentities[device.devname] = DeviceIdentity(
+                vendor: device.vendor,
+                model: device.model
+            )
+        }
+    }
+
+    // MARK: detect
+    public func detectScanners() async throws -> [ScannerDescriptor] {
+        try await listDevices().map { device in
+            let backend = Self.backendName(of: device.devname)
+            let display = "\(device.vendor.capitalized) \(device.model)".trimmingCharacters(in: .whitespaces)
+            return ScannerDescriptor(
+                id: "sane-\(device.devname)",
+                displayName: display.isEmpty ? device.model : display,
+                vendor: device.vendor.capitalized,
+                model: device.model,
+                backendType: .sane,
+                connectionType: Self.connectionType(of: device.devname),
+                // backend명이나 모델명만으로 실기 검증을 추정하지 않는다. 가상 장치 테스트는
+                // 호환성 증거이며 실제 개별 하드웨어 검증과 동등하지 않다.
+                verifiedStatus: .compatibleTarget,
+                driverVersion: "\(backend) (SANE)"
+            )
+        }
+    }
+
+    // MARK: capabilities (scanimage -A 파싱)
+    public func getCapabilities(scannerID: String) async throws -> ScannerCapabilities {
+        try await getCapabilitiesReport(scannerID: scannerID).capabilities
+    }
+
+    public func getCapabilitiesReport(
+        scannerID: String,
+        expectedIdentity: DeviceIdentity? = nil
+    ) async throws -> SANECapabilityReport {
+        let (devname, dump) = try await capabilityOptionsDump(
+            scannerID: scannerID,
+            expectedIdentity: expectedIdentity,
+            ownedByScanSession: false
+        )
+        let backend = Self.backendName(
+            of: scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+        let snapshot = SANECapabilitySnapshot(
+            schemaVersion: SANECapabilitySnapshot.currentSchemaVersion,
+            deviceID: scannerID,
+            backend: backend,
+            acquisitionDevice: devname,
+            deviceIdentity: cachedDeviceIdentity(for: devname) ?? expectedIdentity,
+            deviceType: cachedDeviceType(for: devname),
+            optionDump: dump
+        )
+        let token: String
+        do {
+            token = try JSONEncoder().encode(snapshot).base64EncodedString()
+        } catch {
+            throw ScannerError(.ioFailure, "capability 스냅샷 인코딩 실패: \(error.localizedDescription)")
+        }
+        let capabilities = Self.parseCapabilities(
+            dump,
+            deviceTypeHint: cachedDeviceType(for: devname),
+            backendHint: backend
+        )
+        return SANECapabilityReport(
+            capabilities: capabilities,
+            capabilityToken: token
+        )
+    }
+
+    /// 스캔 직전에 scanimage -L 을 다시 돌려 현재 장치의 libusb 주소를 얻는다.
+    ///
+    /// USB 장치 주소(libusb:bus:dev)는 스캐너 리셋/재열거로 매 호출마다 바뀐다
+    /// (OpticFilm 8100 + genesys 실기에서 확인). scannerID 에 박힌 과거 주소로
+    /// open 하면 "open of device failed: Invalid argument" 로 실패한다.
+    /// 따라서 스캔 직전에 반드시 현재 주소를 다시 얻어야 한다.
+    ///
+    /// 백엔드 힌트가 있으면 같은 백엔드(genesys/epson2/coolscan3/...) 장치를 고른다 —
+    /// 여러 제조사 스캐너가 동시에 붙어 있어도 올바른 장치를 연다.
+    func currentDeviceAddress(
+        targetDevice: String? = nil,
+        targetBackend: String? = nil,
+        expectedIdentity: DeviceIdentity? = nil,
+        allowSingleGenesysSelector: Bool = false,
+        ownedByScanSession: Bool = false
+    ) async throws -> String {
+        if let cached = cachedAddress,
+           cachedAddressBackend == targetBackend,
+           cachedAddressTarget == targetDevice,
+           cachedAddressIdentity == expectedIdentity,
+           Date().timeIntervalSince(cachedAddressAt) < addressCacheTTL {
+            return cached
+        }
+        let listed = try await listDevices(ownedByScanSession: ownedByScanSession)
+        let backendMatches = targetBackend.map { backend in
+            listed.filter { Self.backendName(of: $0.devname) == backend }
+        } ?? []
+        let exactMatch = targetDevice.flatMap { target in
+            listed.first { $0.devname == target }
+        }
+        let identityMatches = expectedIdentity.map { identity in
+            backendMatches.filter { Self.sameIdentity($0, identity) }
+        } ?? []
+        let chosen: ListedDevice?
+        if let exactMatch,
+           expectedIdentity.map({ Self.sameIdentity(exactMatch, $0) }) ?? true {
+            chosen = exactMatch
+        } else if expectedIdentity != nil, identityMatches.count == 1 {
+            chosen = identityMatches[0]
+        } else if targetBackend == nil, listed.count == 1 {
+            chosen = listed[0]
+        } else {
+            chosen = nil
+        }
+        if let chosen {
+            // 실기 genesys는 `scanimage -L` 프로세스 종료 때 장치를 재열거해 방금 보고한
+            // libusb 주소를 즉시 무효화하므로, 같은 genesys 장치가 하나일 때만 검증된
+            // `-d genesys` 선택자를 사용한다. 다른 backend의 장치명 축약은 SANE 계약이
+            // 보장하지 않으므로 Epson/Nikon/PIE 등은 보고된 전체 식별자를 그대로 유지한다.
+            let resolvedAddress: String
+            if allowSingleGenesysSelector,
+               targetBackend == "genesys",
+               backendMatches.count == 1,
+               chosen.devname.contains(":libusb:") {
+                resolvedAddress = "genesys"
+            } else {
+                resolvedAddress = chosen.devname
+            }
+            cachedAddress = resolvedAddress
+            cachedAddressBackend = targetBackend
+            cachedAddressTarget = targetDevice
+            cachedAddressIdentity = expectedIdentity
+            cachedAddressAt = Date()
+            cachedDeviceTypes[resolvedAddress] = chosen.deviceType
+            cachedDeviceTypes[chosen.devname] = chosen.deviceType
+            let identity = DeviceIdentity(vendor: chosen.vendor, model: chosen.model)
+            cachedDeviceIdentities[resolvedAddress] = identity
+            cachedDeviceIdentities[chosen.devname] = identity
+            return resolvedAddress
+        }
+        cachedAddress = nil
+        cachedAddressBackend = nil
+        cachedAddressTarget = nil
+        cachedAddressIdentity = nil
+        cachedAddressAt = .distantPast
+        if expectedIdentity != nil, identityMatches.count > 1 {
+            throw ScannerError(
+                .notConnected,
+                "같은 제조사·모델의 \(targetBackend ?? "SANE") 장치가 여러 대라 대상 장치를 안전하게 식별할 수 없습니다."
+            )
+        }
+        if let expectedIdentity, !backendMatches.isEmpty {
+            throw ScannerError(
+                .notConnected,
+                "연결된 \(targetBackend ?? "SANE") 장치가 선택한 \(expectedIdentity.vendor) \(expectedIdentity.model)과 일치하지 않습니다."
+            )
+        }
+        throw ScannerError(
+            .notConnected,
+            "SANE 장치 주소가 바뀌었지만 제조사·모델 정보가 없어 안전하게 재연결할 수 없습니다. 장치를 다시 검색하십시오."
+        )
+    }
+
+    func cachedDeviceType(for devname: String) -> String? {
+        cachedDeviceTypes[devname]
+    }
+
+    func cachedDeviceIdentity(for devname: String) -> DeviceIdentity? {
+        cachedDeviceIdentities[devname]
+    }
+
+    private static func sameIdentity(_ device: ListedDevice, _ identity: DeviceIdentity) -> Bool {
+        normalizedIdentityComponent(device.vendor) == normalizedIdentityComponent(identity.vendor)
+            && normalizedIdentityComponent(device.model) == normalizedIdentityComponent(identity.model)
+    }
+
+    private static func normalizedIdentityComponent(_ value: String) -> String {
+        value
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+                locale: Locale(identifier: "en_US_POSIX")
+            )
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+    }
+
+    /// 캐시 강제 무효화(장치 점유/재연결 등).
+    public func invalidateAddressCache() {
+        cachedAddress = nil
+        cachedAddressBackend = nil
+        cachedAddressTarget = nil
+        cachedAddressIdentity = nil
+        cachedAddressAt = .distantPast
+    }
+
+    // MARK: media selection (source / mode / depth / resolution / geometry / IR)
+
+    func resolveMedia(options: ScanOptions) async throws -> MediaSelection {
+        if let token = options.capabilityToken {
+            let snapshot = try Self.decodeCapabilitySnapshot(token, for: options)
+            var media = Self.resolveMedia(
+                dump: snapshot.optionDump,
+                options: options,
+                deviceTypeHint: snapshot.deviceType
+            )
+            media.acquisitionDevice = snapshot.acquisitionDevice
+            media.expectedDeviceIdentity = snapshot.deviceIdentity
+            return media
+        }
+
+        let (devname, sourceDump) = try await capabilityOptionsDump(
+            scannerID: options.scannerID,
+            expectedIdentity: nil,
+            ownedByScanSession: true
+        )
+        // 단일 투과 소스만 가진 genesys 필름 스캐너는 장치를 연속해서 여러 번 열면 실제
+        // OpticFilm에서 다음 acquisition이 실패할 수 있다. 같은 덤프를 재사용하되,
+        // Flatbed/Transparency를 함께 가진 genesys 장치는 소스별 재검증을 그대로 수행한다.
+        let dump = Self.canReuseSinglePassOptionsDump(sourceDump, backend: Self.backendName(of: devname))
+            ? sourceDump
+            : try await scanSpecificOptionsDump(
+                sourceDump: sourceDump,
+                devname: devname,
+                options: options
+            )
+        guard !SaneOptionDump(dump).isEmpty else {
+            throw ScannerError(.ioFailure, "scanimage -A가 적용 가능한 옵션을 반환하지 않았습니다.")
+        }
+        var media = Self.resolveMedia(
+            dump: dump,
+            options: options,
+            deviceTypeHint: cachedDeviceType(for: devname)
+        )
+        media.acquisitionDevice = devname
+        media.expectedDeviceIdentity = cachedDeviceIdentity(for: devname)
+        return media
+    }
+
+    private static func decodeCapabilitySnapshot(
+        _ token: String,
+        for options: ScanOptions
+    ) throws -> SANECapabilitySnapshot {
+        guard token.utf8.count <= 1_048_576,
+              let data = Data(base64Encoded: token),
+              let snapshot = try? JSONDecoder().decode(SANECapabilitySnapshot.self, from: data) else {
+            throw ScannerError(.unsupportedOption, "capabilityToken을 해석할 수 없습니다. 장치 능력을 다시 조회하십시오.")
+        }
+        let requestedBackend = backendName(
+            of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+        guard snapshot.schemaVersion == SANECapabilitySnapshot.currentSchemaVersion,
+              snapshot.deviceID == options.scannerID,
+              snapshot.backend == requestedBackend,
+              !snapshot.acquisitionDevice.isEmpty,
+              !SaneOptionDump(snapshot.optionDump).isEmpty else {
+            throw ScannerError(.unsupportedOption, "capabilityToken이 현재 장치와 일치하지 않습니다. 장치 능력을 다시 조회하십시오.")
+        }
+        return snapshot
+    }
+
+    /// capability와 scan preflight 모두 현재 USB 주소에서 유효한 옵션 덤프를 얻어야 한다.
+    /// SANE가 장치를 재열거하거나 잠깐 점유 중이면 주소 캐시를 버리고 제한적으로 재시도한다.
+    private func capabilityOptionsDump(
+        scannerID: String,
+        expectedIdentity: DeviceIdentity?,
+        ownedByScanSession: Bool
+    ) async throws -> (devname: String, dump: String) {
+        let raw = scannerID.replacingOccurrences(of: "sane-", with: "")
+        let backend = Self.backendName(of: raw)
+        var finalError: Error?
+
+        for attempt in 0..<3 {
+            do {
+                let devname: String
+                if attempt == 0, expectedIdentity == nil {
+                    // detect가 넘긴 전체 SANE 장치명을 먼저 그대로 사용한다. 정상 장치에서는
+                    // 별도 -L 프로세스 없이 capability를 한 번만 열 수 있다.
+                    devname = raw
+                } else {
+                    devname = try await currentDeviceAddress(
+                        targetDevice: raw,
+                        targetBackend: backend,
+                        expectedIdentity: expectedIdentity,
+                        allowSingleGenesysSelector: attempt == 2,
+                        ownedByScanSession: ownedByScanSession
+                    )
+                }
+                let baseDump = try await runScanimage(
+                    args: ["-A", "-d", devname],
+                    ownedByScanSession: ownedByScanSession
+                )
+                guard !SaneOptionDump(baseDump).isEmpty else {
+                    throw ScannerError(
+                        .ioFailure,
+                        "scanimage -A가 적용 가능한 옵션을 반환하지 않았습니다."
+                    )
+                }
+                let dump = Self.canReuseSinglePassOptionsDump(baseDump, backend: backend)
+                    ? baseDump
+                    : try await sourceSpecificOptionsDump(
+                        baseDump: baseDump,
+                        devname: devname,
+                        ownedByScanSession: ownedByScanSession
+                    )
+                return (devname, dump)
+            } catch {
+                finalError = error
+                guard attempt < 2, Self.shouldRetryCapabilityRead(after: error) else {
+                    throw error
+                }
+                invalidateAddressCache()
+                try? await Task.sleep(nanoseconds: 800_000_000)
+            }
+        }
+
+        throw finalError ?? ScannerError(.ioFailure, "스캐너 옵션 조회에 실패했습니다.")
+    }
+
+    static func canReuseSinglePassOptionsDump(_ dump: String, backend: String) -> Bool {
+        guard backend == "genesys" else { return false }
+        let sources = SaneOptionDump(dump).enumValues("source")
+        let nonInfraredSources = sources.filter { !isInfraredValue($0) }
+        guard nonInfraredSources.count == 1, let source = nonInfraredSources.first else {
+            return false
+        }
+        return isTransparencySource(source)
+    }
+
+    private static func shouldRetryCapabilityRead(after error: Error) -> Bool {
+        if let scannerError = error as? ScannerError {
+            switch scannerError.code {
+            case .busy, .notConnected, .ioFailure:
+                return true
+            case .unsupportedOption, .driverConflict, .cancelled, .timeout, .unknown:
+                return false
+            }
+        }
+        return isStaleDeviceError(error.localizedDescription)
+    }
+
+    /// mode/depth/resolution/preview 설정도 다른 SANE 옵션의 범위·step을 바꿀 수 있으므로,
+    /// 실제 요청값을 적용한 상태에서 한 번 더 `-A`를 읽어 최종 geometry 계약을 검증한다.
+    private func scanSpecificOptionsDump(
+        sourceDump: String,
+        devname: String,
+        options: ScanOptions
+    ) async throws -> String {
+        let preliminary = Self.resolveMedia(dump: sourceDump, options: options)
+        var args = ["-A", "-d", devname]
+        if let source = preliminary.source { args += ["--source", source] }
+        if let mode = preliminary.mode { args += ["--mode", mode] }
+        if let dpi = preliminary.resolvedDPI { args += ["--resolution", "\(dpi)"] }
+        if let depth = preliminary.depthArgument { args += ["--depth", "\(depth)"] }
+        if options.resolution == .preview, preliminary.hasPreviewOption {
+            args += ["--preview=yes"]
+        }
+        let dump = try await runScanimage(args: args, ownedByScanSession: true)
+        guard !SaneOptionDump(dump).isEmpty else {
+            throw ScannerError(.ioFailure, "최종 스캔 옵션 적용 뒤 scanimage -A가 옵션을 반환하지 않았습니다.")
+        }
+        return dump
+    }
+
+    /// SANE는 `source` 설정 뒤 다른 옵션과 범위를 다시 로드할 수 있다. 투과 소스를 고른 뒤
+    /// `-A`를 다시 요청해 실제 TPU 지오메트리와 활성 옵션을 capability/scan preflight에 사용한다.
+    private func sourceSpecificOptionsDump(
+        baseDump: String,
+        devname: String,
+        ownedByScanSession: Bool
+    ) async throws -> String {
+        let sources = SaneOptionDump(baseDump).enumValues("source")
+        guard let source = Self.preferredTransparencySource(in: sources) else {
+            return baseDump
+        }
+        let selectedDump = try await runScanimage(
+            args: ["-A", "-d", devname, "--source", source],
+            ownedByScanSession: ownedByScanSession
+        )
+        guard !SaneOptionDump(selectedDump).isEmpty else {
+            throw ScannerError(.ioFailure, "투과 source 선택 뒤 scanimage -A가 옵션을 반환하지 않았습니다.")
+        }
+        return selectedDump
+    }
+
+    /// 순수 함수(테스트 가능): -A 덤프 + 옵션 → MediaSelection.
+    /// 장치가 실제 노출하는 옵션만 사용한다. 옵션이 없거나 요청값이 정확히 없으면
+    /// production preflight가 실패하며 장치 기본값을 적용값으로 추정하지 않는다.
+    static func resolveMedia(
+        dump: String,
+        options: ScanOptions,
+        deviceTypeHint: String? = nil
+    ) -> MediaSelection {
+        let backend = backendName(of: options.scannerID.replacingOccurrences(of: "sane-", with: ""))
+        let opts = SaneOptionDump(dump)
+        let normalizedDeviceType = (deviceTypeHint ?? "").lowercased()
+        let dedicatedFilmDevice = !opts.isActive("source")
+            && (
+                normalizedDeviceType.contains("film")
+                    || normalizedDeviceType.contains("slide")
+                    || isDedicatedFilmBackend(backend)
+            )
+
+        // 옵션 덤프가 없으면 어떤 값도 추정하지 않는다. production 경로는 이 상태를 오류로 처리한다.
+        if opts.isEmpty {
+            return MediaSelection(
+                source: nil, mode: nil, filmType: nil,
+                depthArgument: nil, resolvedDPI: nil,
+                originXMM: nil, originYMM: nil,
+                widthMM: nil, heightMM: nil
+            )
+        }
+
+        let sources = opts.enumValues("source")
+        let modeValues = opts.enumValues("mode")
+
+        // 소스: 투과(비-IR) 우선. --source 옵션이 없으면 생략(coolscan3 등 전용 필름 스캐너).
+        let transparency = preferredTransparencySource(in: sources)
+        let source: String? = sources.isEmpty ? nil : (transparency ?? sources.first)
+
+        // 모드: 장치 원문 값에서 선택(--mode 없으면 생략).
+        let mode = pickModeValue(modeValues, colorMode: options.colorMode)
+        let grayMode = pickModeValue(modeValues, colorMode: .gray)
+
+        // 깊이: 16-bit host 계약은 SANE의 9...16-bit 샘플이 16-bit TIFF 컨테이너로
+        // 기록되는 경우를 포함한다. 8-bit 요청을 16-bit로 바꾸거나 그 반대는 허용하지 않는다.
+        var depthArgument: Int? = nil
+        let depthTokens = opts.intTokens("depth").filter { $0 >= 8 }
+        switch options.bitDepth {
+        case .eight:
+            if depthTokens.contains(8) { depthArgument = 8 }
+        case .sixteen:
+            depthArgument = depthTokens.contains(16) ? 16 : depthTokens.filter { $0 > 8 }.max()
+        }
+
+        // 해상도: 정확히 지원하는 값만 전달한다. 목록 밖/범위 step 밖 요청은 nil로 남겨
+        // preflight에서 명시적으로 실패시키며 가장 가까운 값으로 스냅하지 않는다.
+        let resolutionRange = opts.numericRange("resolution")
+        let requestedDPI = options.resolution.dpi
+        let resolvedDPI: Int?
+        if requestedDPI <= 0 {
+            resolvedDPI = nil
+        } else {
+            switch opts.resolutionSpec {
+            case .list(let values):
+                resolvedDPI = values.contains(requestedDPI) ? requestedDPI : nil
+            case .range:
+                resolvedDPI = resolutionRange?.containsExactly(Double(requestedDPI)) == true
+                    ? requestedDPI
+                    : nil
+            case .none:
+                resolvedDPI = nil
+            }
+        }
+
+        // 지오메트리: mm 단위 장치만 전체 영역을 명시(-x/-y). pel(픽셀) 단위 장치(coolscan3)는
+        // 생략 — 백엔드 기본값이 전체 프레임이고 mm 값을 넘기면 N픽셀 폭으로 오해된다.
+        var originXMM: Double? = nil
+        var originYMM: Double? = nil
+        var widthMM: Double? = nil
+        var heightMM: Double? = nil
+        var originXPixels: Int? = nil
+        var originYPixels: Int? = nil
+        var widthPixels: Int? = nil
+        var heightPixels: Int? = nil
+        var rightPixels: Int? = nil
+        var bottomPixels: Int? = nil
+        var usesCornerPixelGeometry = false
+        if opts.rangeUnit("x") == "mm", opts.rangeUnit("y") == "mm",
+           let xRange = opts.numericRange("x"), let yRange = opts.numericRange("y"),
+           xRange.maximum > 0, yRange.maximum > 0 {
+            if xRange.containsExactly(options.scanArea.widthMM),
+               yRange.containsExactly(options.scanArea.heightMM) {
+                widthMM = options.scanArea.widthMM
+                heightMM = options.scanArea.heightMM
+            }
+            if opts.rangeUnit("l") == "mm", let leftRange = opts.numericRange("l"),
+               leftRange.containsExactly(options.scanArea.originXMM) {
+                originXMM = options.scanArea.originXMM
+            }
+            if opts.rangeUnit("t") == "mm", let topRange = opts.numericRange("t"),
+               topRange.containsExactly(options.scanArea.originYMM) {
+                originYMM = options.scanArea.originYMM
+            }
+        } else if requestedDPI > 0,
+                  opts.rangeUnit("x") == "pel", opts.rangeUnit("y") == "pel",
+                  let xRange = opts.numericRange("x"), let yRange = opts.numericRange("y") {
+            widthPixels = pixelGeometryValue(
+                millimeters: options.scanArea.widthMM,
+                dpi: requestedDPI,
+                range: xRange
+            )
+            heightPixels = pixelGeometryValue(
+                millimeters: options.scanArea.heightMM,
+                dpi: requestedDPI,
+                range: yRange
+            )
+            if opts.rangeUnit("l") == "pel", let leftRange = opts.numericRange("l") {
+                originXPixels = pixelGeometryValue(
+                    millimeters: options.scanArea.originXMM,
+                    dpi: requestedDPI,
+                    range: leftRange
+                )
+            }
+            if opts.rangeUnit("t") == "pel", let topRange = opts.numericRange("t") {
+                originYPixels = pixelGeometryValue(
+                    millimeters: options.scanArea.originYMM,
+                    dpi: requestedDPI,
+                    range: topRange
+                )
+            }
+        } else if let unitDPI = maximumResolutionDPI(in: opts),
+                  opts.rangeUnit("tl-x") == "pel",
+                  opts.rangeUnit("tl-y") == "pel",
+                  opts.rangeUnit("br-x") == "pel",
+                  opts.rangeUnit("br-y") == "pel",
+                  let leftRange = opts.numericRange("tl-x"),
+                  let topRange = opts.numericRange("tl-y"),
+                  let rightRange = opts.numericRange("br-x"),
+                  let bottomRange = opts.numericRange("br-y"),
+                  let left = pixelGeometryValue(
+                      millimeters: options.scanArea.originXMM,
+                      dpi: unitDPI,
+                      range: leftRange
+                  ),
+                  let top = pixelGeometryValue(
+                      millimeters: options.scanArea.originYMM,
+                      dpi: unitDPI,
+                      range: topRange
+                  ),
+                  let width = pixelGeometryLength(
+                      millimeters: options.scanArea.widthMM,
+                      unitDPI: unitDPI
+                  ),
+                  let height = pixelGeometryLength(
+                      millimeters: options.scanArea.heightMM,
+                      unitDPI: unitDPI
+                  ),
+                  rightRange.containsExactly(Double(left + width - 1)),
+                  bottomRange.containsExactly(Double(top + height - 1)) {
+            originXPixels = left
+            originYPixels = top
+            rightPixels = left + width - 1
+            bottomPixels = top + height - 1
+            usesCornerPixelGeometry = true
+        }
+
+        // 필름 타입(epson2/epkowa): 투과 소스에서만 유효.
+        var filmType: String? = nil
+        if opts.isActive("film-type"), let src = source, isTransparencySource(src) {
+            let requestedPolarity = options.filmType.requiresInversion ? "negative" : "positive"
+            filmType = opts.enumValues("film-type").first {
+                $0.lowercased().contains(requestedPolarity)
+            }
+        }
+
+        // 별도 파일로 검증할 수 있는 IR source/mode만 사용한다. coolscan3의 --infrared는
+        // RGBI 한 프레임이고 stock scanimage가 이를 별도 IR TIFF로 직렬화하지 못한다.
+        var irStrategy: IRStrategy = .none
+        if options.infraredEnabled {
+            let infraredSource = sources.first(where: { isInfraredValue($0) })
+            let infraredMode = modeValues.first(where: { $0.lowercased().contains("infrared") })
+            if let infraredSource {
+                irStrategy = .separateSource(infraredSource)
+            } else if let infraredMode {
+                irStrategy = .separateMode(infraredMode)
+            }
+        }
+
+        return MediaSelection(
+            source: source,
+            mode: mode,
+            filmType: filmType,
+            depthArgument: depthArgument,
+            resolvedDPI: resolvedDPI,
+            originXMM: originXMM,
+            originYMM: originYMM,
+            widthMM: widthMM,
+            heightMM: heightMM,
+            hasPreviewOption: opts.isActive("preview"),
+            hasBrightnessOption: opts.isActive("brightness"),
+            hasContrastOption: opts.isActive("contrast"),
+            hasScanExposureOption: opts.isActive("scan-exposure-time"),
+            hasModeOption: opts.isActive("mode"),
+            hasDepthOption: opts.isActive("depth"),
+            hasFilmTypeOption: opts.isActive("film-type"),
+            brightnessRange: opts.numericRange("brightness"),
+            contrastRange: opts.numericRange("contrast"),
+            hardwareExposureRange: opts.numericRange("scan-exposure-time"),
+            resolutionRange: resolutionRange,
+            scanLeftRange: opts.rangeUnit("l") == "mm" ? opts.numericRange("l") : nil,
+            scanTopRange: opts.rangeUnit("t") == "mm" ? opts.numericRange("t") : nil,
+            scanWidthRange: opts.rangeUnit("x") == "mm" ? opts.numericRange("x") : nil,
+            scanHeightRange: opts.rangeUnit("y") == "mm" ? opts.numericRange("y") : nil,
+            irStrategy: irStrategy,
+            irPassMode: grayMode,
+            dedicatedFilmDevice: dedicatedFilmDevice,
+            originXPixels: originXPixels,
+            originYPixels: originYPixels,
+            widthPixels: widthPixels,
+            heightPixels: heightPixels,
+            rightPixels: rightPixels,
+            bottomPixels: bottomPixels,
+            usesCornerPixelGeometry: usesCornerPixelGeometry
+        )
+    }
+
+    private static func maximumResolutionDPI(in options: SaneOptionDump) -> Int? {
+        switch options.resolutionSpec {
+        case .list(let values):
+            return values.max()
+        case .range(_, let maximum):
+            return maximum
+        case .none:
+            return nil
+        }
+    }
+
+    private static func pixelGeometryValue(
+        millimeters: Double,
+        dpi: Int,
+        range: ScannerOptionRange
+    ) -> Int? {
+        guard millimeters.isFinite, millimeters >= 0, dpi > 0 else { return nil }
+        let exactPixels = millimeters * Double(dpi) / 25.4
+        let roundedPixels = exactPixels.rounded()
+        guard abs(exactPixels - roundedPixels) <= 0.5 + 1e-9,
+              roundedPixels >= Double(Int.min),
+              roundedPixels <= Double(Int.max) else {
+            return nil
+        }
+        let value = Int(roundedPixels)
+        return range.containsExactly(Double(value)) ? value : nil
+    }
+
+    private static func pixelGeometryLength(
+        millimeters: Double,
+        unitDPI: Int
+    ) -> Int? {
+        guard millimeters.isFinite, millimeters > 0, unitDPI > 0 else { return nil }
+        let rounded = (millimeters * Double(unitDPI) / 25.4).rounded()
+        guard rounded >= 1, rounded <= Double(Int.max) else { return nil }
+        return Int(rounded)
+    }
+
+    /// --mode 열거값(원문 대소문자)에서 요청 모드에 맞는 값을 고른다.
+    private static func pickModeValue(_ values: [String], colorMode: ColorMode) -> String? {
+        guard !values.isEmpty else { return nil }
+        let want: (String) -> Bool
+        switch colorMode {
+        case .gray: want = { $0.contains("gray") || $0.contains("grey") }
+        case .lineart: want = { $0.contains("lineart") || $0.contains("binary") }
+        case .infrared: want = { $0.contains("infrared") }
+        case .color: want = { $0.contains("color") }
+        }
+        if let match = values.first(where: { want($0.lowercased()) }) { return match }
+        return nil
+    }
+}

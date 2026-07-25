@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def fail(message: str) -> None:
+    print(f"[provenance] ERROR: {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def repository_files() -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    return [
+        ROOT / entry.decode("utf-8")
+        for entry in result.stdout.split(b"\0")
+        if entry and (ROOT / entry.decode("utf-8")).exists()
+    ]
+
+
+def verify_tree(files: list[Path]) -> tuple[int, int]:
+    native_suffixes = {".c", ".cc", ".cpp", ".h", ".hpp", ".m", ".mm"}
+    archive_suffixes = {
+        ".a", ".dylib", ".so", ".framework", ".xcframework",
+        ".zip", ".tar", ".gz", ".dmg", ".pkg",
+    }
+    vendor_names = {"vendor", "vendors", "third_party", "third-party"}
+    binary_count = 0
+    text_count = 0
+    for path in files:
+        relative = path.relative_to(ROOT)
+        if path.suffix.lower() in native_suffixes:
+            fail(f"vendored native source is not allowed: {relative}")
+        if any(part.lower() in vendor_names for part in relative.parts):
+            fail(f"vendored directory is not allowed: {relative}")
+        if path.suffix.lower() in archive_suffixes:
+            fail(f"prebuilt library or archive is not allowed: {relative}")
+        data = path.read_bytes()
+        if b"\0" in data[:8192]:
+            binary_count += 1
+        else:
+            text_count += 1
+
+    package = (ROOT / "Package.swift").read_text(encoding="utf-8")
+    for marker in (
+        ".package(",
+        ".binaryTarget(",
+        ".systemLibrary(",
+        '.linkedLibrary("sane")',
+    ):
+        if marker in package:
+            fail(f"Package.swift links or downloads an external package: {marker}")
+    return text_count, binary_count
+
+
+def verify_source_authorship_markers(files: list[Path]) -> None:
+    forbidden = (
+        "sanei_",
+        "#include <sane/",
+        "#include \"sane/",
+        "dlopen(",
+        "dlsym(",
+        "darktable",
+        "rawtherapee",
+        "negadoctor",
+    )
+    for path in files:
+        relative = path.relative_to(ROOT)
+        if relative.parts[0] not in {"Sources", "Tests"}:
+            continue
+        text = path.read_text(encoding="utf-8").lower()
+        for marker in forbidden:
+            if marker in text:
+                fail(f"foreign implementation marker {marker!r} found in {relative}")
+        if "spdx-license-identifier" in text or "copyright (c)" in text:
+            fail(f"unexpected third-party source header in {relative}")
+
+
+def verify_distribution_policy() -> None:
+    for required in (
+        "LICENSE",
+        "COPYING",
+        "THIRD_PARTY_NOTICES.md",
+        "PROVENANCE.md",
+        "manifest.json",
+    ):
+        if not (ROOT / required).is_file():
+            fail(f"required release notice is missing: {required}")
+
+    manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("pluginVersion") != "1.0.0":
+        fail("manifest pluginVersion must be 1.0.0")
+
+    installer_name = (
+        f"negaflow-scanner-sane-{manifest['pluginVersion']}"
+        "-macos-universal-installer.dmg"
+    )
+    for readme_name in (
+        "README.md",
+        "README_ko.md",
+        "README_ja.md",
+        "README_zh-Hans.md",
+        "README_fr.md",
+        "README_de.md",
+    ):
+        readme = (ROOT / readme_name).read_text(encoding="utf-8")
+        if installer_name not in readme:
+            fail(f"{readme_name} does not name the current installer: {installer_name}")
+
+    notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    for marker in (
+        "Homebrew 6.0.11",
+        "0545b1b85053ad6292799e8f9b11caee373cb377364f4d293cc4711487a9b944",
+        "BSD 2-Clause",
+        "does not contain or redistribute a `sane-backends` bottle",
+    ):
+        if marker not in notices:
+            fail(f"third-party notice is incomplete: {marker}")
+
+    release_text = "\n".join(
+        (ROOT / relative).read_text(encoding="utf-8").lower()
+        for relative in (
+            "scripts/package-release.sh",
+            "scripts/build-installer.sh",
+        )
+    )
+    for marker in (
+        'cp "$root/scanimage"',
+        "libsane.dylib",
+        "sane-backends.bottle",
+    ):
+        if marker in release_text:
+            fail(f"release scripts bundle a SANE runtime: {marker}")
+
+
+def main() -> None:
+    files = repository_files()
+    text_count, binary_count = verify_tree(files)
+    verify_source_authorship_markers(files)
+    verify_distribution_policy()
+    print(
+        "[provenance] verified "
+        f"files={len(files)} text={text_count} binary={binary_count}"
+    )
+
+
+if __name__ == "__main__":
+    main()

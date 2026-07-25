@@ -1,0 +1,24 @@
+.build/
+.swiftpm/
+.DS_Store
+*.profraw
+*.tiff
+*.tif
+__pycache__/
+*.py[cod]
+
+# Local editor / agent state
+.omo/
+.debug-journal.md
+AGENTS.md
+CLAUDE.md
+DESIGN.md
+CODEX.md
+.codex/
+.claude/
+
+# Archives and temporary files
+*.zip
+*.tar
+*.tar.gz
+*.tmp
