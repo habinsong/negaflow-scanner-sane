@@ -47,7 +47,9 @@ jobs:
           NEGAFLOW_OVERWRITE_INSTALLER: 1
         run: bash scripts/build-installer.sh
       - name: Verify checksums
-        run: shasum -a 256 -c .build/release-artifacts/*-installer-SHA256SUMS.txt
+        # The lists hold bare file names, so shasum has to run beside the files.
+        working-directory: .build/release-artifacts
+        run: shasum -a 256 -c *-installer-SHA256SUMS.txt
       - name: Upload installer smoke artifacts
         uses: actions/upload-artifact@v7
         with:
