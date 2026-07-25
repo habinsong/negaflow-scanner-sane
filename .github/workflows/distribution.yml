@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 90
     environment: distribution
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate required secrets
         env:
           DEVELOPER_ID_P12_BASE64: ${{ secrets.NEGAFLOW_DEVELOPER_ID_P12_BASE64 }}
@@ -98,10 +98,15 @@ jobs:
           shasum -a 256 -c .build/release-artifacts/*-SHA256SUMS.txt
           bash scripts/verify-release.sh .build/release-artifacts
           NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.0-macos-arm64-installer.pkg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg \
+            arm64
+          NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
             .build/release-artifacts/negaflow-scanner-sane-1.0.0-macos-universal-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg
+            .build/release-artifacts/negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg \
+            universal
       - name: Upload notarized artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: negaflow-scanner-sane-notarized-${{ github.sha }}
           path: .build/release-artifacts/*

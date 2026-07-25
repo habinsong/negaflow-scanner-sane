@@ -65,9 +65,20 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(workflow.contains("NEGAFLOW_NOTARY_PRIVATE_KEY_BASE64"))
         XCTAssertTrue(workflow.contains("scripts/verify-release.sh"))
         XCTAssertTrue(workflow.contains("scripts/verify-installer.sh"))
-        XCTAssertTrue(workflow.contains("actions/upload-artifact@v4"))
+        XCTAssertTrue(workflow.contains("actions/upload-artifact@v7"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_RELEASE_MODE: local"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_INSTALLER_MODE: local"))
+    }
+
+    func testInstallerBuildsAndVerifiesAppleSiliconAndUniversalVariants() throws {
+        let builder = try source(named: "scripts/build-installer.sh")
+        let verifier = try source(named: "scripts/verify-installer.sh")
+
+        XCTAssertTrue(builder.contains("for architecture in arm64 universal"))
+        XCTAssertTrue(builder.contains(#"lipo "$UNIVERSAL_PLUGIN_BINARY" -thin arm64"#))
+        XCTAssertTrue(builder.contains(#""$INSTALLER_ARCHITECTURE""#))
+        XCTAssertTrue(verifier.contains(#"[[ "$architectures" == "arm64" ]]"#))
+        XCTAssertTrue(verifier.contains(#"grep -qw x86_64 <<<"$architectures""#))
     }
 
     private var repositoryRoot: URL {

@@ -64,10 +64,17 @@ Si les Xcode Command Line Tools ne sont pas encore présents, installez-les d'ab
 xcode-select --install
 ```
 
-Téléchargez `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` depuis les [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), ouvrez-le, puis lancez `Install Negaflow Scanner.pkg`.
+Deux programmes d'installation sont publiés. Téléchargez-en un depuis les [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), ouvrez-le, puis lancez `Install Negaflow Scanner.pkg`.
 
-Si Homebrew est absent, le paquet installe d'abord le composant officiel Homebrew, puis `sane-backends` pour l'utilisateur connecté et enfin le module Universal de Negaflow.<br>
-Il fonctionne sur les Mac Apple Silicon et Intel.<br>
+| Programme d'installation | Destiné à | Binaire du module |
+|---|---|---|
+| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Mac Apple Silicon (M1 ou plus récent) | `arm64` uniquement |
+| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Mac Apple Silicon et Intel | `arm64` + `x86_64` |
+
+Les deux offrent exactement les mêmes fonctions.<br>
+La version Apple Silicon est plus légère et refuse de s'installer sur un Mac Intel ; la version Universal fonctionne partout.
+
+Si Homebrew est absent, le paquet installe d'abord le composant officiel Homebrew, puis `sane-backends` pour l'utilisateur connecté et enfin le module Negaflow.<br>
 Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br>
 Une installation Homebrew existante est réutilisée.
 
@@ -327,7 +334,8 @@ Créez le PKG et le DMG tout-en-un avec :
 NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 ```
 
-Ce build vérifie le paquet officiel Homebrew épinglé avant d'intégrer son composant, compile le module Universal, puis contrôle le PKG et le DMG sans les installer.<br>
+Ce build vérifie le paquet officiel Homebrew épinglé avant d'intégrer son composant, produit ensuite la variante Apple Silicon et la variante Universal, puis contrôle chaque PKG et DMG sans les installer.<br>
+Définissez `NEGAFLOW_INSTALLER_ARCHITECTURE` sur `arm64` ou `universal` pour ne produire qu'une seule variante ; la valeur par défaut `all` les produit toutes les deux.<br>
 Le mode de distribution demande aussi `NEGAFLOW_INSTALLER_MODE=distribution`, un `NEGAFLOW_INSTALLER_IDENTITY` pour le PKG, ainsi que l'identité de signature de l'application et le profil de notarisation déjà utilisés.
 
 ## Licence

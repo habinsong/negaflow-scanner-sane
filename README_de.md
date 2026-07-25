@@ -64,10 +64,17 @@ Falls die Xcode Command Line Tools noch fehlen, installieren Sie sie zuerst:
 xcode-select --install
 ```
 
-Laden Sie `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` unter [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter, öffnen Sie es und starten Sie `Install Negaflow Scanner.pkg`.
+Es werden zwei Installationsprogramme veröffentlicht. Laden Sie eines davon unter [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter, öffnen Sie es und starten Sie `Install Negaflow Scanner.pkg`.
 
-Wenn Homebrew fehlt, installiert das Paket zuerst die offizielle Homebrew-Komponente, danach `sane-backends` für den angemeldeten Benutzer und schließlich das Universal-Plug-in von Negaflow.<br>
-Apple-Silicon- und Intel-Macs werden unterstützt.<br>
+| Installationsprogramm | Vorgesehen für | Plug-in-Binärdatei |
+|---|---|---|
+| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple-Silicon-Macs (M1 oder neuer) | nur `arm64` |
+| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple-Silicon- und Intel-Macs | `arm64` + `x86_64` |
+
+Beide bieten denselben Funktionsumfang.<br>
+Die Apple-Silicon-Variante ist kleiner und lässt sich auf Intel-Macs nicht installieren; die Universal-Variante läuft auf allen Macs.
+
+Wenn Homebrew fehlt, installiert das Paket zuerst die offizielle Homebrew-Komponente, danach `sane-backends` für den angemeldeten Benutzer und schließlich das Negaflow-Plug-in.<br>
 Internetzugang und ein Administratorpasswort sind erforderlich.<br>
 Eine vorhandene Homebrew-Installation wird weiterverwendet.
 
@@ -329,7 +336,8 @@ Das eigenständige PKG und DMG erstellen Sie mit:
 NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 ```
 
-Dieser Build prüft das festgelegte offizielle Homebrew-Paket vor der Übernahme seiner Installer-Komponente, baut das Universal-Plug-in und kontrolliert PKG und DMG ohne Installation.<br>
+Dieser Build prüft das festgelegte offizielle Homebrew-Paket vor der Übernahme seiner Installer-Komponente, erstellt anschließend die Apple-Silicon- und die Universal-Variante und kontrolliert jedes PKG und DMG ohne Installation.<br>
+Mit `NEGAFLOW_INSTALLER_ARCHITECTURE` auf `arm64` oder `universal` wird nur eine Variante gebaut; der Standardwert `all` baut beide.<br>
 Für den Distributionsmodus werden zusätzlich `NEGAFLOW_INSTALLER_MODE=distribution`, eine `NEGAFLOW_INSTALLER_IDENTITY` für das PKG sowie die bereits verwendete App-Signaturidentität und das Notarisierungsprofil benötigt.
 
 ## Lizenz

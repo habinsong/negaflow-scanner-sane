@@ -2,7 +2,7 @@
 <installer-gui-script minSpecVersion="2">
     <title>Negaflow SANE Scanner</title>
     <organization>com.habinsong.negaflow</organization>
-    <options customize="never" hostArchitectures="x86_64,arm64" rootVolumeOnly="true"/>
+    <options customize="never" hostArchitectures="@HOST_ARCHITECTURES@" rootVolumeOnly="true"/>
 
     <volume-check>
         <allowed-os-versions>

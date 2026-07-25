@@ -102,9 +102,9 @@ def verify_distribution_policy() -> None:
     if manifest.get("pluginVersion") != "1.0.0":
         fail("manifest pluginVersion must be 1.0.0")
 
-    installer_name = (
-        f"negaflow-scanner-sane-{manifest['pluginVersion']}"
-        "-macos-universal-installer.dmg"
+    installer_names = tuple(
+        f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos-{architecture}-installer.dmg"
+        for architecture in ("arm64", "universal")
     )
     for readme_name in (
         "README.md",
@@ -115,8 +115,9 @@ def verify_distribution_policy() -> None:
         "README_de.md",
     ):
         readme = (ROOT / readme_name).read_text(encoding="utf-8")
-        if installer_name not in readme:
-            fail(f"{readme_name} does not name the current installer: {installer_name}")
+        for installer_name in installer_names:
+            if installer_name not in readme:
+                fail(f"{readme_name} does not name the current installer: {installer_name}")
 
     notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     for marker in (

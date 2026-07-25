@@ -63,10 +63,17 @@ Install Xcode Command Line Tools first if they are not already present:
 xcode-select --install
 ```
 
-Download `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` from [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), open it, and run `Install Negaflow Scanner.pkg`.
+Two installers are published. Download one of them from [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), open it, and run `Install Negaflow Scanner.pkg`.
 
-The package uses the official Homebrew installer when Homebrew is missing, installs `sane-backends` for the logged-in user, and then installs the universal Negaflow plug-in.<br>
-It supports both Apple Silicon and Intel Macs.<br>
+| Installer | Built for | Plug-in binary |
+|---|---|---|
+| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple Silicon Macs (M1 or later) | `arm64` only |
+| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple Silicon and Intel Macs | `arm64` + `x86_64` |
+
+Both installers contain the same features.<br>
+The Apple Silicon build is smaller and refuses to install on Intel Macs; the universal build runs everywhere.
+
+The package uses the official Homebrew installer when Homebrew is missing, installs `sane-backends` for the logged-in user, and then installs the Negaflow plug-in.<br>
 An internet connection and an administrator password are required.<br>
 Existing Homebrew installations are reused.
 
@@ -325,7 +332,8 @@ Build the standalone one-shot PKG and DMG with:
 NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 ```
 
-The installer build verifies the pinned official Homebrew package before incorporating its component, builds the universal plug-in, and checks the PKG and DMG without installing them.<br>
+The installer build verifies the pinned official Homebrew package before incorporating its component, then produces both the Apple Silicon and the universal variant and checks each PKG and DMG without installing them.<br>
+Set `NEGAFLOW_INSTALLER_ARCHITECTURE` to `arm64` or `universal` to build only one variant; the default `all` builds both.<br>
 Distribution mode additionally requires `NEGAFLOW_INSTALLER_MODE=distribution`, a `NEGAFLOW_INSTALLER_IDENTITY` for the PKG, and the same application signing and notarization credentials used by the release build.
 
 ## License

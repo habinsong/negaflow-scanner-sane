@@ -5,12 +5,27 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
 OUTPUT_DIR="${NEGAFLOW_INSTALLER_OUTPUT_DIR:-$ROOT/.build/release-artifacts}"
 INSTALLER_MODE="${NEGAFLOW_INSTALLER_MODE:-local}"
+INSTALLER_ARCHITECTURE="${NEGAFLOW_INSTALLER_ARCHITECTURE:-all}"
 APP_SIGN_IDENTITY="${NEGAFLOW_CODESIGN_IDENTITY:--}"
 PKG_SIGN_IDENTITY="${NEGAFLOW_INSTALLER_IDENTITY:-}"
 HOMEBREW_VERSION="${NEGAFLOW_HOMEBREW_PKG_VERSION:-6.0.11}"
 HOMEBREW_SHA256="${NEGAFLOW_HOMEBREW_PKG_SHA256:-0545b1b85053ad6292799e8f9b11caee373cb377364f4d293cc4711487a9b944}"
 HOMEBREW_TEAM_ID="${NEGAFLOW_HOMEBREW_TEAM_ID:-927JGANW46}"
 HOMEBREW_URL="${NEGAFLOW_HOMEBREW_PKG_URL:-https://github.com/Homebrew/brew/releases/download/$HOMEBREW_VERSION/Homebrew.pkg}"
+
+case "$INSTALLER_ARCHITECTURE" in
+  all)
+    for architecture in arm64 universal; do
+      NEGAFLOW_INSTALLER_ARCHITECTURE="$architecture" bash "$0"
+    done
+    exit 0
+    ;;
+  arm64|universal) ;;
+  *)
+    echo "[build-installer] ERROR: NEGAFLOW_INSTALLER_ARCHITECTURE must be arm64, universal, or all." >&2
+    exit 2
+    ;;
+esac
 
 for command in curl pkgbuild productbuild pkgutil hdiutil plutil lipo codesign shasum tar xcrun spctl; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -36,7 +51,7 @@ case "$INSTALLER_MODE" in
     ;;
 esac
 
-BASE_NAME="negaflow-scanner-sane-$VERSION-macos-universal-installer"
+BASE_NAME="negaflow-scanner-sane-$VERSION-macos-$INSTALLER_ARCHITECTURE-installer"
 SOURCE_NAME="negaflow-scanner-sane-$VERSION-source.tar.gz"
 PKG_NAME="$BASE_NAME.pkg"
 DMG_NAME="$BASE_NAME.dmg"
@@ -64,10 +79,17 @@ NEGAFLOW_RELEASE_MODE=local \
 NEGAFLOW_CODESIGN_IDENTITY="$APP_SIGN_IDENTITY" \
   bash "$ROOT/scripts/build-release.sh"
 
-PLUGIN_BINARY="$ROOT/.build/release-universal/negaflow-scanner-sane"
-if [[ ! -x "$PLUGIN_BINARY" ]]; then
+UNIVERSAL_PLUGIN_BINARY="$ROOT/.build/release-universal/negaflow-scanner-sane"
+if [[ ! -x "$UNIVERSAL_PLUGIN_BINARY" ]]; then
   echo "[build-installer] ERROR: universal plug-in binary is missing." >&2
   exit 1
+fi
+PLUGIN_BINARY="$UNIVERSAL_PLUGIN_BINARY"
+if [[ "$INSTALLER_ARCHITECTURE" == "arm64" ]]; then
+  PLUGIN_BINARY="$WORK/negaflow-scanner-sane-arm64"
+  lipo "$UNIVERSAL_PLUGIN_BINARY" -thin arm64 -output "$PLUGIN_BINARY"
+  chmod +x "$PLUGIN_BINARY"
+  bash "$ROOT/scripts/sign-plugin.sh" "$PLUGIN_BINARY" "$APP_SIGN_IDENTITY"
 fi
 
 CACHE_DIR="$ROOT/.build/installer-cache"
@@ -151,6 +173,13 @@ RENDERED_DISTRIBUTION="$WORK/Distribution.xml"
 sed \
   -e "s/@HOMEBREW_VERSION@/$HOMEBREW_VERSION/g" \
   -e "s/@PLUGIN_VERSION@/$VERSION/g" \
+  -e "s/@HOST_ARCHITECTURES@/$(
+    if [[ "$INSTALLER_ARCHITECTURE" == "arm64" ]]; then
+      printf 'arm64'
+    else
+      printf 'x86_64,arm64'
+    fi
+  )/g" \
   "$ROOT/Installer/Distribution.xml" >"$RENDERED_DISTRIBUTION"
 
 BUILT_PKG="$WORK/$PKG_NAME"
@@ -223,7 +252,10 @@ fi
 )
 
 NEGAFLOW_INSTALLER_MODE="$INSTALLER_MODE" \
-  bash "$ROOT/scripts/verify-installer.sh" "$BUILT_PKG" "$BUILT_DMG"
+  bash "$ROOT/scripts/verify-installer.sh" \
+    "$BUILT_PKG" \
+    "$BUILT_DMG" \
+    "$INSTALLER_ARCHITECTURE"
 
 mv -f "$BUILT_PKG" "$OUTPUT_DIR/$PKG_NAME"
 mv -f "$BUILT_DMG" "$OUTPUT_DIR/$DMG_NAME"
@@ -233,3 +265,4 @@ echo "[build-installer] pkg: $OUTPUT_DIR/$PKG_NAME"
 echo "[build-installer] dmg: $OUTPUT_DIR/$DMG_NAME"
 echo "[build-installer] checksums: $OUTPUT_DIR/$CHECKSUM_NAME"
 echo "[build-installer] mode: $INSTALLER_MODE"
+echo "[build-installer] architecture: $INSTALLER_ARCHITECTURE"

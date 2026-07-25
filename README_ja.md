@@ -63,10 +63,17 @@ Xcode Command Line Toolsが入っていない場合は、先にインストー�
 xcode-select --install
 ```
 
-[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)から `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg`をダウンロードして開き、 `Install Negaflow Scanner.pkg`を実行します。
+インストーラーは2種類あります。[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)からいずれかをダウンロードして開き、`Install Negaflow Scanner.pkg`を実行します。
 
-Homebrewがなければ公式Homebrewインストーラーコンポーネントを先にインストールし、ログイン中のユーザーに`sane-backends`とUniversal版Negaflowプラグインを順番にインストールします。<br>
-Apple Silicon MacとIntel Macの両方に対応します。<br>
+| インストーラー | 対象 | プラグインバイナリ |
+|---|---|---|
+| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple Silicon Mac（M1以降） | `arm64`のみ |
+| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple SiliconとIntel Mac | `arm64` + `x86_64` |
+
+機能は両方とも同じです。<br>
+Apple Silicon専用版はサイズが小さくIntel Macにはインストールできません。Universal版はすべてのMacで動作します。
+
+Homebrewがなければ公式Homebrewインストーラーコンポーネントを先にインストールし、ログイン中のユーザーに`sane-backends`とNegaflowプラグインを順番にインストールします。<br>
 インターネット接続と管理者パスワードが必要です。<br>
 既存のHomebrewがある場合はそのまま使用します。
 
@@ -323,7 +330,8 @@ NEGAFLOW_OVERWRITE_RELEASE=1 ./scripts/build-release.sh
 NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 ```
 
-このビルドは、固定した公式Homebrewパッケージを検証してからインストーラーコンポーネントを取り込み、Universalプラグインをビルドし、実際にはインストールせずにPKGとDMGを検査します。<br>
+このビルドは、固定した公式Homebrewパッケージを検証してからインストーラーコンポーネントを取り込み、Apple Silicon専用版とUniversal版の両方を作成し、実際にはインストールせずにそれぞれのPKGとDMGを検査します。<br>
+`NEGAFLOW_INSTALLER_ARCHITECTURE`に`arm64`または`universal`を指定すると片方だけを、既定値の`all`は両方をビルドします。<br>
 配布用の署名と公証には、`NEGAFLOW_INSTALLER_MODE=distribution`、PKG用の `NEGAFLOW_INSTALLER_IDENTITY`、既存のアプリ署名IDと公証プロファイルも必要です。
 
 ## ライセンス

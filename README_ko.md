@@ -62,13 +62,21 @@ Xcode Command Line Tools가 없다면 먼저 설치합니다.
 xcode-select --install
 ```
 
-[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
-`negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg`를 내려받아 열고 <br>
+설치 파일은 두 가지입니다. [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
+하나를 내려받아 열고 <br>
 **`Install Negaflow Scanner.pkg`를 실행합니다.**
 
+| 설치 파일 | 대상 | 플러그인 바이너리 |
+|---|---|---|
+| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple Silicon Mac(M1 이상) | `arm64` 전용 |
+| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple Silicon과 Intel Mac | `arm64` + `x86_64` |
+
+기능은 두 파일이 같습니다.<br>
+Apple Silicon 전용 파일은 용량이 작고 Intel Mac에서는 설치되지 않으며, 유니버설 파일은 모든 Mac에서 실행됩니다.
+
 Homebrew가 없으면 공식 Homebrew 설치 구성 요소를 먼저 설치하고, <br>로그인한 사용자 계정에
-`sane-backends`와 유니버설 Negaflow 플러그인을 차례대로 설치합니다.<br>
-Apple Silicon과 Intel Mac을 모두 지원하며 기존 Homebrew가 있으면 그대로 사용합니다.
+`sane-backends`와 Negaflow 플러그인을 차례대로 설치합니다.<br>
+설치에는 인터넷 연결과 관리자 암호가 필요하며, 기존 Homebrew가 있으면 그대로 사용합니다.
 
 설치가 끝나면 Negaflow를 다시 실행하고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤 승인합니다.<br><br>
 **그냥 간단하게 윗 손쉬운 방법으로 설치후 negaflow 를 실행하시고, 승인 버튼 한번 누르면 끝납니다.**
@@ -324,8 +332,10 @@ SHA-256 기록과 압축 파일 검증까지 수행합니다. <br>산출물은 `
 NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 ```
 
-이 빌드는 고정된 공식 Homebrew 패키지를 검증한 뒤 설치 구성 요소를 포함하고, 유니버설 플러그인을
-빌드한 다음 실제 설치 없이 PKG와 DMG 구조를 확인합니다. 배포용 서명·공증에는
+이 빌드는 고정된 공식 Homebrew 패키지를 검증한 뒤 설치 구성 요소를 포함하고, Apple Silicon 전용과
+유니버설 두 가지를 만든 다음 실제 설치 없이 각 PKG와 DMG 구조를 확인합니다.
+`NEGAFLOW_INSTALLER_ARCHITECTURE`를 `arm64` 또는 `universal`로 지정하면 한 가지만 만들고,
+기본값 `all`은 둘 다 만듭니다. 배포용 서명·공증에는
 `NEGAFLOW_INSTALLER_MODE=distribution`, PKG용 `NEGAFLOW_INSTALLER_IDENTITY`, 기존 앱 서명
 신원과 공증 프로필이 추가로 필요합니다.
 

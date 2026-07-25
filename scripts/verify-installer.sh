@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -ne 2 ]]; then
-  echo "usage: $0 <installer-pkg> <installer-dmg>" >&2
+if [[ "$#" -ne 3 ]]; then
+  echo "usage: $0 <installer-pkg> <installer-dmg> <arm64|universal>" >&2
   exit 2
 fi
 
 PKG="$1"
 DMG="$2"
+EXPECTED_ARCHITECTURE="$3"
 MODE="${NEGAFLOW_INSTALLER_MODE:-local}"
+case "$EXPECTED_ARCHITECTURE" in
+  arm64|universal) ;;
+  *)
+    echo "[verify-installer] ERROR: expected architecture must be arm64 or universal." >&2
+    exit 2
+    ;;
+esac
 
 if [[ ! -s "$PKG" || ! -s "$DMG" ]]; then
   echo "[verify-installer] ERROR: installer artifact is missing." >&2
@@ -84,8 +92,15 @@ bash -n "$USER_INSTALLER"
 grep -Fq 'run_brew_as_console_user install sane-backends' "$POSTINSTALL"
 codesign --verify --strict --verbose=2 "$PLUGIN"
 architectures="$(lipo -archs "$PLUGIN")"
-grep -qw arm64 <<<"$architectures"
-grep -qw x86_64 <<<"$architectures"
+case "$EXPECTED_ARCHITECTURE" in
+  arm64)
+    [[ "$architectures" == "arm64" ]]
+    ;;
+  universal)
+    grep -qw arm64 <<<"$architectures"
+    grep -qw x86_64 <<<"$architectures"
+    ;;
+esac
 [[ "$(plutil -extract protocolVersion raw "$MANIFEST")" == "2" ]]
 [[ "$(plutil -extract id raw "$MANIFEST")" == "sane" ]]
 tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/Package.swift$' >/dev/null
@@ -169,4 +184,4 @@ fi
 hdiutil detach "$TEMPORARY/mount" >/dev/null
 mounted=0
 
-echo "[verify-installer] valid: mode=$MODE architectures=$architectures"
+echo "[verify-installer] valid: mode=$MODE expected=$EXPECTED_ARCHITECTURE architectures=$architectures"
