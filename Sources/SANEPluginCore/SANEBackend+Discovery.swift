@@ -174,12 +174,19 @@ extension SANEBackend {
         let backend = Self.backendName(
             of: scannerID.replacingOccurrences(of: "sane-", with: "")
         )
+        // 토큰에 제조사·모델을 반드시 실어 보낸다. 이후 스캔은 주소가 바뀌어도 이 정보로
+        // "같은 모델"임을 확인하고 재연결한다. 식별자가 비면 스캔 시점에 같은 backend의
+        // 다른 스캐너로 갈아끼워도 알아챌 수 없다.
+        var identity = cachedDeviceIdentity(for: devname) ?? expectedIdentity
+        if identity == nil {
+            identity = try? await resolveIdentity(devname: devname, backend: backend)
+        }
         let snapshot = SANECapabilitySnapshot(
             schemaVersion: SANECapabilitySnapshot.currentSchemaVersion,
             deviceID: scannerID,
             backend: backend,
             acquisitionDevice: devname,
-            deviceIdentity: cachedDeviceIdentity(for: devname) ?? expectedIdentity,
+            deviceIdentity: identity,
             deviceType: cachedDeviceType(for: devname),
             optionDump: dump
         )
@@ -200,12 +207,16 @@ extension SANEBackend {
         )
     }
 
-    /// 스캔 직전에 scanimage -L 을 다시 돌려 현재 장치의 libusb 주소를 얻는다.
+    /// 스캔 직전에 scanimage 장치 목록을 다시 돌려 현재 장치의 libusb 주소를 얻는다.
     ///
-    /// USB 장치 주소(libusb:bus:dev)는 스캐너 리셋/재열거로 매 호출마다 바뀐다
-    /// (OpticFilm 8100 + genesys 실기에서 확인). scannerID 에 박힌 과거 주소로
-    /// open 하면 "open of device failed: Invalid argument" 로 실패한다.
-    /// 따라서 스캔 직전에 반드시 현재 주소를 다시 얻어야 한다.
+    /// 실측(Plustek OpticFilm 8100 + sane-backends 1.4.0):
+    ///   • 장치를 **열 때마다** libusb 주소가 바뀐다. `002:001 → 002:002 → 002:001`로 번갈아 관측.
+    ///   • 목록 조회(-L/-f)만으로는 주소가 바뀌지 않는다. 즉 목록은 장치를 건드리지 않는다.
+    ///   • 따라서 "목록은 싸고 안전하고, open은 방금 얻은 주소를 태운다"로 다뤄야 한다.
+    ///
+    /// 호스트 USB 컨트롤러가 같은 device number를 재사용하면(예: 어떤 Mac에서는 그렇다) 이
+    /// 문제가 드러나지 않는다. 재사용하지 않는 기기에서는 직전 주소로 open할 때마다
+    /// "open of device failed: Invalid argument"가 나므로 반드시 재연결할 수 있어야 한다.
     ///
     /// 백엔드 힌트가 있으면 같은 백엔드(genesys/epson2/coolscan3/...) 장치를 고른다 —
     /// 여러 제조사 스캐너가 동시에 붙어 있어도 올바른 장치를 연다.
@@ -216,11 +227,11 @@ extension SANEBackend {
         allowSingleGenesysSelector: Bool = false,
         ownedByScanSession: Bool = false
     ) async throws -> String {
-        if let cached = cachedAddress,
-           cachedAddressBackend == targetBackend,
-           cachedAddressTarget == targetDevice,
-           cachedAddressIdentity == expectedIdentity,
-           Date().timeIntervalSince(cachedAddressAt) < addressCacheTTL {
+        if let cached = liveCachedSelector(
+            targetDevice: targetDevice,
+            targetBackend: targetBackend,
+            expectedIdentity: expectedIdentity
+        ) {
             return cached
         }
         let listed = try await listDevices(ownedByScanSession: ownedByScanSession)
@@ -241,14 +252,20 @@ extension SANEBackend {
             chosen = identityMatches[0]
         } else if targetBackend == nil, listed.count == 1 {
             chosen = listed[0]
+        } else if expectedIdentity == nil, targetBackend != nil, backendMatches.count == 1 {
+            // 제조사·모델 힌트가 없어도 해당 backend 장치가 정확히 하나뿐이면 모호하지 않다.
+            // 이 갈래가 없으면 open 한 번으로 주소가 바뀐 뒤 재연결이 항상 실패했다.
+            // (장치가 둘 이상이면 아래에서 계속 거부한다 — 엉뚱한 스캐너를 열지 않는다.)
+            chosen = backendMatches[0]
         } else {
             chosen = nil
         }
         if let chosen {
-            // 실기 genesys는 `scanimage -L` 프로세스 종료 때 장치를 재열거해 방금 보고한
-            // libusb 주소를 즉시 무효화하므로, 같은 genesys 장치가 하나일 때만 검증된
-            // `-d genesys` 선택자를 사용한다. 다른 backend의 장치명 축약은 SANE 계약이
-            // 보장하지 않으므로 Epson/Nikon/PIE 등은 보고된 전체 식별자를 그대로 유지한다.
+            // 실기 genesys는 장치를 열고 닫을 때마다 USB 재열거를 유발해 방금 보고한 libusb
+            // 주소를 즉시 무효화하므로, 같은 genesys 장치가 하나일 때는 검증된 `-d genesys`
+            // 선택자를 쓴다. 이 선택자는 주소가 바뀌어도 계속 유효하다. 다른 backend의 장치명
+            // 축약은 SANE 계약이 보장하지 않으므로 Epson/Nikon/PIE 등은 보고된 전체 식별자를
+            // 그대로 유지한다.
             let resolvedAddress: String
             if allowSingleGenesysSelector,
                targetBackend == "genesys",
@@ -262,6 +279,7 @@ extension SANEBackend {
             cachedAddressBackend = targetBackend
             cachedAddressTarget = targetDevice
             cachedAddressIdentity = expectedIdentity
+            cachedAddressIsStableSelector = !resolvedAddress.contains(":")
             cachedAddressAt = Date()
             cachedDeviceTypes[resolvedAddress] = chosen.deviceType
             cachedDeviceTypes[chosen.devname] = chosen.deviceType
@@ -270,11 +288,7 @@ extension SANEBackend {
             cachedDeviceIdentities[chosen.devname] = identity
             return resolvedAddress
         }
-        cachedAddress = nil
-        cachedAddressBackend = nil
-        cachedAddressTarget = nil
-        cachedAddressIdentity = nil
-        cachedAddressAt = .distantPast
+        invalidateAddressCache()
         if expectedIdentity != nil, identityMatches.count > 1 {
             throw ScannerError(
                 .notConnected,
@@ -291,6 +305,24 @@ extension SANEBackend {
             .notConnected,
             "SANE 장치 주소가 바뀌었지만 제조사·모델 정보가 없어 안전하게 재연결할 수 없습니다. 장치를 다시 검색하십시오."
         )
+    }
+
+    /// capability를 읽은 장치의 제조사·모델을 목록에서 확인한다.
+    ///
+    /// capability 조회 자체가 장치를 한 번 열어 주소를 바꿔놓았을 수 있으므로 이름이 정확히
+    /// 맞지 않을 수 있다. 그때는 같은 backend 장치가 하나뿐일 때만 그 장치의 식별자를 쓴다 —
+    /// 여러 대가 붙어 있으면 어느 쪽인지 단정할 수 없으므로 식별자 없이 둔다.
+    private func resolveIdentity(
+        devname: String,
+        backend: String
+    ) async throws -> DeviceIdentity? {
+        let listed = try await listDevices()
+        if let exact = listed.first(where: { $0.devname == devname }) {
+            return DeviceIdentity(vendor: exact.vendor, model: exact.model)
+        }
+        let backendMatches = listed.filter { Self.backendName(of: $0.devname) == backend }
+        guard backendMatches.count == 1, let only = backendMatches.first else { return nil }
+        return DeviceIdentity(vendor: only.vendor, model: only.model)
     }
 
     func cachedDeviceType(for devname: String) -> String? {
@@ -316,13 +348,42 @@ extension SANEBackend {
             .joined(separator: " ")
     }
 
+    /// 이 프로세스에서 이미 확인해 아직 유효한 선택자. 목록 조회를 새로 하지 않는다.
+    func liveCachedSelector(
+        targetDevice: String?,
+        targetBackend: String?,
+        expectedIdentity: DeviceIdentity?
+    ) -> String? {
+        guard let cached = cachedAddress,
+              cachedAddressBackend == targetBackend,
+              cachedAddressTarget == targetDevice,
+              cachedAddressIdentity == expectedIdentity,
+              cachedAddressIsStableSelector
+                || Date().timeIntervalSince(cachedAddressAt) < addressCacheTTL else {
+            return nil
+        }
+        return cached
+    }
+
     /// 캐시 강제 무효화(장치 점유/재연결 등).
     public func invalidateAddressCache() {
         cachedAddress = nil
         cachedAddressBackend = nil
         cachedAddressTarget = nil
         cachedAddressIdentity = nil
+        cachedAddressIsStableSelector = false
         cachedAddressAt = .distantPast
+    }
+
+    /// 장치를 실제로 연 scanimage 실행이 끝났음을 기록한다.
+    ///
+    /// 장치를 한 번 열면 libusb 주소가 바뀔 수 있으므로(§currentDeviceAddress 실측) 주소 기반
+    /// 선택자는 open 이후 만료로 취급한다. 죽은 주소로 여는 시도 자체는 하드웨어에 닿기 전에
+    /// 즉시 실패하지만(실측 ~11ms), 그걸 방치하면 스캔 패스마다 헛된 open + 목록 재조회가
+    /// 한 번씩 붙는다. backend 선택자(`genesys`)는 주소와 무관하므로 유지한다.
+    func noteDeviceOpened() {
+        guard !cachedAddressIsStableSelector else { return }
+        invalidateAddressCache()
     }
 
     // MARK: media selection (source / mode / depth / resolution / geometry / IR)
@@ -348,13 +409,22 @@ extension SANEBackend {
         // 단일 투과 소스만 가진 genesys 필름 스캐너는 장치를 연속해서 여러 번 열면 실제
         // OpticFilm에서 다음 acquisition이 실패할 수 있다. 같은 덤프를 재사용하되,
         // Flatbed/Transparency를 함께 가진 genesys 장치는 소스별 재검증을 그대로 수행한다.
-        let dump = Self.canReuseSinglePassOptionsDump(sourceDump, backend: Self.backendName(of: devname))
-            ? sourceDump
-            : try await scanSpecificOptionsDump(
+        let raw = options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        let dump: String
+        let acquisitionDevice: String
+        if Self.canReuseSinglePassOptionsDump(sourceDump, backend: Self.backendName(of: devname)) {
+            dump = sourceDump
+            acquisitionDevice = devname
+        } else {
+            // capability 덤프를 읽으며 이미 장치를 열었으므로 주소가 바뀌었을 수 있다.
+            (acquisitionDevice, dump) = try await scanSpecificOptionsDump(
                 sourceDump: sourceDump,
                 devname: devname,
+                targetDevice: raw,
+                backend: Self.backendName(of: raw),
                 options: options
             )
+        }
         guard !SaneOptionDump(dump).isEmpty else {
             throw ScannerError(.ioFailure, "scanimage -A가 적용 가능한 옵션을 반환하지 않았습니다.")
         }
@@ -363,8 +433,9 @@ extension SANEBackend {
             options: options,
             deviceTypeHint: cachedDeviceType(for: devname)
         )
-        media.acquisitionDevice = devname
-        media.expectedDeviceIdentity = cachedDeviceIdentity(for: devname)
+        media.acquisitionDevice = acquisitionDevice
+        media.expectedDeviceIdentity = cachedDeviceIdentity(for: acquisitionDevice)
+            ?? cachedDeviceIdentity(for: devname)
         return media
     }
 
@@ -405,8 +476,9 @@ extension SANEBackend {
             do {
                 let devname: String
                 if attempt == 0, expectedIdentity == nil {
-                    // detect가 넘긴 전체 SANE 장치명을 먼저 그대로 사용한다. 정상 장치에서는
-                    // 별도 -L 프로세스 없이 capability를 한 번만 열 수 있다.
+                    // detect가 넘긴 전체 SANE 장치명을 먼저 그대로 사용한다. detect는 목록만
+                    // 읽고 장치를 열지 않으므로 이 주소는 아직 살아 있다. 정상 장치에서는
+                    // 별도 목록 조회 프로세스 없이 capability를 한 번만 열 수 있다.
                     devname = raw
                 } else {
                     devname = try await currentDeviceAddress(
@@ -427,14 +499,21 @@ extension SANEBackend {
                         "scanimage -A가 적용 가능한 옵션을 반환하지 않았습니다."
                     )
                 }
-                let dump = Self.canReuseSinglePassOptionsDump(baseDump, backend: backend)
-                    ? baseDump
-                    : try await sourceSpecificOptionsDump(
-                        baseDump: baseDump,
-                        devname: devname,
-                        ownedByScanSession: ownedByScanSession
-                    )
-                return (devname, dump)
+                guard !Self.canReuseSinglePassOptionsDump(baseDump, backend: backend) else {
+                    return (devname, baseDump)
+                }
+                // 위 `-A`가 이미 장치를 한 번 열었으므로 주소가 만료됐을 수 있다. 두 번째
+                // `-A`가 그 때문에 실패하면 현재 선택자를 다시 확인해 한 번만 재시도한다.
+                // 이 재연결이 없으면 투과 소스를 따로 가진 장치(epson2/pieusb/coolscan3 등)에서
+                // capability 조회가 통째로 실패한다.
+                return try await sourceSpecificOptionsDump(
+                    baseDump: baseDump,
+                    devname: devname,
+                    targetDevice: raw,
+                    backend: backend,
+                    expectedIdentity: expectedIdentity,
+                    ownedByScanSession: ownedByScanSession
+                )
             } catch {
                 finalError = error
                 guard attempt < 2, Self.shouldRetryCapabilityRead(after: error) else {
@@ -446,6 +525,31 @@ extension SANEBackend {
         }
 
         throw finalError ?? ScannerError(.ioFailure, "스캐너 옵션 조회에 실패했습니다.")
+    }
+
+    /// 직전 open으로 주소가 만료돼 다시 열어야 할 때 쓸 현재 선택자.
+    ///
+    /// 주소가 없는 backend 선택자는 재열거를 견디므로 재확인할 것이 없다(nil을 돌려 재시도를
+    /// 멈춘다). 목록 조회는 장치를 건드리지 않으므로 이 재확인 자체는 스캐너에 무해하다.
+    func reopenSelector(
+        previous: String,
+        targetDevice: String,
+        backend: String,
+        expectedIdentity: DeviceIdentity?,
+        ownedByScanSession: Bool
+    ) async -> String? {
+        guard previous.contains(":") else { return nil }
+        invalidateAddressCache()
+        guard let resolved = try? await currentDeviceAddress(
+            targetDevice: targetDevice,
+            targetBackend: backend,
+            expectedIdentity: expectedIdentity,
+            allowSingleGenesysSelector: false,
+            ownedByScanSession: ownedByScanSession
+        ), resolved != previous else {
+            return nil
+        }
+        return resolved
     }
 
     static func canReuseSinglePassOptionsDump(_ dump: String, backend: String) -> Bool {
@@ -475,22 +579,53 @@ extension SANEBackend {
     private func scanSpecificOptionsDump(
         sourceDump: String,
         devname: String,
+        targetDevice: String,
+        backend: String,
         options: ScanOptions
-    ) async throws -> String {
+    ) async throws -> (devname: String, dump: String) {
         let preliminary = Self.resolveMedia(dump: sourceDump, options: options)
-        var args = ["-A", "-d", devname]
-        if let source = preliminary.source { args += ["--source", source] }
-        if let mode = preliminary.mode { args += ["--mode", mode] }
-        if let dpi = preliminary.resolvedDPI { args += ["--resolution", "\(dpi)"] }
-        if let depth = preliminary.depthArgument { args += ["--depth", "\(depth)"] }
-        if options.resolution == .preview, preliminary.hasPreviewOption {
-            args += ["--preview=yes"]
+        func arguments(for device: String) -> [String] {
+            var args = ["-A", "-d", device]
+            if let source = preliminary.source { args += ["--source", source] }
+            if let mode = preliminary.mode { args += ["--mode", mode] }
+            if let dpi = preliminary.resolvedDPI { args += ["--resolution", "\(dpi)"] }
+            if let depth = preliminary.depthArgument { args += ["--depth", "\(depth)"] }
+            if options.resolution == .preview, preliminary.hasPreviewOption {
+                args += ["--preview=yes"]
+            }
+            return args
         }
-        let dump = try await runScanimage(args: args, ownedByScanSession: true)
-        guard !SaneOptionDump(dump).isEmpty else {
-            throw ScannerError(.ioFailure, "최종 스캔 옵션 적용 뒤 scanimage -A가 옵션을 반환하지 않았습니다.")
+        var currentDevname = devname
+        var lastError: Error?
+        for attempt in 0..<2 {
+            if attempt > 0 {
+                guard let reopened = await reopenSelector(
+                    previous: currentDevname,
+                    targetDevice: targetDevice,
+                    backend: backend,
+                    expectedIdentity: cachedDeviceIdentity(for: currentDevname),
+                    ownedByScanSession: true
+                ) else { break }
+                currentDevname = reopened
+            }
+            do {
+                let dump = try await runScanimage(
+                    args: arguments(for: currentDevname),
+                    ownedByScanSession: true
+                )
+                guard !SaneOptionDump(dump).isEmpty else {
+                    throw ScannerError(
+                        .ioFailure,
+                        "최종 스캔 옵션 적용 뒤 scanimage -A가 옵션을 반환하지 않았습니다."
+                    )
+                }
+                return (currentDevname, dump)
+            } catch {
+                lastError = error
+                guard attempt == 0, Self.isStaleDeviceError(error.localizedDescription) else { throw error }
+            }
         }
-        return dump
+        throw lastError ?? ScannerError(.ioFailure, "최종 스캔 옵션 조회에 실패했습니다.")
     }
 
     /// SANE는 `source` 설정 뒤 다른 옵션과 범위를 다시 로드할 수 있다. 투과 소스를 고른 뒤
@@ -498,20 +633,46 @@ extension SANEBackend {
     private func sourceSpecificOptionsDump(
         baseDump: String,
         devname: String,
+        targetDevice: String,
+        backend: String,
+        expectedIdentity: DeviceIdentity?,
         ownedByScanSession: Bool
-    ) async throws -> String {
+    ) async throws -> (devname: String, dump: String) {
         let sources = SaneOptionDump(baseDump).enumValues("source")
         guard let source = Self.preferredTransparencySource(in: sources) else {
-            return baseDump
+            return (devname, baseDump)
         }
-        let selectedDump = try await runScanimage(
-            args: ["-A", "-d", devname, "--source", source],
-            ownedByScanSession: ownedByScanSession
-        )
-        guard !SaneOptionDump(selectedDump).isEmpty else {
-            throw ScannerError(.ioFailure, "투과 source 선택 뒤 scanimage -A가 옵션을 반환하지 않았습니다.")
+        var currentDevname = devname
+        var lastError: Error?
+        for attempt in 0..<2 {
+            if attempt > 0 {
+                guard let reopened = await reopenSelector(
+                    previous: currentDevname,
+                    targetDevice: targetDevice,
+                    backend: backend,
+                    expectedIdentity: expectedIdentity,
+                    ownedByScanSession: ownedByScanSession
+                ) else { break }
+                currentDevname = reopened
+            }
+            do {
+                let selectedDump = try await runScanimage(
+                    args: ["-A", "-d", currentDevname, "--source", source],
+                    ownedByScanSession: ownedByScanSession
+                )
+                guard !SaneOptionDump(selectedDump).isEmpty else {
+                    throw ScannerError(
+                        .ioFailure,
+                        "투과 source 선택 뒤 scanimage -A가 옵션을 반환하지 않았습니다."
+                    )
+                }
+                return (currentDevname, selectedDump)
+            } catch {
+                lastError = error
+                guard attempt == 0, Self.isStaleDeviceError(error.localizedDescription) else { throw error }
+            }
         }
-        return selectedDump
+        throw lastError ?? ScannerError(.ioFailure, "투과 source 옵션 조회에 실패했습니다.")
     }
 
     /// 순수 함수(테스트 가능): -A 덤프 + 옵션 → MediaSelection.

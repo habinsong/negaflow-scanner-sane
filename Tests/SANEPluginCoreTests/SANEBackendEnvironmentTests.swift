@@ -205,6 +205,158 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         }
     }
 
+    /// 장치를 한 번 열면 libusb 주소가 바뀌는 실기(Plustek OpticFilm 8100)에서, 제조사·모델
+    /// 힌트 없이도 해당 backend 장치가 하나뿐이면 새 주소로 재연결해야 한다.
+    ///
+    /// 예전에는 이 경우 `chosen`이 nil이 되어 "제조사·모델 정보가 없어 …"로 즉시 실패했고,
+    /// capabilities/scan이 통째로 막혔다. USB 컨트롤러가 device number를 재사용하는 Mac에서는
+    /// 주소가 안 바뀌어 증상이 안 보이지만, 재사용하지 않는 Mac에서는 항상 재현된다.
+    func testReconnectsToSoleBackendDeviceAtNewAddressWithoutIdentityHint() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-sole-device-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        // detect가 본 주소는 002:001 이었지만, 그 뒤의 open으로 002:002 로 바뀐 상태.
+        let script = """
+        #!/bin/sh
+        if [ "$1" = "-f" ]; then
+          printf 'genesys:libusb:002:002\\tPLUSTEK\\tOpticFilm 8100\\tfilm scanner\\n'
+          exit 0
+        fi
+        exit 1
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(scanimagePath: executableURL.path)
+        let resolved = try await backend.currentDeviceAddress(
+            targetDevice: "genesys:libusb:002:001",
+            targetBackend: "genesys"
+        )
+        XCTAssertEqual(resolved, "genesys:libusb:002:002")
+    }
+
+    /// 장치를 연 뒤에는 캐시된 주소 기반 선택자를 더 이상 신뢰하지 않는다.
+    /// (주소 없는 backend 선택자는 재열거를 견디므로 유지한다.)
+    func testCachedAddressIsDroppedAfterDeviceOpenButStableSelectorSurvives() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-open-invalidates-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        let script = """
+        #!/bin/sh
+        if [ "$1" = "-f" ]; then
+          printf 'genesys:libusb:002:002\\tPLUSTEK\\tOpticFilm 8100\\tfilm scanner\\n'
+          exit 0
+        fi
+        exit 1
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(scanimagePath: executableURL.path)
+        _ = try await backend.currentDeviceAddress(
+            targetDevice: "genesys:libusb:002:001",
+            targetBackend: "genesys"
+        )
+        XCTAssertNotNil(
+            backend.liveCachedSelector(
+                targetDevice: "genesys:libusb:002:001",
+                targetBackend: "genesys",
+                expectedIdentity: nil
+            )
+        )
+        backend.noteDeviceOpened()
+        XCTAssertNil(
+            backend.liveCachedSelector(
+                targetDevice: "genesys:libusb:002:001",
+                targetBackend: "genesys",
+                expectedIdentity: nil
+            ),
+            "open 뒤에도 주소 기반 선택자를 재사용하면 죽은 주소로 스캔을 건다."
+        )
+
+        _ = try await backend.currentDeviceAddress(
+            targetDevice: "genesys:libusb:002:001",
+            targetBackend: "genesys",
+            allowSingleGenesysSelector: true
+        )
+        backend.noteDeviceOpened()
+        XCTAssertEqual(
+            backend.liveCachedSelector(
+                targetDevice: "genesys:libusb:002:001",
+                targetBackend: "genesys",
+                expectedIdentity: nil
+            ),
+            "genesys",
+            "주소가 없는 backend 선택자는 재열거를 견디므로 유지해야 한다."
+        )
+    }
+
+    /// 투과 소스를 따로 고르는 장치(epson2/pieusb/coolscan3/2소스 genesys 등)는 capability를
+    /// 읽을 때 `-A`를 두 번 연다. 첫 open이 USB 주소를 바꿔버리면 두 번째 open이 죽은 주소를
+    /// 쓰게 되어 capability 조회 전체가 실패했다. 두 번째 open은 주소를 다시 확인해야 한다.
+    func testCapabilityReadReopensDeviceWhenFirstOpenChangedTheAddress() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-reopen-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        let stateURL = directory.appendingPathComponent("addr")
+        try "001".write(to: stateURL, atomically: true, encoding: .utf8)
+        // 장치를 열 때마다(-A) 주소가 001 <-> 002 로 뒤집힌다. 목록 조회는 주소를 바꾸지 않는다.
+        let script = """
+        #!/bin/sh
+        STATE=\(shellQuote(stateURL.path))
+        CUR=$(cat "$STATE")
+        if [ "$1" = "-f" ]; then
+          printf 'epson2:libusb:002:%s\\tEpson\\tGT-X970\\tflatbed scanner\\n' "$CUR"
+          exit 0
+        fi
+        DEV=""; prev=""
+        for a in "$@"; do [ "$prev" = "-d" ] && DEV="$a"; prev="$a"; done
+        if [ "$DEV" != "epson2:libusb:002:$CUR" ]; then
+          echo "scanimage: open of device $DEV failed: Invalid argument" >&2
+          exit 1
+        fi
+        if [ "$CUR" = "001" ]; then echo 002 > "$STATE"; else echo 001 > "$STATE"; fi
+        echo "--mode Color|Gray [Color]"
+        echo "--source Flatbed|Transparency Unit [Transparency Unit]"
+        echo "--depth 8|16 [16]"
+        echo "--resolution 3200dpi [3200]"
+        echo "--preview[=(yes|no)] [no]"
+        echo "-l 0..215mm (in steps of 0.1) [0]"
+        echo "-t 0..297mm (in steps of 0.1) [0]"
+        echo "-x 1..215mm (in steps of 0.1) [215]"
+        echo "-y 1..297mm (in steps of 0.1) [297]"
+        exit 0
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(scanimagePath: executableURL.path)
+        let report = try await backend.getCapabilitiesReport(
+            scannerID: "sane-epson2:libusb:002:001",
+            expectedIdentity: .init(vendor: "Epson", model: "GT-X970")
+        )
+        XCTAssertTrue(report.capabilities.supportsTransparency)
+        XCTAssertFalse(report.capabilityToken.isEmpty)
+    }
+
     func testReconnectAcceptsSameModelAtNewAddress() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("negaflow-sane-same-model-\(UUID().uuidString)")

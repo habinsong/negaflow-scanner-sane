@@ -586,40 +586,78 @@ extension SANEBackend {
         media: MediaSelection,
         forceRefresh: Bool
     ) async throws -> String {
-        if !forceRefresh, let acquisitionDevice = media.acquisitionDevice {
-            return acquisitionDevice
-        }
         let raw = options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        let backend = Self.backendName(of: raw)
+        if !forceRefresh {
+            // 이 스캔 세션에서 이미 열어본 적이 있는 선택자를 최우선으로 재사용한다.
+            // capability 토큰에 적힌 주소는 그 토큰을 만들 때의 open으로 이미 만료됐을 수
+            // 있으므로(§currentDeviceAddress), 검증된 선택자가 있으면 그쪽이 항상 낫다.
+            // 이게 없으면 다중 노출·IR처럼 패스가 여러 번인 스캔에서 패스마다 죽은 주소로
+            // 한 번씩 헛되이 acquisition을 걸고 목록 조회를 반복한다.
+            if let live = liveCachedSelector(
+                targetDevice: raw,
+                targetBackend: backend,
+                expectedIdentity: media.expectedDeviceIdentity
+            ) {
+                return live
+            }
+            if let acquisitionDevice = media.acquisitionDevice {
+                return acquisitionDevice
+            }
+        }
         return try await currentDeviceAddressWithRetry(
             targetDevice: raw,
-            targetBackend: Self.backendName(of: raw),
-            expectedIdentity: media.expectedDeviceIdentity
+            targetBackend: backend,
+            expectedIdentity: media.expectedDeviceIdentity,
+            allowSingleGenesysSelector: forceRefresh
         )
     }
 
     private func currentDeviceAddressWithRetry(
         targetDevice: String?,
         targetBackend: String?,
-        expectedIdentity: DeviceIdentity?
+        expectedIdentity: DeviceIdentity?,
+        allowSingleGenesysSelector: Bool
     ) async throws -> String {
         var lastError: Error?
-        for attempt in 0..<5 {
+        // 목록 조회를 반복해도 고칠 수 없는 실패(모호한 다중 장치, 모델 불일치)는 즉시
+        // 포기한다. 예전에는 이런 오류에도 5번을 재시도해 스캐너에 목록 조회 폭풍을 쏟아부었다.
+        for attempt in 0..<3 {
             do {
                 return try await currentDeviceAddress(
                     targetDevice: targetDevice,
                     targetBackend: targetBackend,
                     expectedIdentity: expectedIdentity,
-                    allowSingleGenesysSelector: true,
+                    // 정확한 주소를 먼저 쓰고, 그래도 못 찾을 때만 단일 genesys 선택자로 내려간다.
+                    allowSingleGenesysSelector: allowSingleGenesysSelector || attempt > 0,
                     ownedByScanSession: true
                 )
+            } catch let error as ScannerError where !Self.isRetryableAddressError(error) {
+                throw error
             } catch {
                 lastError = error
-                if attempt < 4 {
+                if attempt < 2 {
                     try? await Task.sleep(nanoseconds: 800_000_000)
                 }
             }
         }
-        throw lastError ?? ScannerError(.notConnected, "scanimage -L 이 장치를 찾지 못함")
+        throw lastError ?? ScannerError(.notConnected, "scanimage 장치 목록에서 장치를 찾지 못함")
+    }
+
+    /// 장치 목록을 다시 읽어서 해결될 여지가 있는 오류인지.
+    static func isRetryableAddressError(_ error: ScannerError) -> Bool {
+        switch error.code {
+        case .cancelled, .timeout, .unsupportedOption, .driverConflict:
+            return false
+        case .busy, .ioFailure:
+            return true
+        case .notConnected, .unknown:
+            // 장치가 아직 목록에 안 뜬 경우만 재시도 가치가 있다. 여러 대가 잡혀 모호하거나
+            // 다른 모델이 붙어 있는 상황은 재시도해도 같은 답이 나온다.
+            let message = error.message
+            return !message.contains("여러 대라")
+                && !message.contains("일치하지 않습니다")
+        }
     }
 
     // MARK: scanimage 인자 생성

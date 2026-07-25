@@ -101,8 +101,11 @@ extension SANEBackend {
             proc,
             requiresScanSession: ownedByScanSession
         )
+        // `-d`가 붙은 실행만 장치를 실제로 연다. 목록 조회(-L/-f)는 주소를 바꾸지 않는다.
+        let opensDevice = args.contains("-d")
         defer {
             clearCurrentProcess(proc)
+            if opensDevice { noteDeviceOpened() }
             if !ownedByScanSession {
                 clearUtilityProcessCancellation()
             }
@@ -189,6 +192,8 @@ extension SANEBackend {
                 try? handle?.close()
                 // 프로세스 추적 해제 — 좀비 방지.
                 self?.clearCurrentProcess(p)
+                // 스캔은 언제나 장치를 연다 → 종료 시 libusb 주소가 바뀐 것으로 본다.
+                self?.noteDeviceOpened()
                 cont.resume(returning: p.terminationStatus)
             }
             do {
@@ -260,9 +265,10 @@ extension SANEBackend {
     /// SANE_DEFAULT_DEVICE 가 있으면 scanimage -L 가 probe 없이 그 장치를 바로 연다.
     func makeSaneEnvironmentWithDefaultDevice() -> [String: String] {
         var env = Self.makeSaneEnvironment()
-        // 캐시된 주소가 유효하면 기본 디바이스로 주입.
+        // 캐시된 주소가 유효하면 기본 디바이스로 주입. open으로 만료된 주소는 캐시에서
+        // 이미 지워지므로(noteDeviceOpened) 죽은 주소가 주입되지 않는다.
         if let cached = cachedAddress,
-           Date().timeIntervalSince(cachedAddressAt) < addressCacheTTL {
+           cachedAddressIsStableSelector || Date().timeIntervalSince(cachedAddressAt) < addressCacheTTL {
             env["SANE_DEFAULT_DEVICE"] = cached
         }
         return env

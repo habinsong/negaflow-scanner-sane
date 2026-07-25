@@ -36,6 +36,9 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
     nonisolated(unsafe) var cachedAddressTarget: String?
     nonisolated(unsafe) var cachedAddressIdentity: DeviceIdentity?
     nonisolated(unsafe) var cachedAddressAt: Date = .distantPast
+    /// 캐시된 선택자가 USB 주소와 무관한지(예: `-d genesys`). 주소 기반 선택자는 장치를
+    /// 한 번 열 때마다 무효가 되지만, backend 선택자는 재열거를 견딘다.
+    nonisolated(unsafe) var cachedAddressIsStableSelector = false
     /// devname → -L 장치 타입 문자열("film scanner" 등). capability 판정 힌트.
     nonisolated(unsafe) var cachedDeviceTypes: [String: String] = [:]
     /// devname → 장치가 보고한 제조사·모델. 같은 backend의 다른 모델로 잘못 재연결하지 않는다.
