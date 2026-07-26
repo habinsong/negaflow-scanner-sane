@@ -167,7 +167,7 @@ pkgbuild \
   --identifier com.habinsong.negaflow.scanner-sane.setup \
   --version "$VERSION" \
   --min-os-version 14.0 \
-  "$COMPONENTS/NegaflowScannerSetup.pkg"
+  "$COMPONENTS/negaflowScannerSetup.pkg"
 
 RENDERED_DISTRIBUTION="$WORK/Distribution.xml"
 sed \
@@ -217,7 +217,7 @@ fi
 
 DMG_ROOT="$WORK/dmg"
 mkdir -p "$DMG_ROOT"
-cp "$BUILT_PKG" "$DMG_ROOT/Install Negaflow Scanner.pkg"
+cp "$BUILT_PKG" "$DMG_ROOT/Install negaflow Scanner.pkg"
 cp "$SOURCE_ARCHIVE" "$DMG_ROOT/"
 cp \
   "$ROOT/THIRD_PARTY_NOTICES.md" \
@@ -234,7 +234,7 @@ cp \
 
 BUILT_DMG="$WORK/$DMG_NAME"
 hdiutil create \
-  -volname "Negaflow Scanner Installer" \
+  -volname "negaflow Scanner Installer" \
   -srcfolder "$DMG_ROOT" \
   -fs HFS+ \
   -format UDZO \

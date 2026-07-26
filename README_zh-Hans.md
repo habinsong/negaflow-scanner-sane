@@ -1,11 +1,11 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">适用于 macOS 版 Negaflow 的 SANE 胶片扫描仪插件</p>
+<p align="center">适用于 macOS 版 negaflow 的 SANE 胶片扫描仪插件</p>
 
 <p align="center">
   <a href="#系统要求"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 或更高版本"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 或更高版本"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Negaflow 扫描仪协议 v2"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 扫描仪协议 v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 或更高版本"></a>
 </p>
 
@@ -20,14 +20,14 @@
 
 ---
 
-**negaflow-scanner-sane** 将 SANE 可用的胶片扫描仪连接到 [Negaflow](https://github.com/habinsong/negaflow)。<br>
-它运行 `scanimage`，读取扫描仪实际提供的选项，并通过 Negaflow 扫描仪协议 v2 返回设备信息、功能、进度和 TIFF 路径。
+**negaflow-scanner-sane** 将 SANE 可用的胶片扫描仪连接到 [negaflow](https://github.com/habinsong/negaflow)。<br>
+它运行 `scanimage`，读取扫描仪实际提供的选项，并通过 negaflow 扫描仪协议 v2 返回设备信息、功能、进度和 TIFF 路径。
 
 它不是另一套扫描界面，而是可安装的命令行插件。<br>
-安装并批准插件后，扫描操作仍在 Negaflow 中完成。
+安装并批准插件后，扫描操作仍在 negaflow 中完成。
 
 插件与主程序是两个独立程序。<br>
-所有 SANE 专用代码都保留在这个采用 GPL-2.0-or-later 的仓库中；采用 Apache-2.0 的 Negaflow 主程序只通过独立进程、命令行参数、管道和 JSON 与插件通信。
+所有 SANE 专用代码都保留在这个采用 GPL-2.0-or-later 的仓库中；采用 Apache-2.0 的 negaflow 主程序只通过独立进程、命令行参数、管道和 JSON 与插件通信。
 
 ## 功能
 
@@ -41,17 +41,17 @@
 - 只停止当前插件实例启动的 `scanimage` 进程
 
 插件不会只凭扫描仪型号判断功能。<br>
-Negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
+negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 
 ## 系统要求
 
-- 按当前 Negaflow 与 Homebrew 安装方式，需要 macOS 14.0 或更高版本
-- Negaflow
+- 按当前 negaflow 与 Homebrew 安装方式，需要 macOS 14.0 或更高版本
+- negaflow
 - 运行时需要 [SANE backends](https://formulae.brew.sh/formula/sane-backends)
 - 仅从源码构建时需要 Swift 5.9 或更高版本
 
 独立可执行文件在 `Package.swift` 中仍以 macOS 13 为 deployment target。<br>
-但本指南所述的 Negaflow 与 Homebrew 完整安装方式，按当前支持范围从 macOS 14 开始。
+但本指南所述的 negaflow 与 Homebrew 完整安装方式，按当前支持范围从 macOS 14 开始。
 
 ## 安装
 
@@ -63,7 +63,7 @@ Negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 xcode-select --install
 ```
 
-安装包有两种。请从 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载其中一个并打开，然后运行 `Install Negaflow Scanner.pkg`。
+安装包有两种。请从 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载其中一个并打开，然后运行 `Install negaflow Scanner.pkg`。
 
 | 安装包 | 适用机型 | 插件二进制 |
 |---|---|---|
@@ -73,10 +73,10 @@ xcode-select --install
 两者功能完全相同。<br>
 Apple Silicon 专用包体积更小，且无法安装在 Intel Mac 上；Universal 包可在所有 Mac 上运行。
 
-若系统中没有 Homebrew，安装包会先安装官方 Homebrew 组件，再依次为当前登录用户安装 `sane-backends` 和 Negaflow 插件。<br>
+若系统中没有 Homebrew，安装包会先安装官方 Homebrew 组件，再依次为当前登录用户安装 `sane-backends` 和 negaflow 插件。<br>
 安装需要互联网连接和管理员密码；若已安装 Homebrew，则直接复用现有安装。
 
-完成后重新启动 Negaflow，在“加载扫描仪”中检查插件信息并批准它。
+完成后重新启动 negaflow，在“加载扫描仪”中检查插件信息并批准它。
 
 ### 2. 手动安装 Homebrew 和 SANE
 
@@ -162,11 +162,11 @@ cd negaflow-scanner-sane
 
 安装已打包版本不需要 Swift 工具链，但 SANE 仍需单独安装。
 
-### 5. 在 Negaflow 中批准并验证
+### 5. 在 negaflow 中批准并验证
 
-重新启动 Negaflow 并打开“加载扫描仪”。<br>
+重新启动 negaflow 并打开“加载扫描仪”。<br>
 检查插件路径、版本、许可证和 hash 后批准它。<br>
-如果更新后可执行文件或 manifest 发生变化，Negaflow 会要求重新批准。
+如果更新后可执行文件或 manifest 发生变化，negaflow 会要求重新批准。
 
 也可以直接检查已安装的可执行文件：
 
@@ -200,7 +200,7 @@ OpticFilm 8200i 在相同产品名下至少有两种 USB 版本。<br>
 
 ## 红外通道
 
-在本插件中，“IR 可用”表示可以把独立红外图像作为 `irPath` 返回给 Negaflow。<br>
+在本插件中，“IR 可用”表示可以把独立红外图像作为 `irPath` 返回给 negaflow。<br>
 只在后端内部生效的除尘开关不会被报告为 IR 通道。
 
 | 扫描仪或后端路径 | IR 状态 | 获取方式 | 独立 IR TIFF |
@@ -216,7 +216,7 @@ OpticFilm 8200i 在相同产品名下至少有两种 USB 版本。<br>
 
 IR 扫描使用与 RGB 相同的请求分辨率和扫描区域。<br>
 返回前还会检查两张图像的像素尺寸是否一致。<br>
-Negaflow 随后可将 IR 图像用于 GrainMend IR。
+negaflow 随后可将 IR 图像用于 GrainMend IR。
 
 ## 请求值与失败处理
 
@@ -228,7 +228,7 @@ Negaflow 随后可将 IR 图像用于 GrainMend IR。
 - 不会用 brightness、contrast 或 gamma 模拟硬件多重曝光。
 - 如果结果与请求不符或验证失败，插件会丢弃文件并返回错误，而不是使用未经检查的结果。
 
-## Negaflow 扫描仪协议
+## negaflow 扫描仪协议
 
 可执行文件通过子命令调用，并向标准输出写入 JSON。
 
@@ -237,13 +237,13 @@ Negaflow 随后可将 IR 图像用于 GrainMend IR。
 | `detect` | 无 | JSON 设备列表 |
 | `capabilities <deviceId>` | 可选的探测设备身份 JSON | JSON 格式的分辨率、模式、位深、区域、曝光和 IR 功能 |
 | `scan` | stdin 中的 protocol v2 请求 JSON | NDJSON 进度，以及最终结果或错误事件 |
-| `repair-sane-config` | 无 | 只重新启用旧版 Negaflow 插件禁用的后端 |
+| `repair-sane-config` | 无 | 只重新启用旧版 negaflow 插件禁用的后端 |
 | `tune-sane` | 无 | `repair-sane-config` 的兼容别名 |
 | `restore-sane` | 无 | 仅在最后手段下恢复旧版完整备份 |
 
 每个 protocol v2 事件都包含 `protocolVersion`、`requestID` 和持续递增的 `sequence`。<br>
 只有在检查输出 TIFF 与实际应用的扫描设置后，成功结果才会包含 `appliedOptions`。
-Negaflow 会把 `capabilities` 返回的不透明 `capabilityToken` 自动带入下一次扫描请求。
+negaflow 会把 `capabilities` 返回的不透明 `capabilityToken` 自动带入下一次扫描请求。
 直接使用 CLI 时也应传回同一个值；省略后会继续执行较慢的兼容性预检。
 
 完整扫描请求示例：
@@ -275,7 +275,7 @@ Negaflow 会把 `capabilities` 返回的不透明 `capabilityToken` 自动带入
 ## SANE 配置
 
 当前版本不会筛选 Homebrew 共享的 `dll.conf`。<br>
-`detect` 会自动修复旧版 Negaflow 插件禁用的行，同时保留发行版和用户原有的注释。也可以手动执行相同修复：
+`detect` 会自动修复旧版 negaflow 插件禁用的行，同时保留发行版和用户原有的注释。也可以手动执行相同修复：
 
 ```bash
 .build/release/negaflow-scanner-sane repair-sane-config
@@ -292,7 +292,7 @@ Negaflow 会把 `capabilities` 返回的不透明 `capabilityToken` 自动带入
 | 路径 | 作用 |
 |---|---|
 | `Sources/SANEPluginCore` | SANE 发现、功能解析、采集、TIFF 验证、IR 与曝光合并 |
-| `Sources/negaflow-scanner-sane` | Negaflow 扫描仪协议 v2 的轻量 JSON/CLI 适配层 |
+| `Sources/negaflow-scanner-sane` | negaflow 扫描仪协议 v2 的轻量 JSON/CLI 适配层 |
 | `Tests/SANEPluginCoreTests` | 协议、进程、选项解析、TIFF 和虚拟扫描仪回归测试 |
 | `Installer` | 一键 PKG 分发配置、安装脚本和 Installer.app 界面资源 |
 | `scripts` | Universal 构建、签名、打包、安装、公证和发布检查 |
@@ -338,5 +338,5 @@ NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 同版本插件的完整源代码归档会在发布 ZIP 内及同一发布位置提供，<br>
 同时也包含在 PKG 安装内容和 DMG 中。
 
-Negaflow 主程序是独立的 Apache-2.0 项目。<br>
+negaflow 主程序是独立的 Apache-2.0 项目。<br>
 产品名和扫描仪名称仅用于标识兼容或测量目标，相关权利归各自所有者。

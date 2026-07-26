@@ -251,7 +251,7 @@ case "scan":
     }
 
 case "repair-sane-config", "tune-sane":
-    // tune-sane은 기존 자동화 호환 별칭이다. 두 명령 모두 과거 Negaflow 주석만 복구한다.
+    // tune-sane은 기존 자동화 호환 별칭이다. 두 명령 모두 과거 negaflow 주석만 복구한다.
     let result = SaneConfigTuner.recoverLegacyFiltering()
     print("repair: \(result)")
     print("active backends: \(SaneConfigTuner.activeBackends.joined(separator: ", "))")
@@ -267,7 +267,7 @@ default:
       negaflow-scanner-sane detect
       negaflow-scanner-sane capabilities <deviceId>
       negaflow-scanner-sane scan   (scan options JSON on stdin)
-      negaflow-scanner-sane repair-sane-config (과거 Negaflow가 비활성화한 백엔드 복구)
+      negaflow-scanner-sane repair-sane-config (과거 negaflow가 비활성화한 백엔드 복구)
       negaflow-scanner-sane tune-sane          (repair-sane-config 호환 별칭)
       negaflow-scanner-sane restore-sane       (최초 백업으로 전체 복구)
     """

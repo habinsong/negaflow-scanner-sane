@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Plugin-local scanner protocol model types
 //
 // 이 플러그인은 negaflow 저장소에 의존하지 않는 독립 프로그램이다. SANE 백엔드 코드가 쓰는
-// 최소 JSON 계약 타입을 여기에 둔다. 같은 저자가 작성한 Negaflow ScannerKit 계약과 호환되는
+// 최소 JSON 계약 타입을 여기에 둔다. 같은 저자가 작성한 negaflow ScannerKit 계약과 호환되는
 // 필드만 유지하며, 이 파일은 플러그인의 GPL-2.0-or-later 배포물에 포함한다.
 
 public enum FilmType: String, Codable, Sendable, CaseIterable {

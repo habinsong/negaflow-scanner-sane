@@ -8,7 +8,7 @@ final class ReleaseScriptContractTests: XCTestCase {
             script.range(of: #"notarize_artifact "$BUILT_PKG" "pkg""#)
         )
         let packageCopy = try XCTUnwrap(
-            script.range(of: #"cp "$BUILT_PKG" "$DMG_ROOT/Install Negaflow Scanner.pkg""#)
+            script.range(of: #"cp "$BUILT_PKG" "$DMG_ROOT/Install negaflow Scanner.pkg""#)
         )
         let diskImageNotarization = try XCTUnwrap(
             script.range(of: #"notarize_artifact "$BUILT_DMG" "dmg""#)

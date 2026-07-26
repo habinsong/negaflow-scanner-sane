@@ -7,7 +7,7 @@ It is an auditable project record, not a legal opinion.
 
 The Swift, shell, and test code in this repository is distributed under
 GPL-2.0-or-later. The scanner protocol model shapes and the small TIFF helper
-were adapted by the same author from that author's Negaflow ScannerKit and
+were adapted by the same author from that author's negaflow ScannerKit and
 Chromabase contracts so that the two independently built programs can exchange
 the same JSON and TIFF files. They contain no SANE implementation.
 
@@ -25,16 +25,16 @@ The source tree contains no C, C++, Objective-C, third-party package dependency,
 vendored source tree, or prebuilt SANE binary. Release verification rejects
 those additions.
 
-## SANE and Negaflow boundary
+## SANE and negaflow boundary
 
 SANE is installed independently through the official Homebrew
 `sane-backends` formula. This repository's one-shot installer does not contain
 a SANE bottle. The plug-in and SANE remain separately replaceable command-line
 programs.
 
-Negaflow and this plug-in exchange a versioned JSON/NDJSON protocol through a
-separate process. Negaflow does not link this plug-in or include it in the
-Negaflow application bundle. These are architectural facts; whether a
+negaflow and this plug-in exchange a versioned JSON/NDJSON protocol through a
+separate process. negaflow does not link this plug-in or include it in the
+negaflow application bundle. These are architectural facts; whether a
 particular distribution is an aggregate or a derivative work must be assessed
 from the actual code, communication semantics, and files distributed.
 

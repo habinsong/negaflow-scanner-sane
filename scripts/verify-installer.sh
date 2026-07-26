@@ -49,7 +49,7 @@ if [[ ! -f "$DISTRIBUTION" ]]; then
 fi
 
 homebrew_line="$(grep -n '#HomebrewComponent.pkg' "$DISTRIBUTION" | head -n1 | cut -d: -f1)"
-setup_line="$(grep -n '#NegaflowScannerSetup.pkg' "$DISTRIBUTION" | head -n1 | cut -d: -f1)"
+setup_line="$(grep -n '#negaflowScannerSetup.pkg' "$DISTRIBUTION" | head -n1 | cut -d: -f1)"
 if [[ -z "$homebrew_line" || -z "$setup_line" || "$homebrew_line" -ge "$setup_line" ]]; then
   echo "[verify-installer] ERROR: Homebrew must precede the SANE/plug-in setup component." >&2
   exit 1
@@ -59,7 +59,7 @@ grep -Fq 'installation_check()' "$DISTRIBUTION"
 grep -Fq 'min="14.0.0"' "$DISTRIBUTION"
 
 HOMEBREW_PACKAGE_INFO="$(find "$EXPANDED" -path '*HomebrewComponent.pkg/PackageInfo' -print -quit)"
-SETUP_PACKAGE_INFO="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/PackageInfo' -print -quit)"
+SETUP_PACKAGE_INFO="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/PackageInfo' -print -quit)"
 if [[ -z "$HOMEBREW_PACKAGE_INFO" || -z "$SETUP_PACKAGE_INFO" ]]; then
   echo "[verify-installer] ERROR: component package metadata is missing." >&2
   exit 1
@@ -67,15 +67,15 @@ fi
 grep -Fq 'identifier="sh.brew.homebrew"' "$HOMEBREW_PACKAGE_INFO"
 grep -Fq 'identifier="com.habinsong.negaflow.scanner-sane.setup"' "$SETUP_PACKAGE_INFO"
 
-POSTINSTALL="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/postinstall' -print -quit)"
-USER_INSTALLER="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/install-plugin-user.sh' -print -quit)"
-PLUGIN="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/negaflow-scanner-sane' -print -quit)"
-MANIFEST="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/manifest.json' -print -quit)"
-SOURCE_ARCHIVE="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/negaflow-scanner-sane-*-source.tar.gz' -print -quit)"
-LICENSE_NOTICE="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/LICENSE' -print -quit)"
-GPL_TEXT="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/COPYING' -print -quit)"
-THIRD_PARTY_NOTICE="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/THIRD_PARTY_NOTICES.md' -print -quit)"
-PROVENANCE="$(find "$EXPANDED" -path '*NegaflowScannerSetup.pkg/Scripts/sane/PROVENANCE.md' -print -quit)"
+POSTINSTALL="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/postinstall' -print -quit)"
+USER_INSTALLER="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/install-plugin-user.sh' -print -quit)"
+PLUGIN="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/negaflow-scanner-sane' -print -quit)"
+MANIFEST="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/manifest.json' -print -quit)"
+SOURCE_ARCHIVE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/negaflow-scanner-sane-*-source.tar.gz' -print -quit)"
+LICENSE_NOTICE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/LICENSE' -print -quit)"
+GPL_TEXT="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/COPYING' -print -quit)"
+THIRD_PARTY_NOTICE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/THIRD_PARTY_NOTICES.md' -print -quit)"
+PROVENANCE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/PROVENANCE.md' -print -quit)"
 if [[ -z "$POSTINSTALL" || -z "$USER_INSTALLER" || -z "$PLUGIN" || -z "$MANIFEST" \
       || -z "$SOURCE_ARCHIVE" || -z "$LICENSE_NOTICE" || -z "$GPL_TEXT" \
       || -z "$THIRD_PARTY_NOTICE" || -z "$PROVENANCE" ]]; then
@@ -158,7 +158,7 @@ mkdir -p "$TEMPORARY/mount"
 hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$TEMPORARY/mount" >/dev/null
 mounted=1
 
-DMG_PKG="$TEMPORARY/mount/Install Negaflow Scanner.pkg"
+DMG_PKG="$TEMPORARY/mount/Install negaflow Scanner.pkg"
 test -s "$DMG_PKG"
 test -s "$TEMPORARY/mount/THIRD_PARTY_NOTICES.md"
 test -s "$TEMPORARY/mount/LICENSE"

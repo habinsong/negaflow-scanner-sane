@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <installer-gui-script minSpecVersion="2">
-    <title>Negaflow SANE Scanner</title>
+    <title>negaflow SANE Scanner</title>
     <organization>com.habinsong.negaflow</organization>
     <options customize="never" hostArchitectures="@HOST_ARCHITECTURES@" rootVolumeOnly="true"/>
 
@@ -38,7 +38,7 @@
     <pkg-ref
         id="com.habinsong.negaflow.scanner-sane.setup"
         onConclusion="none"
-        version="@PLUGIN_VERSION@">#NegaflowScannerSetup.pkg</pkg-ref>
+        version="@PLUGIN_VERSION@">#negaflowScannerSetup.pkg</pkg-ref>
 
     <welcome file="WELCOME.html" mime-type="text/html"/>
     <license file="LICENSE.html" mime-type="text/html"/>

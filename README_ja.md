@@ -1,11 +1,11 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">macOS版Negaflow用 SANEフィルムスキャナープラグイン</p>
+<p align="center">macOS版negaflow用 SANEフィルムスキャナープラグイン</p>
 
 <p align="center">
   <a href="#動作環境"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14以降"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9以降"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Negaflowスキャナープロトコル v2"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflowスキャナープロトコル v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0以降"></a>
 </p>
 
@@ -20,14 +20,14 @@
 
 ---
 
-**negaflow-scanner-sane**は、SANEで利用できるフィルムスキャナーを [Negaflow](https://github.com/habinsong/negaflow)に接続します。<br>
-`scanimage`を実行してスキャナーが公開しているオプションを読み取り、デバイス情報、機能、進行状況、TIFFのパスを Negaflowスキャナープロトコル v2で返します。
+**negaflow-scanner-sane**は、SANEで利用できるフィルムスキャナーを [negaflow](https://github.com/habinsong/negaflow)に接続します。<br>
+`scanimage`を実行してスキャナーが公開しているオプションを読み取り、デバイス情報、機能、進行状況、TIFFのパスを negaflowスキャナープロトコル v2で返します。
 
 独自のスキャン画面を備えた別アプリではありません。<br>
-インストールして承認した後は、 Negaflowの「スキャナーを読み込む」から使用します。
+インストールして承認した後は、 negaflowの「スキャナーを読み込む」から使用します。
 
 プラグインと本体は別々のプログラムです。<br>
-SANE固有のコードはすべてGPL-2.0-or-laterのこのリポジトリに置かれ、Apache-2.0のNegaflow本体とは、別プロセス、コマンドライン引数、パイプ、JSONだけで通信します。
+SANE固有のコードはすべてGPL-2.0-or-laterのこのリポジトリに置かれ、Apache-2.0のnegaflow本体とは、別プロセス、コマンドライン引数、パイプ、JSONだけで通信します。
 
 ## 機能
 
@@ -41,17 +41,17 @@ SANE固有のコードはすべてGPL-2.0-or-laterのこのリポジトリに置
 - 現在のプラグインインスタンスが起動した`scanimage`プロセスだけを停止
 
 スキャナー名だけで機能を判断しません。<br>
-接続中のデバイスとSANEバックエンドが報告した項目だけを Negaflowに表示します。
+接続中のデバイスとSANEバックエンドが報告した項目だけを negaflowに表示します。
 
 ## 動作環境
 
-- 現行NegaflowとHomebrewによるインストールではmacOS 14.0以降
-- Negaflow
+- 現行negaflowとHomebrewによるインストールではmacOS 14.0以降
+- negaflow
 - 実行時に[SANE backends](https://formulae.brew.sh/formula/sane-backends)
 - ソースからビルドする場合のみSwift 5.9以降
 
 単体実行ファイルのdeployment targetは`Package.swift`でmacOS 13のままです。<br>
-ただし、この手順で案内するNegaflowとHomebrewを含む構成は、現在の対応範囲であるmacOS 14以降を基準にしています。
+ただし、この手順で案内するnegaflowとHomebrewを含む構成は、現在の対応範囲であるmacOS 14以降を基準にしています。
 
 ## インストール
 
@@ -63,7 +63,7 @@ Xcode Command Line Toolsが入っていない場合は、先にインストー�
 xcode-select --install
 ```
 
-インストーラーは2種類あります。[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)からいずれかをダウンロードして開き、`Install Negaflow Scanner.pkg`を実行します。
+インストーラーは2種類あります。[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)からいずれかをダウンロードして開き、`Install negaflow Scanner.pkg`を実行します。
 
 | インストーラー | 対象 | プラグインバイナリ |
 |---|---|---|
@@ -73,11 +73,11 @@ xcode-select --install
 機能は両方とも同じです。<br>
 Apple Silicon専用版はサイズが小さくIntel Macにはインストールできません。Universal版はすべてのMacで動作します。
 
-Homebrewがなければ公式Homebrewインストーラーコンポーネントを先にインストールし、ログイン中のユーザーに`sane-backends`とNegaflowプラグインを順番にインストールします。<br>
+Homebrewがなければ公式Homebrewインストーラーコンポーネントを先にインストールし、ログイン中のユーザーに`sane-backends`とnegaflowプラグインを順番にインストールします。<br>
 インターネット接続と管理者パスワードが必要です。<br>
 既存のHomebrewがある場合はそのまま使用します。
 
-完了後にNegaflowを再起動し、「スキャナーを読み込む」でプラグイン情報を確認して承認します。
+完了後にnegaflowを再起動し、「スキャナーを読み込む」でプラグイン情報を確認して承認します。
 
 ### 2. HomebrewとSANEを手動でインストール
 
@@ -166,9 +166,9 @@ cd negaflow-scanner-sane
 配布版のインストールにSwiftツールチェーンは不要です。<br>
 SANEは別途インストールしてください。
 
-### 5. Negaflowで承認して確認
+### 5. negaflowで承認して確認
 
-Negaflowを再起動して「スキャナーを読み込む」を開きます。<br>
+negaflowを再起動して「スキャナーを読み込む」を開きます。<br>
 プラグインのパス、バージョン、ライセンス、hashを確認して承認します。<br>
 更新後に実行ファイルまたはmanifestが変わった場合は、再承認が必要です。
 
@@ -204,7 +204,7 @@ OpticFilm 8200iには、同じ製品名で少なくとも2種類のUSB仕様が�
 
 ## 赤外線チャンネル
 
-このプラグインで「IR使用可」とするのは、独立した赤外線画像を`irPath`としてNegaflowへ返せる場合です。<br>
+このプラグインで「IR使用可」とするのは、独立した赤外線画像を`irPath`としてnegaflowへ返せる場合です。<br>
 バックエンド内部だけで動くゴミ取り機能は、IRチャンネルとして扱いません。
 
 | スキャナー・バックエンド経路 | IRの状態 | 取得方法 | 独立したIR TIFF |
@@ -220,7 +220,7 @@ OpticFilm 8200iには、同じ製品名で少なくとも2種類のUSB仕様が�
 
 IRパスにはRGBと同じ要求解像度とスキャン領域を使います。<br>
 返す前に、両方の画像のピクセル寸法も一致しているか確認します。<br>
-NegaflowはこのIR画像をGrainMend IRで利用できます。
+negaflowはこのIR画像をGrainMend IRで利用できます。
 
 ## 要求値とエラー処理
 
@@ -232,7 +232,7 @@ NegaflowはこのIR画像をGrainMend IRで利用できます。
 - brightness、contrast、gammaをハードウェア多重露光の代わりには使いません。
 - 結果が要求と違う場合や検証に失敗した場合は、ファイルを破棄してエラーを返します。
 
-## Negaflowスキャナープロトコル
+## negaflowスキャナープロトコル
 
 実行ファイルはサブコマンドで呼び出され、標準出力へJSONを書き込みます。
 
@@ -241,13 +241,13 @@ NegaflowはこのIR画像をGrainMend IRで利用できます。
 | `detect` | なし | デバイス一覧JSON |
 | `capabilities <deviceId>` | 任意の検出デバイス識別JSON | 解像度、モード、ビット深度、領域、露出、IR機能のJSON |
 | `scan` | stdinのprotocol v2要求JSON | NDJSONの進行状況と最終結果またはエラー |
-| `repair-sane-config` | なし | 旧版Negaflowプラグインが無効化したバックエンドだけを再有効化 |
+| `repair-sane-config` | なし | 旧版negaflowプラグインが無効化したバックエンドだけを再有効化 |
 | `tune-sane` | なし | `repair-sane-config`の互換エイリアス |
 | `restore-sane` | なし | 最終手段として旧版の全体バックアップを復元 |
 
 protocol v2の全イベントには`protocolVersion`、`requestID`、増加し続ける`sequence`が入ります。<br>
 成功結果の`appliedOptions`は、出力TIFFと実際の適用値を確認した後にだけ返します。
-Negaflowは`capabilities`が返した不透明な`capabilityToken`を次のスキャン要求へ自動で戻します。
+negaflowは`capabilities`が返した不透明な`capabilityToken`を次のスキャン要求へ自動で戻します。
 CLIから直接呼び出す場合も同じ値を渡してください。省略すると、より遅い互換用の事前確認が
 実行されます。
 
@@ -280,7 +280,7 @@ CLIから直接呼び出す場合も同じ値を渡してください。省略�
 ## SANE設定
 
 現在のリリースは、Homebrewの共有`dll.conf`をフィルタリングしません。<br>
-`detect`は旧版Negaflowプラグインが無効化した行だけを自動修復し、ディストリビューションとユーザーのコメントを保持します。同じ修復を手動で実行できます。
+`detect`は旧版negaflowプラグインが無効化した行だけを自動修復し、ディストリビューションとユーザーのコメントを保持します。同じ修復を手動で実行できます。
 
 ```bash
 .build/release/negaflow-scanner-sane repair-sane-config
@@ -297,7 +297,7 @@ CLIから直接呼び出す場合も同じ値を渡してください。省略�
 | パス | 役割 |
 |---|---|
 | `Sources/SANEPluginCore` | SANE検出、機能解析、取得、TIFF検証、IR、露出マージ |
-| `Sources/negaflow-scanner-sane` | Negaflowスキャナープロトコル v2用の薄いJSON/CLIアダプター |
+| `Sources/negaflow-scanner-sane` | negaflowスキャナープロトコル v2用の薄いJSON/CLIアダプター |
 | `Tests/SANEPluginCoreTests` | プロトコル、プロセス、オプション解析、TIFF、仮想スキャナーの回帰テスト |
 | `Installer` | 一括PKG配布構成、インストールスクリプト、Installer.app用リソース |
 | `scripts` | Universalビルド、署名、パッケージ、インストール、公証、リリース確認 |
@@ -343,5 +343,5 @@ NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 同じバージョンのプラグイン完全ソースアーカイブは、リリースZIP内と同じリリース場所に提供され、<br>
 PKGペイロードとDMGの両方にも含まれます。
 
-Negaflow本体は別のApache-2.0プロジェクトです。<br>
+negaflow本体は別のApache-2.0プロジェクトです。<br>
 製品名とスキャナー名は、互換対象または測定対象を示すためにだけ使用し、それぞれの権利は各所有者に帰属します。

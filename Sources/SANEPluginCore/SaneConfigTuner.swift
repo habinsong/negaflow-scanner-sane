@@ -3,9 +3,9 @@ import Foundation
 // MARK: - SaneConfigTuner
 //
 // 과거 버전은 scanimage -L 시간을 줄이려고 Homebrew의 공용 dll.conf에서
-// Negaflow가 사용하지 않는 백엔드를 주석 처리했다. 그러나 dll.conf는 시스템의 모든
+// negaflow가 사용하지 않는 백엔드를 주석 처리했다. 그러나 dll.conf는 시스템의 모든
 // SANE 프런트엔드가 공유하므로, 이 방식은 네트워크·복합기·문서 스캐너를 감지하지
-// 못하게 만들 수 있다. 현재 구현은 백엔드를 새로 끄지 않고, 과거 Negaflow가
+// 못하게 만들 수 있다. 현재 구현은 백엔드를 새로 끄지 않고, 과거 negaflow가
 // 주석 처리한 줄만 복원한다.
 public enum SaneConfigTuner {
     public static var configDir: String {
@@ -31,7 +31,7 @@ public enum SaneConfigTuner {
         case failed(String)
     }
 
-    /// 과거 Negaflow가 비활성화한 줄만 다시 활성화한다.
+    /// 과거 negaflow가 비활성화한 줄만 다시 활성화한다.
     ///
     /// 배포판 또는 사용자가 원래 주석 처리한 줄은 그대로 두며, 최초 백업으로 전체 파일을
     /// 되감지 않으므로 이후에 추가된 사용자 설정도 보존한다. 심볼릭 링크인 경우 링크가

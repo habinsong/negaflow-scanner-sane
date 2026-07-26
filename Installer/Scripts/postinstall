@@ -63,7 +63,7 @@ if [[ ! -x "$scanimage" ]]; then
   exit 1
 fi
 
-echo "[negaflow-installer] installing the Negaflow scanner plug-in for $console_user..."
+echo "[negaflow-installer] installing the negaflow scanner plug-in for $console_user..."
 /usr/bin/sudo -H -u "$console_user" /usr/bin/env -i \
   "HOME=$console_home" \
   "USER=$console_user" \
@@ -71,4 +71,4 @@ echo "[negaflow-installer] installing the Negaflow scanner plug-in for $console_
   "PATH=/usr/bin:/bin:/usr/sbin:/sbin" \
   /bin/bash "$script_dir/install-plugin-user.sh" "$plugin_source"
 
-echo "[negaflow-installer] complete. Restart Negaflow and approve the scanner plug-in."
+echo "[negaflow-installer] complete. Restart negaflow and approve the scanner plug-in."

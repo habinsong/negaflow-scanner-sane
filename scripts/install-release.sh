@@ -43,4 +43,4 @@ fi
 rm -rf "$PREVIOUS"
 
 echo "[install-release] installed: $DESTINATION"
-echo "[install-release] Negaflow에서 새 실행파일 hash를 다시 승인하세요."
+echo "[install-release] negaflow에서 새 실행파일 hash를 다시 승인하세요."

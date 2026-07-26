@@ -6,7 +6,7 @@ import ImageIO
 // MARK: - Plugin-local TIFFLoader
 //
 // 멀티샘플/HDR 병합에서 스캐너 raw TIFF(16bit linear)를 읽고/쓰기 위한 최소 로더.
-// 같은 저자가 작성한 Negaflow의 TIFF 입출력 계약과 같은 Apple 프레임워크 동작을 사용하지만,
+// 같은 저자가 작성한 negaflow의 TIFF 입출력 계약과 같은 Apple 프레임워크 동작을 사용하지만,
 // 이 플러그인이 독립적으로 빌드되도록 필요한 두 연산만 로컬에 둔다.
 enum TIFFLoader {
     /// 스캐너 raw TIFF를 16bit linear 로 재해석해 로드한다.

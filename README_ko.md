@@ -1,11 +1,11 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">macOS용 Negaflow SANE 필름 스캐너 플러그인</p>
+<p align="center">macOS용 negaflow SANE 필름 스캐너 플러그인</p>
 
 <p align="center">
   <a href="#요구-사항"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 이상"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 이상"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Negaflow 스캐너 프로토콜 v2"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 스캐너 프로토콜 v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 이상 라이선스"></a>
 </p>
 
@@ -21,14 +21,14 @@
 ---
 
 **negaflow-scanner-sane**은 SANE에서 사용할 수 있는 필름 스캐너를
-[Negaflow](https://github.com/habinsong/negaflow)에 연결합니다. <br>
+[negaflow](https://github.com/habinsong/negaflow)에 연결합니다. <br>
 >`scanimage`를 실행해 스캐너가 보고한 옵션을 읽고, 장치 정보와 기능, 진행 상황, <br>
->TIFF 경로를 Negaflow 스캐너 프로토콜 v2로 전달합니다.
+>TIFF 경로를 negaflow 스캐너 프로토콜 v2로 전달합니다.
 
-별도의 스캔 화면을 제공하는 앱은 아닙니다. 설치하고 승인한 뒤 Negaflow의 **스캐너불러오기**에 사용하는 플러그인입니다.
+별도의 스캔 화면을 제공하는 앱은 아닙니다. 설치하고 승인한 뒤 negaflow의 **스캐너불러오기**에 사용하는 플러그인입니다.
 
 플러그인과 본체는 서로 다른 프로그램입니다. SANE 관련 코드는 모두 GPL-2.0-or-later인 이 저장소에 있으며,<br>
-Apache-2.0인 **Negaflow** 와는 다른 별도 프로세스, CLI 인자, 파이프와 JSON으로만 통신합니다.
+Apache-2.0인 **negaflow** 와는 다른 별도 프로세스, CLI 인자, 파이프와 JSON으로만 통신합니다.
 
 ## 기능
 
@@ -45,12 +45,12 @@ Apache-2.0인 **Negaflow** 와는 다른 별도 프로세스, CLI 인자, 파이
 
 ## 요구 사항
 
-- 현재 Negaflow와 Homebrew 설치 경로 기준 macOS 14.0 이상
-- Negaflow
+- 현재 negaflow와 Homebrew 설치 경로 기준 macOS 14.0 이상
+- negaflow
 - 실행 시 [SANE backends](https://formulae.brew.sh/formula/sane-backends)
 - 소스에서 빌드할 때만 Swift 5.9 이상
 
-설치 안내는 현재 Negaflow와 Homebrew가 함께 지원되는 macOS 14 이상을 기준으로 합니다.
+설치 안내는 현재 negaflow와 Homebrew가 함께 지원되는 macOS 14 이상을 기준으로 합니다.
 
 ## 설치
 
@@ -64,7 +64,7 @@ xcode-select --install
 
 설치 파일은 두 가지입니다. [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
 하나를 내려받아 열고 <br>
-**`Install Negaflow Scanner.pkg`를 실행합니다.**
+**`Install negaflow Scanner.pkg`를 실행합니다.**
 
 | 설치 파일 | 대상 | 플러그인 바이너리 |
 |---|---|---|
@@ -75,10 +75,10 @@ xcode-select --install
 Apple Silicon 전용 파일은 용량이 작고 Intel Mac에서는 설치되지 않으며, 유니버설 파일은 모든 Mac에서 실행됩니다.
 
 Homebrew가 없으면 공식 Homebrew 설치 구성 요소를 먼저 설치하고, <br>로그인한 사용자 계정에
-`sane-backends`와 Negaflow 플러그인을 차례대로 설치합니다.<br>
+`sane-backends`와 negaflow 플러그인을 차례대로 설치합니다.<br>
 설치에는 인터넷 연결과 관리자 암호가 필요하며, 기존 Homebrew가 있으면 그대로 사용합니다.
 
-설치가 끝나면 Negaflow를 다시 실행하고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤 승인합니다.<br><br>
+설치가 끝나면 negaflow를 다시 실행하고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤 승인합니다.<br><br>
 **그냥 간단하게 윗 손쉬운 방법으로 설치후 negaflow 를 실행하시고, 승인 버튼 한번 누르면 끝납니다.**
 
 ---
@@ -167,9 +167,9 @@ cd negaflow-scanner-sane
 
 배포용 설치 파일에는 Swift 도구체인이 필요하지 않습니다. SANE은 따로 설치해야 합니다.
 
-### 5. Negaflow에서 승인하고 확인
+### 5. negaflow에서 승인하고 확인
 
-Negaflow를 다시 실행하고 **스캐너 불러오기**를 엽니다. 플러그인 경로, 버전, 라이선스와 hash를 확인한 뒤 승인합니다. <br>
+negaflow를 다시 실행하고 **스캐너 불러오기**를 엽니다. 플러그인 경로, 버전, 라이선스와 hash를 확인한 뒤 승인합니다. <br>
 업데이트로 실행 파일이나 manifest가 바뀌면 다시 승인을 받아야 합니다.
 
 설치된 실행 파일을 직접 확인할 수도 있습니다.
@@ -205,7 +205,7 @@ OpticFilm 8200i는 같은 제품명 아래 USB 변형이 적어도 두 가지 �
 
 ## 적외선 채널
 
-이 플러그인에서 “IR 사용 가능”은 별도 적외선 이미지를 `irPath`로 Negaflow에 넘길 수 있다는 뜻입니다. <br>백엔드 내부에서만 작동하는 먼지 제거 옵션은 IR 채널로 보고하지 않습니다.
+이 플러그인에서 “IR 사용 가능”은 별도 적외선 이미지를 `irPath`로 negaflow에 넘길 수 있다는 뜻입니다. <br>백엔드 내부에서만 작동하는 먼지 제거 옵션은 IR 채널로 보고하지 않습니다.
 
 | 스캐너·백엔드 경로 | IR 상태 | 획득 방법 | 별도 IR TIFF |
 |---|---|---|---|
@@ -218,7 +218,7 @@ OpticFilm 8200i는 같은 제품명 아래 USB 변형이 적어도 두 가지 �
 | `--clean-image`만 제공하는 Reflecta/PIE | IR 채널로는 사용 불가 | 먼지 제거가 백엔드 내부에서 끝남 | 없음 |
 | 그 밖의 스캐너 | 조건부 | `scanimage -A`에 활성 상태의 별도 IR source 또는 mode가 있을 때만 | 크기·형식 확인 후 있음 |
 
-IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니다. <br>두 파일의 실제 픽셀 크기가 같은지도 확인한 뒤 반환합니다. <br>Negaflow는 이 IR 이미지를 GrainMend IR에 사용할 수 있습니다.
+IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니다. <br>두 파일의 실제 픽셀 크기가 같은지도 확인한 뒤 반환합니다. <br>negaflow는 이 IR 이미지를 GrainMend IR에 사용할 수 있습니다.
 
 ## 요청값과 실패 처리
 
@@ -230,7 +230,7 @@ IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니�
 - 밝기, 대비나 gamma를 하드웨어 다중 노출처럼 사용하지 않습니다.
 - 결과가 요청과 다르거나 검증에 실패하면 해당 파일을 버리고 오류를 반환합니다.
 
-## Negaflow 스캐너 프로토콜
+## negaflow 스캐너 프로토콜
 
 실행 파일은 서브커맨드로 호출되며 표준 출력에 JSON을 기록합니다.
 
@@ -239,13 +239,13 @@ IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니�
 | `detect` | 없음 | 장치 목록 JSON |
 | `capabilities <deviceId>` | 선택적 탐지 장치 식별 JSON | 해상도, 모드, 비트 심도, 영역, 노출과 IR 기능 JSON |
 | `scan` | stdin의 protocol v2 요청 JSON | NDJSON 진행 상황과 최종 결과 또는 오류 이벤트 |
-| `repair-sane-config` | 없음 | 구버전 Negaflow 플러그인이 꺼 둔 백엔드만 다시 활성화 |
+| `repair-sane-config` | 없음 | 구버전 negaflow 플러그인이 꺼 둔 백엔드만 다시 활성화 |
 | `tune-sane` | 없음 | `repair-sane-config` 호환 별칭 |
 | `restore-sane` | 없음 | 최후 수단으로 구버전 전체 백업 복구 |
 
 protocol v2의 모든 이벤트에는 `protocolVersion`, `requestID`와 계속 증가하는 `sequence`가
 들어갑니다. 성공 결과의 `appliedOptions`는 출력 TIFF와 실제 적용값을 확인한 뒤에만 기록합니다.
-Negaflow는 `capabilities`가 돌려준 불투명 `capabilityToken`을 다음 스캔 요청에 자동으로
+negaflow는 `capabilities`가 돌려준 불투명 `capabilityToken`을 다음 스캔 요청에 자동으로
 되돌려줍니다. CLI를 직접 호출할 때도 같은 값을 넣어야 하며, 생략하면 호환용 사전 검사가 더
 실행됩니다.
 
@@ -278,7 +278,7 @@ Negaflow는 `capabilities`가 돌려준 불투명 `capabilityToken`을 다음 �
 ## SANE 설정
 
 현재 버전은 Homebrew의 공용 `dll.conf`를 필터링하지 않습니다.<br>
-`detect`를 실행하면 구버전 Negaflow 플러그인이 꺼 둔 백엔드만 자동으로 복구하며, 배포판과
+`detect`를 실행하면 구버전 negaflow 플러그인이 꺼 둔 백엔드만 자동으로 복구하며, 배포판과
 사용자가 원래 주석 처리한 줄은 보존합니다. 같은 복구를 수동으로 실행할 수도 있습니다.
 
 ```bash
@@ -298,7 +298,7 @@ Negaflow는 `capabilities`가 돌려준 불투명 `capabilityToken`을 다음 �
 | 경로 | 역할 |
 |---|---|
 | `Sources/SANEPluginCore` | SANE 장치 찾기, 기능 해석, 스캔, TIFF 검증, IR과 노출 병합 |
-| `Sources/negaflow-scanner-sane` | Negaflow 스캐너 프로토콜 v2용 JSON/CLI 어댑터 |
+| `Sources/negaflow-scanner-sane` | negaflow 스캐너 프로토콜 v2용 JSON/CLI 어댑터 |
 | `Tests/SANEPluginCoreTests` | 프로토콜, 프로세스, 옵션 파서, TIFF와 가상 스캐너 회귀 테스트 |
 | `Installer` | 원샷 PKG 배포 구성, 설치 스크립트와 Installer.app 화면 자료 |
 | `scripts` | 유니버설 빌드, 서명, 패키징, 설치, 공증과 릴리스 확인 |
@@ -349,5 +349,5 @@ GNU GPL v2 전문인 [COPYING](COPYING)이 함께 들어갑니다.
 동일 버전의 완전한 플러그인 소스 압축 파일은 릴리스 ZIP 안과 같은 릴리스 경로에 제공하고,<br>
 PKG 페이로드와 DMG에도 포함합니다.
 
-Negaflow 본체는 별도의 Apache-2.0 프로젝트입니다. 제품명과 스캐너명은 호환 대상이나 측정 대상을
+negaflow 본체는 별도의 Apache-2.0 프로젝트입니다. 제품명과 스캐너명은 호환 대상이나 측정 대상을
 식별할 때만 사용하며, 각 이름의 권리는 해당 소유자에게 있습니다.

@@ -3,7 +3,7 @@ import XCTest
 
 final class SaneConfigTunerTests: XCTestCase {
 
-    func testRecoveryRestoresOnlyLinesDisabledByNegaflow() {
+    func testRecoveryRestoresOnlyLinesDisabledBynegaflow() {
         let oldTuned = """
         # dll.conf - Configuration file for the SANE dynamic backend loader
         # [negaflow] 비활성화: net

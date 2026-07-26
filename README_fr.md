@@ -1,11 +1,11 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">Module SANE pour scanners de film, destiné à Negaflow sur macOS</p>
+<p align="center">Module SANE pour scanners de film, destiné à negaflow sur macOS</p>
 
 <p align="center">
   <a href="#prérequis"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 ou version ultérieure"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 ou version ultérieure"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Protocole scanner Negaflow v2"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Protocole scanner negaflow v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 ou ultérieure"></a>
 </p>
 
@@ -20,15 +20,15 @@
 
 ---
 
-**negaflow-scanner-sane** relie [Negaflow](https://github.com/habinsong/negaflow) aux scanners de film utilisables avec SANE.<br>
-Il lance `scanimage`, lit les options réellement publiées par le scanner, puis renvoie les informations de l'appareil, ses capacités, la progression et les chemins TIFF par le protocole scanner Negaflow v2.
+**negaflow-scanner-sane** relie [negaflow](https://github.com/habinsong/negaflow) aux scanners de film utilisables avec SANE.<br>
+Il lance `scanimage`, lit les options réellement publiées par le scanner, puis renvoie les informations de l'appareil, ses capacités, la progression et les chemins TIFF par le protocole scanner negaflow v2.
 
 Ce n'est pas une seconde interface de numérisation, mais un module en ligne de commande à installer.<br>
-Une fois installé et approuvé, il s'utilise depuis Negaflow.
+Une fois installé et approuvé, il s'utilise depuis negaflow.
 
 Le module et l'application principale sont deux programmes distincts.<br>
 Tout le code propre à SANE reste dans ce dépôt sous GPL-2.0-or-later.<br>
-Negaflow, sous Apache-2.0, ne communique avec lui que par un processus séparé, des arguments de ligne de commande, des tubes et du JSON.
+negaflow, sous Apache-2.0, ne communique avec lui que par un processus séparé, des arguments de ligne de commande, des tubes et du JSON.
 
 ## Fonctions
 
@@ -42,17 +42,17 @@ Negaflow, sous Apache-2.0, ne communique avec lui que par un processus séparé,
 - Arrêt du seul processus `scanimage` lancé par l'instance courante du module
 
 Le nom du scanner ne suffit jamais à activer une fonction.<br>
-Negaflow n'affiche que les options signalées par l'appareil connecté et son backend SANE actif.
+negaflow n'affiche que les options signalées par l'appareil connecté et son backend SANE actif.
 
 ## Prérequis
 
-- macOS 14.0 ou version ultérieure pour l'installation actuelle de Negaflow et Homebrew
-- Negaflow
+- macOS 14.0 ou version ultérieure pour l'installation actuelle de negaflow et Homebrew
+- negaflow
 - [SANE backends](https://formulae.brew.sh/formula/sane-backends) à l'exécution
 - Swift 5.9 ou version ultérieure uniquement pour compiler les sources
 
 `Package.swift` conserve une cible de déploiement macOS 13 pour l'exécutable seul.<br>
-Le parcours complet décrit ici commence à macOS 14 afin de suivre les prérequis actuels de Negaflow et Homebrew.
+Le parcours complet décrit ici commence à macOS 14 afin de suivre les prérequis actuels de negaflow et Homebrew.
 
 ## Installation
 
@@ -64,7 +64,7 @@ Si les Xcode Command Line Tools ne sont pas encore présents, installez-les d'ab
 xcode-select --install
 ```
 
-Deux programmes d'installation sont publiés. Téléchargez-en un depuis les [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), ouvrez-le, puis lancez `Install Negaflow Scanner.pkg`.
+Deux programmes d'installation sont publiés. Téléchargez-en un depuis les [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), ouvrez-le, puis lancez `Install negaflow Scanner.pkg`.
 
 | Programme d'installation | Destiné à | Binaire du module |
 |---|---|---|
@@ -74,11 +74,11 @@ Deux programmes d'installation sont publiés. Téléchargez-en un depuis les [Re
 Les deux offrent exactement les mêmes fonctions.<br>
 La version Apple Silicon est plus légère et refuse de s'installer sur un Mac Intel ; la version Universal fonctionne partout.
 
-Si Homebrew est absent, le paquet installe d'abord le composant officiel Homebrew, puis `sane-backends` pour l'utilisateur connecté et enfin le module Negaflow.<br>
+Si Homebrew est absent, le paquet installe d'abord le composant officiel Homebrew, puis `sane-backends` pour l'utilisateur connecté et enfin le module negaflow.<br>
 Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br>
 Une installation Homebrew existante est réutilisée.
 
-À la fin, redémarrez Negaflow, ouvrez « Charger le scanner », vérifiez les informations du module et approuvez-le.
+À la fin, redémarrez negaflow, ouvrez « Charger le scanner », vérifiez les informations du module et approuvez-le.
 
 ### 2. Installation manuelle de Homebrew et SANE
 
@@ -166,11 +166,11 @@ Décompressez l'archive ZIP, puis lancez l'installateur fourni :
 L'installation de l'archive ne demande pas la chaîne d'outils Swift.<br>
 SANE doit toujours être installé séparément.
 
-### 5. Approuver et vérifier dans Negaflow
+### 5. Approuver et vérifier dans negaflow
 
-Redémarrez Negaflow et ouvrez « Charger le scanner ».<br>
+Redémarrez negaflow et ouvrez « Charger le scanner ».<br>
 Vérifiez le chemin, la version, la licence et les hash du module, puis approuvez-le.<br>
-Si l'exécutable ou le manifest change après une mise à jour, Negaflow demande une nouvelle approbation.
+Si l'exécutable ou le manifest change après une mise à jour, negaflow demande une nouvelle approbation.
 
 L'exécutable installé peut aussi être contrôlé directement :
 
@@ -204,7 +204,7 @@ Vérifiez le véritable USB product ID, pas seulement le nom inscrit sur le boî
 
 ## Canal infrarouge
 
-Ici, « IR disponible » signifie qu'une image infrarouge distincte peut être renvoyée à Negaflow dans `irPath`.<br>
+Ici, « IR disponible » signifie qu'une image infrarouge distincte peut être renvoyée à negaflow dans `irPath`.<br>
 Une correction de poussière interne au backend n'est pas annoncée comme canal IR.
 
 | Scanner ou chemin backend | État IR | Méthode d'acquisition | TIFF IR séparé |
@@ -220,7 +220,7 @@ Une correction de poussière interne au backend n'est pas annoncée comme canal 
 
 Le passage IR utilise la même résolution et la même zone demandées que le passage RGB.<br>
 Le module vérifie aussi que les deux images ont les mêmes dimensions en pixels.<br>
-Negaflow peut ensuite utiliser l'image infrarouge avec GrainMend IR.
+negaflow peut ensuite utiliser l'image infrarouge avec GrainMend IR.
 
 ## Valeurs exactes et erreurs
 
@@ -236,7 +236,7 @@ Negaflow peut ensuite utiliser l'image infrarouge avec GrainMend IR.
 - Brightness, contrast et gamma ne servent pas à simuler une multi-exposition matérielle.
 - Un résultat incohérent ou non vérifié est supprimé et renvoyé comme erreur.
 
-## Protocole scanner Negaflow
+## Protocole scanner negaflow
 
 L'exécutable est appelé par sous-commandes et écrit du JSON sur la sortie standard.
 
@@ -251,7 +251,7 @@ L'exécutable est appelé par sous-commandes et écrit du JSON sur la sortie sta
 
 Chaque événement protocol v2 contient `protocolVersion`, `requestID` et un `sequence` croissant.<br>
 `appliedOptions` n'est renvoyé qu'après contrôle du TIFF et des réglages réellement appliqués.
-Negaflow renvoie automatiquement dans la requête suivante le `capabilityToken` opaque reçu de
+negaflow renvoie automatiquement dans la requête suivante le `capabilityToken` opaque reçu de
 `capabilities`. Les appels directs en CLI doivent faire de même ; sans ce jeton, le contrôle de compatibilité
 plus lent reste utilisé.
 
@@ -284,7 +284,7 @@ Exemple de requête de numérisation complète :
 ## Configuration SANE
 
 Les versions actuelles ne filtrent pas le `dll.conf` partagé de Homebrew.<br>
-`detect` répare automatiquement les lignes désactivées par une ancienne version du plugin Negaflow, sans modifier les commentaires de la distribution ou de l'utilisateur. La même réparation peut être lancée manuellement :
+`detect` répare automatiquement les lignes désactivées par une ancienne version du plugin negaflow, sans modifier les commentaires de la distribution ou de l'utilisateur. La même réparation peut être lancée manuellement :
 
 ```bash
 .build/release/negaflow-scanner-sane repair-sane-config
@@ -301,7 +301,7 @@ Si un ancien `dll.conf.negaflow-backup` existe encore, la commande suivante remp
 | Chemin | Rôle |
 |---|---|
 | `Sources/SANEPluginCore` | Détection SANE, capacités, acquisition, contrôle TIFF, IR et fusion d'expositions |
-| `Sources/negaflow-scanner-sane` | Adaptateur JSON/CLI léger pour le protocole scanner Negaflow v2 |
+| `Sources/negaflow-scanner-sane` | Adaptateur JSON/CLI léger pour le protocole scanner negaflow v2 |
 | `Tests/SANEPluginCoreTests` | Tests du protocole, des processus, des options, des TIFF et des scanners virtuels |
 | `Installer` | Distribution PKG tout-en-un, scripts d'installation et ressources d'Installer.app |
 | `scripts` | Build Universal, signature, paquet, installation, notarisation et contrôle de publication |
@@ -347,5 +347,5 @@ L'installateur tout-en-un contient également les [mentions tierces](THIRD_PARTY
 L'archive complète des sources du module, dans la même version, est publiée à côté de l'archive ZIP<br>
 et incluse dans celle-ci, ainsi que dans le contenu du PKG et dans le DMG.
 
-Negaflow est un projet Apache-2.0 séparé.<br>
+negaflow est un projet Apache-2.0 séparé.<br>
 Les noms de produits et de scanners servent uniquement à identifier des cibles compatibles ou mesurées et restent la propriété de leurs détenteurs respectifs.
