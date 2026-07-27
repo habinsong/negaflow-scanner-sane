@@ -186,17 +186,34 @@ cd negaflow-scanner-sane
 
 | 扫描仪系列 | SANE 后端 | SANE 1.4 状态 | 插件处理路径 |
 |---|---|---|---|
-| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400、7500i、7600i、8100 | `genesys` | Complete | 专用胶片扫描仪路径 |
+| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400、7500i、7600i | `genesys` | Complete | 专用胶片扫描仪路径 |
+| Plustek OpticFilm 8100，USB `07b3:130c` | `genesys` | Complete | 专用胶片扫描仪路径 |
+| Plustek OpticFilm 8100，USB `07b3:1824` | 无 | Unsupported | 不作为可用设备处理 |
 | Plustek OpticFilm 8200i，USB `07b3:130d` | `genesys` | Complete | 专用胶片扫描仪路径 |
-| Plustek OpticFilm 8200i，USB `07b3:1825`（GL128） | `genesys` | Unsupported | 不作为可用设备处理 |
-| Epson Perfection V700/V750、V800/V850 | `epson2` | Good | 在设备报告时使用透射源和定位式平板区域 |
-| Nikon Coolscan/LS 系列 | `coolscan3`，旧 SCSI 型号使用 `coolscan` | 视型号为 Complete 至 Minimal | 专用胶片扫描仪路径 |
-| Reflecta ProScan/CrystalScan/DigitDia、PIE PowerSlide | `pieusb`，旧 SCSI 型号使用 `pie` | 视型号而定 | 仅使用设备报告的选项 |
+| Plustek OpticFilm 8200i，USB `07b3:1825`（GL128） | 无 | Unsupported | 不作为可用设备处理 |
+| Plustek OpticFilm 120、120 Pro、135、135i、9000i Ai | 无 | Unsupported | 不作为可用设备处理 |
+| Epson Perfection V700/V750（GT-X900）、V800/V850（GT-X980） | `epson2` | Good | 在设备报告时使用透射源和定位式平板区域 |
+| Nikon Coolscan LS-2000、LS-40 ED、LS-50 ED、LS-4000 ED、LS-8000 ED | `coolscan3` | 视型号为 Complete 至 Minimal | 专用胶片扫描仪路径 |
+| Nikon Coolscan LS-5000 ED | `coolscan3` | 后端列表中有，但实际使用报告并不完整 | 专用胶片扫描仪路径 |
+| Nikon Coolscan LS-20、LS-30、LS-1000 | `coolscan` | 视型号而定 | 仅 SCSI |
+| Nikon Coolscan LS-9000 ED | 无 | Unsupported | 不作为可用设备处理 |
+| Reflecta ProScan/CrystalScan/DigitDia、PIE PowerSlide | `pieusb`，旧 SCSI 型号使用 `pie` | 视型号与型号编号而定 | 仅使用设备报告的选项 |
+| Pacific Image PrimeFilm XA、XAs、XA Plus | 无 | Unsupported | 不作为可用设备处理 |
 | 其他支持透射稿的平板或胶片扫描仪 | 视后端而定 | 视型号而定 | 按功能报告处理，不按型号名回退 |
 
-OpticFilm 8200i 在相同产品名下至少有两种 USB 版本。<br>
-`07b3:130d` 与 `07b3:1825` 的 SANE 支持状态不同。<br>
-请检查实际 USB product ID，而不是只看外壳上的型号。
+### 产品名并不能说明硬件
+
+OpticFilm 8100 和 8200i 各自在相同产品名下至少有两种 USB 版本。<br>
+`07b3:130c` 和 `07b3:130d` 由 `genesys` 驱动，而 `07b3:1824` 和 `07b3:1825` 使用的是另一颗
+Genesys 芯片，目前没有任何后端能驱动。<br>
+沿用旧名称销售的新版本无法从 SANE 一侧解决，因此请检查实际 USB product ID，而不是只看外壳上的型号。
+
+还有两个容易混淆的识别陷阱。
+
+- `pieusb` 同时匹配 USB ID 和**型号编号**。Reflecta 与 PIE 设备共用 `05e3:0145` 这类 ID，
+  只有型号编号列在 `pieusb.conf` 中的设备才可用。
+- `epson2` 按爱普生的日本型号识别设备。`scanimage -L` 会把 Perfection V800/V850 显示为
+  `GT-X980`，把 V700/V750 显示为 `GT-X900`。那是同一台扫描仪，并非识别错误。
 
 ## 红外通道
 
@@ -257,6 +274,8 @@ scanimage -L
 | `scanimage: command not found` | 未安装 `sane-backends`，或装在另一个 Homebrew 路径 | 检查 `command -v scanimage`。Apple Silicon 为 `/opt/homebrew/bin`，Intel 为 `/usr/local/bin` |
 | USB 列表中没有扫描仪 | 集线器、扩展坞、转接头、线缆或供电 | 去掉集线器直连 Mac，并换一个端口。USB 2.0 胶片扫描仪经过 USB-C 转接常常失败 |
 | `sane-find-scanner` 能看到，但提示 `no SANE devices found` | 没有已启用的后端支持该型号 | 查看 [SANE 支持设备列表](https://www.sane-project.org/sane-supported-devices.html)，再阅读第 3 步的日志 |
+| USB 列表中有，`scanimage -L` 为空，且 `repair-sane-config` 返回 `notNeeded` | SANE 不认识的硬件版本 | 将 USB product ID 与[扫描仪支持](#扫描仪支持)表对照。沿用旧产品名销售的新版本无法从这一侧解决 |
+| Coolscan LS-50 或 LS-5000 从 USB 列表中消失 | 这些机型上已知的 USB 端口故障 | 换线缆和端口确认。如果 Mac 完全无法枚举，则是硬件故障而非驱动问题 |
 | `another process has device opened for exclusive access`、`device busy`、`is not configured` | 其他程序已占用 USB 接口 | 退出 VueScan、SilverFast、图像捕捉和厂商工具，重新连接扫描仪后再试 |
 | 只有 `sudo scanimage -L` 能找到 | 接口被占用或未释放 | 先解决上面的占用问题。negaflow 不会以 root 运行插件，所以 `sudo` 不是解决办法 |
 | 终端能找到，negaflow 找不到 | SANE 装在标准路径之外 | 插件只查找 `/opt/homebrew`、`/usr/local` 和 `/usr` 下的位置。MacPorts（`/opt/local`）和自行编译的路径不会被使用，请用 Homebrew 安装 `sane-backends` |

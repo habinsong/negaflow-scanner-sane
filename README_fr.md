@@ -190,17 +190,37 @@ Consultez la [liste SANE actuelle](https://www.sane-project.org/sane-supported-d
 
 | Famille de scanners | Backend SANE | État SANE 1.4 | Chemin du module |
 |---|---|---|---|
-| Plustek OpticFilm 7200, 7200 v2, 7200i, 7300, 7400, 7500i, 7600i, 8100 | `genesys` | Complete | Scanner de film dédié |
+| Plustek OpticFilm 7200, 7200 v2, 7200i, 7300, 7400, 7500i, 7600i | `genesys` | Complete | Scanner de film dédié |
+| Plustek OpticFilm 8100, USB `07b3:130c` | `genesys` | Complete | Scanner de film dédié |
+| Plustek OpticFilm 8100, USB `07b3:1824` | Aucun | Unsupported | Non considéré comme utilisable |
 | Plustek OpticFilm 8200i, USB `07b3:130d` | `genesys` | Complete | Scanner de film dédié |
-| Plustek OpticFilm 8200i, USB `07b3:1825` (GL128) | `genesys` | Unsupported | Non considéré comme utilisable |
-| Epson Perfection V700/V750, V800/V850 | `epson2` | Good | Source transparente et zone positionnée lorsqu'elles sont signalées |
-| Gamme Nikon Coolscan/LS | `coolscan3`; anciens modèles SCSI avec `coolscan` | Complete à Minimal selon le modèle | Scanner de film dédié |
-| Reflecta ProScan/CrystalScan/DigitDia et PIE PowerSlide | `pieusb`; anciens modèles SCSI avec `pie` | Variable selon le modèle | Uniquement les options signalées |
+| Plustek OpticFilm 8200i, USB `07b3:1825` (GL128) | Aucun | Unsupported | Non considéré comme utilisable |
+| Plustek OpticFilm 120, 120 Pro, 135, 135i, 9000i Ai | Aucun | Unsupported | Non considéré comme utilisable |
+| Epson Perfection V700/V750 (GT-X900), V800/V850 (GT-X980) | `epson2` | Good | Source transparente et zone positionnée lorsqu'elles sont signalées |
+| Nikon Coolscan LS-2000, LS-40 ED, LS-50 ED, LS-4000 ED, LS-8000 ED | `coolscan3` | Complete à Minimal selon le modèle | Scanner de film dédié |
+| Nikon Coolscan LS-5000 ED | `coolscan3` | Présent dans le backend, mais signalé comme incomplet à l'usage | Scanner de film dédié |
+| Nikon Coolscan LS-20, LS-30, LS-1000 | `coolscan` | Variable selon le modèle | SCSI uniquement |
+| Nikon Coolscan LS-9000 ED | Aucun | Unsupported | Non considéré comme utilisable |
+| Reflecta ProScan/CrystalScan/DigitDia et PIE PowerSlide | `pieusb`; anciens modèles SCSI avec `pie` | Variable selon le modèle et son numéro | Uniquement les options signalées |
+| Pacific Image PrimeFilm XA, XAs, XA Plus | Aucun | Unsupported | Non considéré comme utilisable |
 | Autres scanners de film ou à plat avec transparents | Variable | Variable selon le modèle | Piloté par les capacités, sans repli fondé sur le nom |
 
-L'OpticFilm 8200i existe sous au moins deux variantes USB portant le même nom.<br>
-`07b3:130d` et `07b3:1825` n'ont pas le même état de prise en charge SANE.<br>
-Vérifiez le véritable USB product ID, pas seulement le nom inscrit sur le boîtier.
+### Le nom du produit ne dit rien du matériel
+
+L'OpticFilm 8100 et le 8200i existent chacun sous au moins deux variantes USB portant le même nom.<br>
+`07b3:130c` et `07b3:130d` sont pilotés par `genesys` ; `07b3:1824` et `07b3:1825` ne le sont pas,
+car ils utilisent une autre puce Genesys qu'aucun backend ne pilote.<br>
+Une révision récente vendue sous un ancien nom ne peut pas être corrigée côté SANE : vérifiez le
+véritable USB product ID, pas seulement le nom inscrit sur le boîtier.
+
+Deux autres pièges d'identification méritent d'être connus.
+
+- `pieusb` compare l'identifiant USB **et** un numéro de modèle. Les appareils Reflecta et PIE
+  partagent des identifiants comme `05e3:0145` : un appareil n'est utilisable que si son numéro de
+  modèle figure dans `pieusb.conf`.
+- `epson2` reconnaît les scanners Epson sous leur nom de modèle japonais. `scanimage -L` affiche un
+  Perfection V800/V850 comme `GT-X980` et un V700/V750 comme `GT-X900`. C'est le même scanner, pas
+  un appareil erroné.
 
 ## Canal infrarouge
 
@@ -262,6 +282,8 @@ scanimage -L
 | `scanimage: command not found` | `sane-backends` absent, ou installé sous l'autre préfixe Homebrew | Vérifiez `command -v scanimage`. Apple Silicon utilise `/opt/homebrew/bin`, Intel `/usr/local/bin` |
 | Le scanner n'apparaît pas dans la liste USB | Hub, station d'accueil, adaptateur, câble ou alimentation | Branchez-le directement sur le Mac, essayez un autre port et évitez les hubs. Les scanners de film USB 2.0 échouent souvent via un adaptateur USB-C |
 | `no SANE devices found` alors que `sane-find-scanner` voit l'appareil | Aucun backend actif ne prend en charge ce modèle | Consultez la [liste des appareils SANE](https://www.sane-project.org/sane-supported-devices.html), puis lisez le journal de l'étape 3 |
+| Le scanner est dans la liste USB, `scanimage -L` reste vide et `repair-sane-config` renvoie `notNeeded` | Une révision matérielle que SANE ne connaît pas | Comparez l'USB product ID au tableau [Scanners pris en charge](#scanners-pris-en-charge). Une révision récente vendue sous un ancien nom ne se corrige pas de ce côté |
+| Un Coolscan LS-50 ou LS-5000 disparaît de la liste USB | Panne de port USB documentée sur ces appareils | Vérifiez avec un autre câble et un autre port. Si le Mac ne l'énumère jamais, c'est une panne matérielle et non un problème de pilote |
 | `another process has device opened for exclusive access`, `device busy`, `is not configured` | Un autre programme a déjà réservé l'interface USB | Quittez VueScan, SilverFast, Transfert d'images et les utilitaires du fabricant, rebranchez le scanner, puis réessayez |
 | Seul `sudo scanimage -L` le trouve | L'interface est réservée ou n'a jamais été libérée | Réglez d'abord le point ci-dessus. negaflow n'exécute jamais le module en root : `sudo` n'est pas un contournement |
 | Le terminal le trouve, pas negaflow | SANE installé hors des préfixes standards | Le module ne regarde que sous `/opt/homebrew`, `/usr/local` et `/usr`. MacPorts (`/opt/local`) et les préfixes compilés à la main ne sont pas utilisés : installez `sane-backends` avec Homebrew |

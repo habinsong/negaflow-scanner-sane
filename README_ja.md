@@ -190,17 +190,35 @@ negaflowを再起動して「スキャナーを読み込む」を開きます。
 
 | スキャナー系統 | SANEバックエンド | SANE 1.4の状態 | プラグインでの処理 |
 |---|---|---|---|
-| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400、7500i、7600i、8100 | `genesys` | Complete | フィルム専用スキャナー経路 |
+| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400、7500i、7600i | `genesys` | Complete | フィルム専用スキャナー経路 |
+| Plustek OpticFilm 8100、USB `07b3:130c` | `genesys` | Complete | フィルム専用スキャナー経路 |
+| Plustek OpticFilm 8100、USB `07b3:1824` | なし | Unsupported | 利用可能なデバイスとして扱わない |
 | Plustek OpticFilm 8200i、USB `07b3:130d` | `genesys` | Complete | フィルム専用スキャナー経路 |
-| Plustek OpticFilm 8200i、USB `07b3:1825`（GL128） | `genesys` | Unsupported | 利用可能なデバイスとして扱わない |
-| Epson Perfection V700/V750、V800/V850 | `epson2` | Good | 報告された場合に透過原稿ソースと位置指定領域を使用 |
-| Nikon Coolscan/LS系 | `coolscan3`、旧SCSI機は`coolscan` | 機種によりComplete〜Minimal | フィルム専用スキャナー経路 |
-| Reflecta ProScan/CrystalScan/DigitDia、PIE PowerSlide | `pieusb`、旧SCSI機は`pie` | 機種により異なる | 報告されたオプションだけを使用 |
+| Plustek OpticFilm 8200i、USB `07b3:1825`（GL128） | なし | Unsupported | 利用可能なデバイスとして扱わない |
+| Plustek OpticFilm 120、120 Pro、135、135i、9000i Ai | なし | Unsupported | 利用可能なデバイスとして扱わない |
+| Epson Perfection V700/V750（GT-X900）、V800/V850（GT-X980） | `epson2` | Good | 報告された場合に透過原稿ソースと位置指定領域を使用 |
+| Nikon Coolscan LS-2000、LS-40 ED、LS-50 ED、LS-4000 ED、LS-8000 ED | `coolscan3` | 機種によりComplete〜Minimal | フィルム専用スキャナー経路 |
+| Nikon Coolscan LS-5000 ED | `coolscan3` | バックエンドの一覧にはあるが、実使用の報告は不完全 | フィルム専用スキャナー経路 |
+| Nikon Coolscan LS-20、LS-30、LS-1000 | `coolscan` | 機種により異なる | SCSI専用 |
+| Nikon Coolscan LS-9000 ED | なし | Unsupported | 利用可能なデバイスとして扱わない |
+| Reflecta ProScan/CrystalScan/DigitDia、PIE PowerSlide | `pieusb`、旧SCSI機は`pie` | 機種とモデル番号により異なる | 報告されたオプションだけを使用 |
+| Pacific Image PrimeFilm XA、XAs、XA Plus | なし | Unsupported | 利用可能なデバイスとして扱わない |
 | その他の透過原稿対応フラットベッド・フィルムスキャナー | バックエンドにより異なる | 機種により異なる | 機能報告に従い、機種名によるfallbackは行わない |
 
-OpticFilm 8200iには、同じ製品名で少なくとも2種類のUSB仕様があります。<br>
-`07b3:130d`と `07b3:1825`ではSANEの対応状況が異なります。<br>
-筐体の製品名ではなく、実際のUSB product IDを確認してください。
+### 製品名はハードウェアを示しません
+
+OpticFilm 8100と8200iには、それぞれ同じ製品名で少なくとも2種類のUSB仕様があります。<br>
+`07b3:130c`と`07b3:130d`は`genesys`が扱いますが、`07b3:1824`と`07b3:1825`はどのバックエンドも
+扱えない別のGenesysチップを使っています。<br>
+旧来の名前のまま売られる新しいリビジョンはSANE側で解決できないため、筐体の製品名ではなく実際の
+USB product IDを確認してください。
+
+見分けを難しくする落とし穴がもう2つあります。
+
+- `pieusb`はUSB IDと**モデル番号**の両方を見ます。ReflectaとPIEの機器は`05e3:0145`のようにIDを
+  共有するため、モデル番号が`pieusb.conf`にある機器だけが使えます。
+- `epson2`はEpsonスキャナーを日本国内の型番で認識します。`scanimage -L`はPerfection V800/V850を
+  `GT-X980`、V700/V750を`GT-X900`と表示します。別の機器ではなく同じスキャナーです。
 
 ## 赤外線チャンネル
 
@@ -262,6 +280,8 @@ scanimage -L
 | `scanimage: command not found` | `sane-backends`が未インストール、または別のHomebrewパスにインストール | `command -v scanimage`を確認します。Apple Siliconは`/opt/homebrew/bin`、Intelは`/usr/local/bin`です |
 | USB一覧にスキャナーが出ない | ハブ、ドック、変換アダプタ、ケーブル、電源 | ハブを外してMacへ直結し、別のポートも試します。USB 2.0のフィルムスキャナーはUSB-C変換で失敗しやすいです |
 | `sane-find-scanner`では見えるのに`no SANE devices found` | この機種を担当する有効なバックエンドがない | [SANE対応機器一覧](https://www.sane-project.org/sane-supported-devices.html)を確認し、3のログを読みます |
+| USB一覧にはあり、`scanimage -L`が空で、`repair-sane-config`が`notNeeded` | SANEが知らないハードウェアリビジョン | USB product IDを[対応スキャナー](#対応スキャナー)の表と照合します。旧来の製品名で売られる新しいリビジョンはこちらでは解決できません |
+| Coolscan LS-50やLS-5000がUSB一覧から消える | この機種で知られているUSBポートの故障 | 別のケーブルとポートで確認します。Macが列挙すらしない場合はドライバーではなくハードウェアの故障です |
 | `another process has device opened for exclusive access`、`device busy`、`is not configured` | 別のプログラムがUSBインターフェースを占有済み | VueScan、SilverFast、イメージキャプチャ、メーカー製ユーティリティを終了し、スキャナーを接続し直して再試行します |
 | `sudo scanimage -L`でだけ見つかる | インターフェースが占有されている、または解放されていない | 上の占有を解消します。negaflowはプラグインをrootで実行しないため`sudo`は回避策になりません |
 | ターミナルでは見つかるがnegaflowでは見えない | 標準パス以外に入ったSANE | プラグインは`/opt/homebrew`、`/usr/local`、`/usr`の下だけを参照します。MacPorts（`/opt/local`）や自前ビルドのパスは使わないので、`sane-backends`はHomebrewで入れます |
