@@ -204,16 +204,28 @@ extension SANEBackend {
             }
         }
 
-        guard media.hasDepthOption, let depth = media.depthArgument else {
-            throw ScannerError(.unsupportedOption, "요청 bitDepth를 정확히 적용할 --depth가 없습니다.")
-        }
-        switch options.bitDepth {
-        case .eight where depth != 8:
-            throw ScannerError(.unsupportedOption, "8-bit 요청을 정확히 적용할 수 없습니다.")
-        case .sixteen where depth <= 8:
-            throw ScannerError(.unsupportedOption, "16-bit 요청을 정확히 적용할 수 없습니다.")
-        default:
-            break
+        // 고정 심도 기기는 --depth를 보낼 수 없으므로 요청 심도가 그 값과 같을 때만 통과한다.
+        // 실제 결과가 이 심도인지는 획득 뒤 TIFF 검증이 다시 확인한다.
+        if let fixedDepth = media.fixedDepth {
+            guard fixedDepth == options.bitDepth else {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "이 스캐너는 \(fixedDepth.rawValue)-bit 고정이라 "
+                        + "\(options.bitDepth.rawValue)-bit 요청을 적용할 수 없습니다."
+                )
+            }
+        } else {
+            guard media.hasDepthOption, let depth = media.depthArgument else {
+                throw ScannerError(.unsupportedOption, "요청 bitDepth를 정확히 적용할 --depth가 없습니다.")
+            }
+            switch options.bitDepth {
+            case .eight where depth != 8:
+                throw ScannerError(.unsupportedOption, "8-bit 요청을 정확히 적용할 수 없습니다.")
+            case .sixteen where depth <= 8:
+                throw ScannerError(.unsupportedOption, "16-bit 요청을 정확히 적용할 수 없습니다.")
+            default:
+                break
+            }
         }
 
         if media.hasModeOption, let mode = media.mode {

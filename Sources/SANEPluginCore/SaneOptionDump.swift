@@ -47,9 +47,17 @@ struct SaneOptionDump: Sendable {
         return v.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
-    /// "8|14 [8]" → [8, 14]. 접미사(dpi 등) 제거.
+    /// "8|14 [8]" → [8, 14]. 접미사(dpi 등) 제거. 비활성 옵션은 값이 없다.
     func intTokens(_ name: String) -> [Int] {
-        guard isActive(name), var v = values[name] else { return [] }
+        guard isActive(name) else { return [] }
+        return constraintIntTokens(name)
+    }
+
+    /// 활성 여부와 무관하게 제약 목록만 읽는다. scanimage는 비활성 옵션도 목록을 그대로
+    /// 출력하므로("--depth 8 [inactive]"), 값이 하나뿐인 고정 옵션을 식별할 때만 쓴다.
+    /// 이 값을 그대로 장치에 전송해서는 안 된다.
+    func constraintIntTokens(_ name: String) -> [Int] {
+        guard var v = values[name] else { return [] }
         if let bracket = v.firstIndex(of: "[") { v = String(v[..<bracket]) }
         return v.split(whereSeparator: { $0 == "|" || $0 == " " }).compactMap { tok in
             Int(tok.trimmingCharacters(in: CharacterSet.decimalDigits.inverted))

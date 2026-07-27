@@ -93,6 +93,9 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var mode: String?
         var filmType: String?
         var depthArgument: Int?
+        /// `--depth`가 없거나 비활성인 고정 심도 기기의 실제 심도. 값이 있으면 `--depth`를
+        /// 전송하지 않으며, 요청 심도가 이 값과 다르면 스캔 전에 실패시킨다.
+        var fixedDepth: BitDepth? = nil
         var resolvedDPI: Int?
         var originXMM: Double? = nil
         var originYMM: Double? = nil

@@ -628,8 +628,14 @@ extension SANEBackend {
         throw lastError ?? ScannerError(.ioFailure, "최종 스캔 옵션 조회에 실패했습니다.")
     }
 
-    /// SANE는 `source` 설정 뒤 다른 옵션과 범위를 다시 로드할 수 있다. 투과 소스를 고른 뒤
-    /// `-A`를 다시 요청해 실제 TPU 지오메트리와 활성 옵션을 capability/scan preflight에 사용한다.
+    /// SANE는 `source`/`mode` 설정 뒤 다른 옵션과 범위를 다시 로드할 수 있다. 투과 소스와
+    /// 실제로 스캔할 모드를 고른 뒤 `-A`를 다시 요청해, 그 상태의 지오메트리와 활성 옵션을
+    /// capability/scan preflight에 사용한다.
+    ///
+    /// `--depth`가 비활성이면 모드도 함께 적용한다. epson2는 기본 모드가 Lineart이고 그
+    /// 상태에서 `--depth`를 비활성으로 내린다(실측: Epson GT-X980 = V850). 모드를 적용하지 않은
+    /// 덤프만 읽으면 지원 심도가 통째로 비어 스캐너를 쓸 수 없는 것으로 오판한다. capability는
+    /// 실제로 스캔할 Color(없으면 Gray) 기준으로 읽는다.
     private func sourceSpecificOptionsDump(
         baseDump: String,
         devname: String,
@@ -638,8 +644,7 @@ extension SANEBackend {
         expectedIdentity: DeviceIdentity?,
         ownedByScanSession: Bool
     ) async throws -> (devname: String, dump: String) {
-        let sources = SaneOptionDump(baseDump).enumValues("source")
-        guard let source = Self.preferredTransparencySource(in: sources) else {
+        guard Self.capabilityRedumpArguments(baseDump: baseDump, devname: devname) != nil else {
             return (devname, baseDump)
         }
         var currentDevname = devname
@@ -656,14 +661,20 @@ extension SANEBackend {
                 currentDevname = reopened
             }
             do {
+                guard let args = Self.capabilityRedumpArguments(
+                    baseDump: baseDump,
+                    devname: currentDevname
+                ) else {
+                    return (currentDevname, baseDump)
+                }
                 let selectedDump = try await runScanimage(
-                    args: ["-A", "-d", currentDevname, "--source", source],
+                    args: args,
                     ownedByScanSession: ownedByScanSession
                 )
                 guard !SaneOptionDump(selectedDump).isEmpty else {
                     throw ScannerError(
                         .ioFailure,
-                        "투과 source 선택 뒤 scanimage -A가 옵션을 반환하지 않았습니다."
+                        "source/mode 선택 뒤 scanimage -A가 옵션을 반환하지 않았습니다."
                     )
                 }
                 return (currentDevname, selectedDump)
@@ -672,7 +683,33 @@ extension SANEBackend {
                 guard attempt == 0, Self.isStaleDeviceError(error.localizedDescription) else { throw error }
             }
         }
-        throw lastError ?? ScannerError(.ioFailure, "투과 source 옵션 조회에 실패했습니다.")
+        throw lastError ?? ScannerError(.ioFailure, "source/mode 옵션 조회에 실패했습니다.")
+    }
+
+    /// capability 재조회에 적용할 모드. 이 앱이 실제로 스캔하는 Color 우선, 없으면 Gray.
+    /// Lineart는 쓰지 않으므로 그 상태의 옵션을 capability로 보고하지 않는다.
+    static func capabilityDumpMode(in dump: String) -> String? {
+        let modeValues = SaneOptionDump(dump).enumValues("mode")
+        return pickModeValue(modeValues, colorMode: .color)
+            ?? pickModeValue(modeValues, colorMode: .gray)
+    }
+
+    /// 순수 함수(테스트 가능): capability 재조회 인자. nil이면 base 덤프를 그대로 쓴다.
+    ///
+    /// 모드는 필요할 때만 싣는다. 장치를 한 번 더 여는 것은 전용 필름 스캐너에서 다음
+    /// acquisition을 깨뜨릴 수 있으므로(§canReuseSinglePassOptionsDump), 이미 `--depth`가
+    /// 활성인 장치는 모드 때문에 다시 열지 않는다. 소스 때문에 어차피 다시 열 때는 같은
+    /// 호출에 모드를 함께 실어 추가 open 없이 심도를 활성화한다.
+    static func capabilityRedumpArguments(baseDump: String, devname: String) -> [String]? {
+        let opts = SaneOptionDump(baseDump)
+        let source = preferredTransparencySource(in: opts.enumValues("source"))
+        let depthNeedsMode = opts.hasOption("depth") && !opts.isActive("depth")
+        let mode = (source != nil || depthNeedsMode) ? capabilityDumpMode(in: baseDump) : nil
+        guard source != nil || mode != nil else { return nil }
+        var args = ["-A", "-d", devname]
+        if let source { args += ["--source", source] }
+        if let mode { args += ["--mode", mode] }
+        return args
     }
 
     /// 순수 함수(테스트 가능): -A 덤프 + 옵션 → MediaSelection.
@@ -716,7 +753,9 @@ extension SANEBackend {
 
         // 깊이: 16-bit host 계약은 SANE의 9...16-bit 샘플이 16-bit TIFF 컨테이너로
         // 기록되는 경우를 포함한다. 8-bit 요청을 16-bit로 바꾸거나 그 반대는 허용하지 않는다.
+        // 활성 --depth가 없는 고정 심도 기기는 옵션 없이 그 심도로만 스캔한다(§fixedDepth).
         var depthArgument: Int? = nil
+        let fixedDepth = Self.fixedDepth(opts, backendHint: backend)
         let depthTokens = opts.intTokens("depth").filter { $0 >= 8 }
         switch options.bitDepth {
         case .eight:
@@ -864,6 +903,7 @@ extension SANEBackend {
             mode: mode,
             filmType: filmType,
             depthArgument: depthArgument,
+            fixedDepth: fixedDepth,
             resolvedDPI: resolvedDPI,
             originXMM: originXMM,
             originYMM: originYMM,

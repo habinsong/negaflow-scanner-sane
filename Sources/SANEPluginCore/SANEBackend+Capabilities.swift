@@ -54,10 +54,15 @@ extension SANEBackend {
         }
 
         // 비트깊이: 8 초과(10/12/14/16비트 ADC)는 모두 16비트 컨테이너로 전달된다(SANE 규격).
+        // 활성 --depth가 없으면 고정 심도 기기일 수 있다(§fixedDepth) — 이때는 옵션을 보내지
+        // 않고 그 심도로만 스캔한다.
         var bitDepths: [BitDepth] = []
         let depthTokens = opts.intTokens("depth")
         if depthTokens.contains(8) { bitDepths.append(.eight) }
         if depthTokens.contains(where: { $0 > 8 }) { bitDepths.append(.sixteen) }
+        if bitDepths.isEmpty, let fixed = fixedDepth(opts, backendHint: backendHint) {
+            bitDepths = [fixed]
+        }
 
         var modes: [ColorMode] = []
         if modeValues.contains(where: { $0.contains("color") }) { modes.append(.color) }
@@ -187,6 +192,25 @@ extension SANEBackend {
     /// Epson V700/V750/V800/V850 계열은 일반 TPU와 전체 8x10 투과 영역을 별도 source로
     /// 노출한다. 평판 프리뷰/프레임 배치는 가장 넓은 TPU8x10을 우선하고, 없는 장치는
     /// 기존 투과 source를 사용한다.
+    /// Color/Gray를 적용한 덤프에서도 `--depth`가 활성이 아닐 때 장치가 고정으로 쓰는 심도.
+    /// nil이면 "심도 불명"이며 추정하지 않는다.
+    ///
+    ///   • 옵션이 비활성인데 제약 목록이 값 하나뿐이면 그 값이 곧 고정 심도다. 값이 여럿인데
+    ///     비활성이면 우리가 모르는 이유로 잠긴 상태이므로 아무 값도 고르지 않는다.
+    ///   • epson2는 심도가 하나뿐인 구형 기기에서 옵션 자체를 노출하지 않고 항상 8비트로
+    ///     전송한다(sane-epson2 문서). 문서화된 계약이 있는 백엔드에만 적용하며, 다른
+    ///     백엔드에서 옵션이 없다고 8비트로 추정하지 않는다.
+    static func fixedDepth(_ opts: SaneOptionDump, backendHint: String?) -> BitDepth? {
+        guard opts.hasOption("depth") else {
+            return backendHint == "epson2" ? .eight : nil
+        }
+        guard !opts.isActive("depth") else { return nil }
+        let tokens = opts.constraintIntTokens("depth")
+        guard tokens.count == 1, let only = tokens.first else { return nil }
+        if only == 8 { return .eight }
+        return only > 8 ? .sixteen : nil
+    }
+
     static func preferredTransparencySource(in sources: [String]) -> String? {
         let visibleTransparency = sources.filter {
             isTransparencySource($0) && !isInfraredValue($0)
