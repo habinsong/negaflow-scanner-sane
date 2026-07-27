@@ -218,6 +218,65 @@ IR 扫描使用与 RGB 相同的请求分辨率和扫描区域。<br>
 返回前还会检查两张图像的像素尺寸是否一致。<br>
 negaflow 随后可将 IR 图像用于 GrainMend IR。
 
+## 故障排查：找不到扫描仪
+
+negaflow 中的**已批准**表示允许运行插件可执行文件。<br>
+它不表示已经找到扫描仪。设备发现完全来自 `scanimage -L` 的返回结果，所以那里没有的扫描仪在
+negaflow 中同样没有，重新安装应用或插件也不会改变。
+
+macOS 没有需要逐个应用开启的 USB 权限。negaflow 和本插件都不使用 App Sandbox，因此
+“隐私与安全性”设置也不会阻止访问扫描仪。
+
+### 1. 判断在哪一层失败
+
+打开扫描仪电源并连接后，按顺序执行：
+
+```bash
+system_profiler SPUSBDataType
+```
+
+```bash
+scanimage -L
+```
+
+```bash
+"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
+```
+
+| USB 列表 | `scanimage -L` | `detect` | 问题所在 |
+|---|---|---|---|
+| 没有扫描仪 | 没有 | `{"devices":[]}` | SANE 之前的线缆、端口或供电 |
+| 有扫描仪 | 没有 | `{"devices":[]}` | SANE 后端，或占用该设备的其他进程 |
+| 有扫描仪 | 列出设备 | `{"devices":[]}` | SANE 装在插件不会查找的位置 |
+| 有扫描仪 | 列出设备 | 列出设备 | negaflow 一侧：重新打开“加载扫描仪”并再次批准 |
+
+### 2. 常见原因
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| `scanimage: command not found` | 未安装 `sane-backends`，或装在另一个 Homebrew 路径 | 检查 `command -v scanimage`。Apple Silicon 为 `/opt/homebrew/bin`，Intel 为 `/usr/local/bin` |
+| USB 列表中没有扫描仪 | 集线器、扩展坞、转接头、线缆或供电 | 去掉集线器直连 Mac，并换一个端口。USB 2.0 胶片扫描仪经过 USB-C 转接常常失败 |
+| `sane-find-scanner` 能看到，但提示 `no SANE devices found` | 没有已启用的后端支持该型号 | 查看 [SANE 支持设备列表](https://www.sane-project.org/sane-supported-devices.html)，再阅读第 3 步的日志 |
+| `another process has device opened for exclusive access`、`device busy`、`is not configured` | 其他程序已占用 USB 接口 | 退出 VueScan、SilverFast、图像捕捉和厂商工具，重新连接扫描仪后再试 |
+| 只有 `sudo scanimage -L` 能找到 | 接口被占用或未释放 | 先解决上面的占用问题。negaflow 不会以 root 运行插件，所以 `sudo` 不是解决办法 |
+| 终端能找到，negaflow 找不到 | SANE 装在标准路径之外 | 插件只查找 `/opt/homebrew`、`/usr/local` 和 `/usr` 下的位置。MacPorts（`/opt/local`）和自行编译的路径不会被使用，请用 Homebrew 安装 `sane-backends` |
+| `open of device ... failed: Invalid argument` | 首次打开后 USB 地址发生变化，或缺少 SANE 配置目录 | 重新执行 `detect`，并确认存在 `/opt/homebrew/etc/sane.d` 或 `/usr/local/etc/sane.d` |
+| `brew upgrade` 之前可用 | 新版 `sane-backends` 的后端回归问题 | 用 `brew list --versions sane-backends` 与可用时的版本对比 |
+| 安装旧版 negaflow 插件后列表为空 | 旧版本在 `dll.conf` 中禁用了后端 | 执行 [SANE 配置](#sane-配置)中的 `repair-sane-config` |
+
+### 3. 阅读后端日志
+
+```bash
+SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
+```
+
+它会显示加载了哪些后端以及在哪里失败。<br>
+要缩小到单个后端，请使用该后端自己的变量，例如 `SANE_DEBUG_GENESYS=128` 或
+`SANE_DEBUG_EPSON2=128`。
+
+反馈问题时需要一并提供 macOS 版本、Mac 机型、`scanimage --version`、
+`brew list --versions sane-backends`、扫描仪型号以及上述三步的输出。
+
 ## 请求值与失败处理
 
 - 请求的 DPI 必须准确存在于设备列表或范围中，不会自动改为相近分辨率。

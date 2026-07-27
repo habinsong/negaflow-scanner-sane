@@ -222,6 +222,66 @@ IRパスにはRGBと同じ要求解像度とスキャン領域を使います。
 返す前に、両方の画像のピクセル寸法も一致しているか確認します。<br>
 negaflowはこのIR画像をGrainMend IRで利用できます。
 
+## トラブルシューティング: スキャナーが見つからない
+
+negaflowの**承認済み**は、プラグインの実行ファイルを実行してよいという意味です。<br>
+スキャナーが見つかったという意味ではありません。デバイスの検出は`scanimage -L`が返した結果その
+ものなので、そこに出ないスキャナーはnegaflowにも出ず、アプリやプラグインを再インストールしても
+変わりません。
+
+macOSにはアプリごとに有効化するUSB権限はありません。negaflowとこのプラグインはApp Sandboxを
+使わないため、「プライバシーとセキュリティ」の設定がスキャナーへのアクセスを止めることもありません。
+
+### 1. どの段階で止まっているかを切り分ける
+
+スキャナーの電源を入れて接続した状態で、順に実行します。
+
+```bash
+system_profiler SPUSBDataType
+```
+
+```bash
+scanimage -L
+```
+
+```bash
+"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
+```
+
+| USB一覧 | `scanimage -L` | `detect` | 問題の場所 |
+|---|---|---|---|
+| スキャナーなし | なし | `{"devices":[]}` | SANE以前のケーブル、ポート、電源 |
+| スキャナーあり | なし | `{"devices":[]}` | SANEバックエンド、またはデバイスを占有している別プロセス |
+| スキャナーあり | デバイスあり | `{"devices":[]}` | プラグインが参照しない場所へのSANEインストール |
+| スキャナーあり | デバイスあり | デバイスあり | negaflow側: 「スキャナーを読み込む」を開き直して再承認 |
+
+### 2. よくある原因
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| `scanimage: command not found` | `sane-backends`が未インストール、または別のHomebrewパスにインストール | `command -v scanimage`を確認します。Apple Siliconは`/opt/homebrew/bin`、Intelは`/usr/local/bin`です |
+| USB一覧にスキャナーが出ない | ハブ、ドック、変換アダプタ、ケーブル、電源 | ハブを外してMacへ直結し、別のポートも試します。USB 2.0のフィルムスキャナーはUSB-C変換で失敗しやすいです |
+| `sane-find-scanner`では見えるのに`no SANE devices found` | この機種を担当する有効なバックエンドがない | [SANE対応機器一覧](https://www.sane-project.org/sane-supported-devices.html)を確認し、3のログを読みます |
+| `another process has device opened for exclusive access`、`device busy`、`is not configured` | 別のプログラムがUSBインターフェースを占有済み | VueScan、SilverFast、イメージキャプチャ、メーカー製ユーティリティを終了し、スキャナーを接続し直して再試行します |
+| `sudo scanimage -L`でだけ見つかる | インターフェースが占有されている、または解放されていない | 上の占有を解消します。negaflowはプラグインをrootで実行しないため`sudo`は回避策になりません |
+| ターミナルでは見つかるがnegaflowでは見えない | 標準パス以外に入ったSANE | プラグインは`/opt/homebrew`、`/usr/local`、`/usr`の下だけを参照します。MacPorts（`/opt/local`）や自前ビルドのパスは使わないので、`sane-backends`はHomebrewで入れます |
+| `open of device ... failed: Invalid argument` | 一度開いた後にUSBアドレスが変わった、またはSANE設定ディレクトリがない | `detect`をもう一度実行し、`/opt/homebrew/etc/sane.d`か`/usr/local/etc/sane.d`があるか確認します |
+| `brew upgrade`の前は動いていた | 新しい`sane-backends`でのバックエンド退行 | `brew list --versions sane-backends`を動いていたバージョンと比べます |
+| 旧版negaflowプラグインの導入後に一覧が空 | 旧版が`dll.conf`でバックエンドを無効化した | [SANE設定](#sane設定)の`repair-sane-config`を実行します |
+
+### 3. バックエンドのログを読む
+
+```bash
+SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
+```
+
+どのバックエンドが読み込まれ、どこで失敗したかがわかります。<br>
+バックエンドを1つに絞るときは`SANE_DEBUG_GENESYS=128`や`SANE_DEBUG_EPSON2=128`のように、その
+バックエンドの変数を使います。
+
+報告にはmacOSのバージョン、Macの機種、`scanimage --version`、
+`brew list --versions sane-backends`、スキャナーの機種名と、上の3段階の出力が必要です。
+
 ## 要求値とエラー処理
 
 - 要求DPIがデバイスの一覧または範囲に正確に含まれている必要があります。近い解像度には変更しません。

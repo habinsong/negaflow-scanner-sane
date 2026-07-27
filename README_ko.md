@@ -220,6 +220,65 @@ OpticFilm 8200i는 같은 제품명 아래 USB 변형이 적어도 두 가지 �
 
 IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니다. <br>두 파일의 실제 픽셀 크기가 같은지도 확인한 뒤 반환합니다. <br>negaflow는 이 IR 이미지를 GrainMend IR에 사용할 수 있습니다.
 
+## 문제 해결: 스캐너가 보이지 않을 때
+
+negaflow의 **승인됨**은 플러그인 실행 파일을 실행해도 된다는 뜻입니다.<br>
+스캐너를 찾았다는 뜻이 아닙니다. 장치 발견은 `scanimage -L`이 돌려준 결과 그대로이므로, 거기에
+없는 스캐너는 negaflow에도 없고 앱이나 플러그인을 다시 설치해도 달라지지 않습니다.
+
+macOS에는 앱별로 켜야 하는 USB 권한이 없습니다. negaflow와 이 플러그인은 App Sandbox를 쓰지
+않으므로 **개인정보 보호 및 보안** 설정이 스캐너 접근을 막지도 않습니다.
+
+### 1. 어느 단계에서 끊기는지 확인
+
+스캐너 전원을 켜고 연결한 상태에서 차례대로 실행합니다.
+
+```bash
+system_profiler SPUSBDataType
+```
+
+```bash
+scanimage -L
+```
+
+```bash
+"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
+```
+
+| USB 목록 | `scanimage -L` | `detect` | 문제 위치 |
+|---|---|---|---|
+| 스캐너 없음 | 없음 | `{"devices":[]}` | SANE 이전 단계인 케이블, 포트, 전원 |
+| 스캐너 있음 | 없음 | `{"devices":[]}` | SANE 백엔드 또는 장치를 점유한 다른 프로세스 |
+| 스캐너 있음 | 장치 나옴 | `{"devices":[]}` | 플러그인이 보지 않는 위치에 설치된 SANE |
+| 스캐너 있음 | 장치 나옴 | 장치 나옴 | negaflow 쪽: **스캐너 불러오기**를 다시 열고 승인 |
+
+### 2. 흔한 원인
+
+| 증상 | 원인 | 조치 |
+|---|---|---|
+| `scanimage: command not found` | `sane-backends` 미설치 또는 다른 Homebrew 경로에 설치 | `command -v scanimage` 확인. Apple Silicon은 `/opt/homebrew/bin`, Intel은 `/usr/local/bin` |
+| USB 목록에 스캐너가 없음 | 허브, 도크, 젠더, 케이블, 전원 | 허브를 빼고 Mac에 직접 연결하고 다른 포트도 시도. USB 2.0 필름 스캐너는 USB-C 젠더에서 자주 실패 |
+| `sane-find-scanner`에는 보이는데 `no SANE devices found` | 이 모델을 맡는 활성 백엔드가 없음 | [SANE 지원 목록](https://www.sane-project.org/sane-supported-devices.html)을 확인한 뒤 3번 로그 확인 |
+| `another process has device opened for exclusive access`, `device busy`, `is not configured` | 다른 프로그램이 USB 인터페이스를 이미 점유 | VueScan, SilverFast, 이미지 캡처와 제조사 유틸리티를 종료하고 스캐너를 다시 연결한 뒤 재시도 |
+| `sudo scanimage -L`로만 찾음 | 인터페이스가 점유됐거나 해제되지 않음 | 위 점유 문제를 해결. negaflow는 플러그인을 root로 실행하지 않으므로 `sudo`는 해결책이 아님 |
+| 터미널에서는 찾는데 negaflow에서는 안 보임 | 표준 경로 밖에 설치된 SANE | 플러그인은 `/opt/homebrew`, `/usr/local`, `/usr` 아래만 확인합니다. MacPorts(`/opt/local`)나 직접 빌드한 경로는 쓰지 않으므로 `sane-backends`를 Homebrew로 설치 |
+| `open of device ... failed: Invalid argument` | 처음 연 뒤 USB 주소가 바뀌었거나 SANE 설정 디렉토리가 없음 | `detect`를 다시 실행하고 `/opt/homebrew/etc/sane.d` 또는 `/usr/local/etc/sane.d`가 있는지 확인 |
+| `brew upgrade` 전에는 됐음 | 새 `sane-backends`의 백엔드 회귀 | `brew list --versions sane-backends`를 되던 버전과 비교 |
+| 구버전 negaflow 플러그인 설치 후 목록이 빔 | 구버전이 `dll.conf`에서 백엔드를 꺼 둠 | [SANE 설정](#sane-설정)의 `repair-sane-config` 실행 |
+
+### 3. 백엔드 로그 확인
+
+```bash
+SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
+```
+
+어떤 백엔드가 로드되고 어디서 실패하는지 보여 줍니다.<br>
+백엔드 하나로 좁히려면 `SANE_DEBUG_GENESYS=128`, `SANE_DEBUG_EPSON2=128`처럼 해당 백엔드의
+변수를 사용합니다.
+
+문제를 알리려면 macOS 버전, Mac 기종, `scanimage --version`,
+`brew list --versions sane-backends`, 스캐너 모델과 위 세 단계의 출력이 함께 필요합니다.
+
 ## 요청값과 실패 처리
 
 - 요청한 DPI가 장치의 목록이나 범위에 정확히 있어야 합니다. 가까운 해상도로 바꾸지 않습니다.

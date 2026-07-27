@@ -221,6 +221,65 @@ The IR pass uses the same requested resolution and scan area as the RGB pass.<br
 The plug-in also checks that both images have the same pixel dimensions before returning them.<br>
 negaflow can then use the IR image for GrainMend IR.
 
+## Troubleshooting: no scanner found
+
+**Approved** in negaflow means the plug-in executable is allowed to run.<br>
+It does not mean a scanner was found. Detection is whatever `scanimage -L` returns, so a scanner
+missing there is also missing in negaflow, and reinstalling the app or the plug-in changes nothing.
+
+macOS has no per-app USB permission to switch on. Neither negaflow nor this plug-in uses the App
+Sandbox, so no **Privacy & Security** setting gates scanner access.
+
+### 1. Find the layer that fails
+
+With the scanner powered on and connected, run these in order.
+
+```bash
+system_profiler SPUSBDataType
+```
+
+```bash
+scanimage -L
+```
+
+```bash
+"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
+```
+
+| USB list | `scanimage -L` | `detect` | Where the problem is |
+|---|---|---|---|
+| No scanner | Nothing | `{"devices":[]}` | Cable, port, or power, before SANE is involved |
+| Scanner listed | Nothing | `{"devices":[]}` | SANE backend, or another process holding the device |
+| Scanner listed | Device listed | `{"devices":[]}` | SANE installed where the plug-in does not look |
+| Scanner listed | Device listed | Device listed | negaflow side: reopen **Load Scanner** and approve again |
+
+### 2. Common causes
+
+| Symptom | Cause | What to do |
+|---|---|---|
+| `scanimage: command not found` | `sane-backends` is missing, or installed under the other Homebrew prefix | Check `command -v scanimage`. Apple Silicon uses `/opt/homebrew/bin`, Intel uses `/usr/local/bin` |
+| The scanner is not in the USB list | Hub, dock, adapter, cable, or power | Connect it directly, try another port, and avoid hubs. USB 2.0 film scanners often fail through USB-C adapters |
+| `no SANE devices found` while `sane-find-scanner` sees the device | No enabled backend claims this model | Check the [SANE device list](https://www.sane-project.org/sane-supported-devices.html), then read the log in step 3 |
+| `another process has device opened for exclusive access`, `device busy`, `is not configured` | Another program already claimed the USB interface | Quit VueScan, SilverFast, Image Capture, and vendor utilities, reconnect the scanner, then retry |
+| Only `sudo scanimage -L` finds it | The interface is claimed or was never released | Solve the claim above. negaflow never runs the plug-in as root, so `sudo` is not a workaround |
+| Terminal finds it, negaflow does not | SANE lives outside the standard prefixes | The plug-in only looks under `/opt/homebrew`, `/usr/local`, and `/usr`. MacPorts (`/opt/local`) and hand-built prefixes are not used. Install `sane-backends` with Homebrew |
+| `open of device ... failed: Invalid argument` | The USB address changed after the first open, or the SANE config directory is missing | Run `detect` again, and confirm `/opt/homebrew/etc/sane.d` or `/usr/local/etc/sane.d` exists |
+| It worked before a `brew upgrade` | Backend regression in a newer `sane-backends` | Compare `brew list --versions sane-backends` with the version that worked |
+| Empty list after an older negaflow plug-in was installed | A legacy build disabled backends in `dll.conf` | Run `repair-sane-config`, described in [SANE configuration](#sane-configuration) |
+
+### 3. Read the backend log
+
+```bash
+SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
+```
+
+This shows which backends load and which fail.<br>
+To narrow it to one backend, use that backend's own variable, such as `SANE_DEBUG_GENESYS=128` or
+`SANE_DEBUG_EPSON2=128`.
+
+A report is only useful with the macOS version, the Mac model, `scanimage --version`,
+`brew list --versions sane-backends`, the scanner model, and the output of the three steps above.
+
 ## Exact settings and failure behaviour
 
 - A requested DPI must exist in the device's list or range. The plug-in does not snap it to the

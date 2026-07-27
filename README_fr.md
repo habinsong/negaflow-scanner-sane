@@ -222,6 +222,67 @@ Le passage IR utilise la même résolution et la même zone demandées que le pa
 Le module vérifie aussi que les deux images ont les mêmes dimensions en pixels.<br>
 negaflow peut ensuite utiliser l'image infrarouge avec GrainMend IR.
 
+## Dépannage : aucun scanner détecté
+
+Dans negaflow, **approuvé** signifie que l'exécutable du module est autorisé à s'exécuter.<br>
+Cela ne signifie pas qu'un scanner a été trouvé. La détection correspond exactement à ce que renvoie
+`scanimage -L` : un scanner absent de cette liste est aussi absent de negaflow, et réinstaller
+l'application ou le module n'y change rien.
+
+macOS n'a pas d'autorisation USB à activer par application. Ni negaflow ni ce module n'utilisent
+l'App Sandbox, donc aucun réglage de « Confidentialité et sécurité » ne bloque l'accès au scanner.
+
+### 1. Identifier la couche qui échoue
+
+Scanner allumé et connecté, exécutez ces commandes dans l'ordre.
+
+```bash
+system_profiler SPUSBDataType
+```
+
+```bash
+scanimage -L
+```
+
+```bash
+"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
+```
+
+| Liste USB | `scanimage -L` | `detect` | Origine du problème |
+|---|---|---|---|
+| Aucun scanner | Rien | `{"devices":[]}` | Câble, port ou alimentation, avant même SANE |
+| Scanner présent | Rien | `{"devices":[]}` | Backend SANE, ou autre processus qui retient l'appareil |
+| Scanner présent | Appareil listé | `{"devices":[]}` | SANE installé là où le module ne regarde pas |
+| Scanner présent | Appareil listé | Appareil listé | Côté negaflow : rouvrez « Charger le scanner » et approuvez à nouveau |
+
+### 2. Causes fréquentes
+
+| Symptôme | Cause | Que faire |
+|---|---|---|
+| `scanimage: command not found` | `sane-backends` absent, ou installé sous l'autre préfixe Homebrew | Vérifiez `command -v scanimage`. Apple Silicon utilise `/opt/homebrew/bin`, Intel `/usr/local/bin` |
+| Le scanner n'apparaît pas dans la liste USB | Hub, station d'accueil, adaptateur, câble ou alimentation | Branchez-le directement sur le Mac, essayez un autre port et évitez les hubs. Les scanners de film USB 2.0 échouent souvent via un adaptateur USB-C |
+| `no SANE devices found` alors que `sane-find-scanner` voit l'appareil | Aucun backend actif ne prend en charge ce modèle | Consultez la [liste des appareils SANE](https://www.sane-project.org/sane-supported-devices.html), puis lisez le journal de l'étape 3 |
+| `another process has device opened for exclusive access`, `device busy`, `is not configured` | Un autre programme a déjà réservé l'interface USB | Quittez VueScan, SilverFast, Transfert d'images et les utilitaires du fabricant, rebranchez le scanner, puis réessayez |
+| Seul `sudo scanimage -L` le trouve | L'interface est réservée ou n'a jamais été libérée | Réglez d'abord le point ci-dessus. negaflow n'exécute jamais le module en root : `sudo` n'est pas un contournement |
+| Le terminal le trouve, pas negaflow | SANE installé hors des préfixes standards | Le module ne regarde que sous `/opt/homebrew`, `/usr/local` et `/usr`. MacPorts (`/opt/local`) et les préfixes compilés à la main ne sont pas utilisés : installez `sane-backends` avec Homebrew |
+| `open of device ... failed: Invalid argument` | L'adresse USB a changé après la première ouverture, ou le dossier de configuration SANE est absent | Relancez `detect` et vérifiez la présence de `/opt/homebrew/etc/sane.d` ou `/usr/local/etc/sane.d` |
+| Cela fonctionnait avant un `brew upgrade` | Régression de backend dans une version plus récente de `sane-backends` | Comparez `brew list --versions sane-backends` avec la version qui fonctionnait |
+| Liste vide après l'installation d'un ancien module negaflow | Une ancienne version a désactivé des backends dans `dll.conf` | Lancez `repair-sane-config`, décrit dans [Configuration SANE](#configuration-sane) |
+
+### 3. Lire le journal du backend
+
+```bash
+SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
+```
+
+Il indique quels backends sont chargés et lesquels échouent.<br>
+Pour se limiter à un seul backend, utilisez sa propre variable, par exemple `SANE_DEBUG_GENESYS=128`
+ou `SANE_DEBUG_EPSON2=128`.
+
+Un signalement n'est exploitable qu'avec la version de macOS, le modèle de Mac,
+`scanimage --version`, `brew list --versions sane-backends`, le modèle du scanner et la sortie des
+trois étapes ci-dessus.
+
 ## Valeurs exactes et erreurs
 
 - La résolution demandée doit exister exactement dans la liste ou la plage de l'appareil. Elle n'est
