@@ -321,7 +321,10 @@ extension SANEBackend {
             proc.standardError = errPipe
             self.scanProgressBuffer = ""
             let watchdog = AcquisitionProgressWatchdog()
+            let stderrReadLock = NSLock()
             errPipe.fileHandleForReading.readabilityHandler = { [weak self] fh in
+                stderrReadLock.lock()
+                defer { stderrReadLock.unlock() }
                 let chunk = fh.availableData
                 guard !chunk.isEmpty else {
                     fh.readabilityHandler = nil
@@ -339,6 +342,9 @@ extension SANEBackend {
             }
             proc.terminationHandler = { [weak self] p in
                 errPipe.fileHandleForReading.readabilityHandler = nil
+                // readabilityHandler가 이미 가져간 progress chunk까지 처리된 뒤 최종
+                // stderr를 drain해야, 빠른 I/O 실패를 "진행 전"으로 오판하지 않는다.
+                stderrReadLock.lock()
                 if let rest = try? errPipe.fileHandleForReading.readToEnd(),
                    let s = String(data: rest, encoding: .utf8) {
                     if self?.appendScanimageStderr(
@@ -350,12 +356,13 @@ extension SANEBackend {
                         watchdog.markProgress()
                     }
                 }
+                let watchdogResult = watchdog.finish()
+                stderrReadLock.unlock()
                 try? handle?.close()
                 // 프로세스 추적 해제 — 좀비 방지.
                 self?.clearCurrentProcess(p)
                 // 스캔은 언제나 장치를 연다 → 종료 시 libusb 주소가 바뀐 것으로 본다.
                 self?.noteDeviceOpened()
-                let watchdogResult = watchdog.finish()
                 if self?.isScanCancellationRequested() == true {
                     cont.resume(throwing: ScannerError(.cancelled, "스캔이 취소되었습니다."))
                 } else if let timedOut = watchdogResult.timeout {
