@@ -48,7 +48,8 @@ negaflow zeigt nur Optionen an, die das angeschlossene Gerät und sein aktives S
 
 - macOS 14.0 oder neuer für den aktuellen Installationsweg mit negaflow und Homebrew
 - negaflow
-- [SANE backends](https://formulae.brew.sh/formula/sane-backends) zur Laufzeit
+- Standard-`sane-backends` von Homebrew für normale Scanner
+- macOS 26 oder neuer nur für den separaten gepatchten Nikon-Coolscan-Weg
 - Swift 5.9 oder neuer nur beim Bauen aus dem Quellcode
 
 `Package.swift` behält für die eigenständige ausführbare Datei ein macOS-13-Deployment-Target.<br>
@@ -64,19 +65,33 @@ Falls die Xcode Command Line Tools noch fehlen, installieren Sie sie zuerst:
 xcode-select --install
 ```
 
-Es werden zwei Installationsprogramme veröffentlicht. Laden Sie eines davon unter [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter, öffnen Sie es und starten Sie `Install negaflow Scanner.pkg`.
+Es werden vier Installationsprogramme veröffentlicht. Verwenden Sie die Standardvariante für
+normale SANE-Scanner und die separate Coolscan-Variante unter macOS 26 oder neuer.
 
-| Installationsprogramm | Vorgesehen für | Plug-in-Binärdatei |
+| Installationsprogramm | SANE-Weg | Plug-in-Binärdatei |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple-Silicon-Macs (M1 oder neuer) | nur `arm64` |
-| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple-Silicon- und Intel-Macs | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.1-macos-arm64-installer.dmg` | Standard, macOS 14+ | nur `arm64` |
+| `negaflow-scanner-sane-1.0.1-macos-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.1-coolscan-macos26-arm64-installer.dmg` | Gepatchter Coolscan, macOS 26+ | nur `arm64` |
+| `negaflow-scanner-sane-1.0.1-coolscan-macos26-universal-installer.dmg` | Gepatchter Coolscan, macOS 26+ | `arm64` + `x86_64` |
 
-Beide bieten denselben Funktionsumfang.<br>
-Die Apple-Silicon-Variante ist kleiner und lässt sich auf Intel-Macs nicht installieren; die Universal-Variante läuft auf allen Macs.
+Das Standard-DMG enthält `Install negaflow Scanner.pkg`; das Coolscan-DMG enthält
+`Install negaflow Scanner for Coolscan.pkg`.
 
-Wenn Homebrew fehlt, installiert das Paket zuerst die offizielle Homebrew-Komponente, danach `sane-backends` für den angemeldeten Benutzer und schließlich das negaflow-Plug-in.<br>
+Die Standardvariante installiert Homebrews `sane-backends`. Die Coolscan-Variante baut
+`sane-backends-negaflow` aus offiziellem SANE 1.4.0 und wendet nur den upstream
+`coolscan2`/`coolscan3`-Allokationsfix an.<br>
 Internetzugang und ein Administratorpasswort sind erforderlich.<br>
 Eine vorhandene Homebrew-Installation wird weiterverwendet.
+
+Standardvariante und macOS-Versionen unter 26 blockieren Coolscan nicht. Stock SANE kann auf
+einzelnen Geräten funktionieren, enthält aber den Fix nicht; unterstützt gepatcht ist die
+Coolscan-Variante für macOS 26.
+
+Eine spätere Upstream-Änderung initialisiert zusätzlich die Coolscan3-Parameterblöcke für
+Load/Eject/Reset, die mindestens bei LS-5000-Firmware 1.03 erforderlich sind. Sie bleibt bewusst
+außerhalb dieses Zwei-Zeilen-Patches; Laden, Auswerfen und Zurücksetzen des LS-5000 sind daher
+auch mit der gepatchten Variante ungetestet und können fehlschlagen.
 
 Starten Sie negaflow anschließend neu, öffnen Sie „Scanner laden“, prüfen Sie die Plug-in-Angaben und geben Sie es frei.
 
@@ -99,11 +114,17 @@ Führen Sie anschließend die ausgegebenen **Next steps** aus, damit `brew` in d
 brew --version
 ```
 
-Installieren Sie die SANE-Backends.<br>
-Falls sie bereits vorhanden sind, meldet derselbe Befehl den bestehenden Stand.
+Standardweg ab macOS 14:
 
 ```bash
 brew install sane-backends
+```
+
+Gepatchter Coolscan-Weg ab macOS 26:
+
+```bash
+bash scripts/install-patched-sane.sh
+export PATH="$(brew --prefix sane-backends-negaflow)/bin:$PATH"
 ```
 
 Prüfen Sie den installierten Befehl und die Version:
@@ -111,12 +132,11 @@ Prüfen Sie den installierten Befehl und die Version:
 ```bash
 command -v scanimage
 scanimage --version
-brew list --versions sane-backends
+brew list --versions sane-backends sane-backends-negaflow
 ```
 
-Auf Apple-Silicon-Macs liegt `scanimage` üblicherweise unter `/opt/homebrew/bin/scanimage`, auf Intel-Macs unter `/usr/local/bin/scanimage`.<br>
-Das Plug-in prüft beide Orte, auch wenn eine GUI-Anwendung einen kürzeren `PATH` erhält.<br>
-Die SANE-Konfiguration liegt normalerweise unter `/opt/homebrew/etc/sane.d` oder `/usr/local/etc/sane.d`.
+Wenn das gepatchte Keg vorhanden ist, verwendet das Plug-in dessen absoluten Pfad sowie die
+zugehörigen Verzeichnisse `etc/sane.d` und `lib/sane`.
 
 ### 3. Scanner anschließen und mit SANE prüfen
 
@@ -165,8 +185,8 @@ Entpacken Sie die Release-ZIP-Datei und starten Sie das enthaltene Installations
 ./install.sh
 ```
 
-Für das vorgefertigte Paket ist keine Swift-Toolchain nötig.<br>
-SANE muss trotzdem separat installiert sein.
+Für das vorgefertigte Paket ist keine Swift-Toolchain nötig. `install.sh` installiert nur das
+Plug-in; installieren Sie vorher Standard-SANE oder die Coolscan-Variante für macOS 26.
 
 ### 5. In negaflow freigeben und prüfen
 
@@ -192,7 +212,8 @@ Prüfen Sie die [aktuelle SANE-Geräteliste](https://www.sane-project.org/sane-s
 
 | Scannerfamilie | SANE-Backend | SANE-1.4-Status | Plug-in-Pfad |
 |---|---|---|---|
-| Plustek OpticFilm 7200, 7200 v2, 7200i, 7300, 7400, 7500i, 7600i | `genesys` | Complete | Dedizierter Filmscanner |
+| Plustek OpticFilm 7200, 7200 v2, 7200i, 7300, 7400 v2, 7500i, 7600i | `genesys` | Complete | Dedizierter Filmscanner |
+| Plustek OpticFilm 7400 v1 | `genesys` | Als Complete gelistet, modellspezifische Korrekturen kamen jedoch erst nach SANE 1.4.0 | Capability-gesteuerter Pfad; Hardwareergebnis mit stock 1.4.0 nicht verifiziert |
 | Plustek OpticFilm 8100, USB `07b3:130c` | `genesys` | Complete | Dedizierter Filmscanner |
 | Plustek OpticFilm 8100, USB `07b3:1824` | Keins | Unsupported | Wird nicht als verwendbar behandelt |
 | Plustek OpticFilm 8200i, USB `07b3:130d` | `genesys` | Complete | Dedizierter Filmscanner |
@@ -200,7 +221,7 @@ Prüfen Sie die [aktuelle SANE-Geräteliste](https://www.sane-project.org/sane-s
 | Plustek OpticFilm 120, 120 Pro, 135, 135i, 9000i Ai | Keins | Unsupported | Wird nicht als verwendbar behandelt |
 | Epson Perfection V700/V750 (GT-X900), V800/V850 (GT-X980) | `epson2` | Good | Durchlichteinheit und positionierter Flachbettbereich, wenn gemeldet |
 | Nikon Coolscan LS-2000, LS-40 ED, LS-50 ED, LS-4000 ED, LS-8000 ED | `coolscan3` | Je nach Modell Complete bis Minimal | Dedizierter Filmscanner |
-| Nikon Coolscan LS-5000 ED | `coolscan3` | Im Backend gelistet, in der Praxis als unvollständig gemeldet | Dedizierter Filmscanner |
+| Nikon Coolscan LS-5000 ED | `coolscan3` | In SANE 1.4 ungetestet; könnte wie der LS-50 funktionieren | Dedizierter Filmscanner |
 | Nikon Coolscan LS-20, LS-30, LS-1000 | `coolscan` | Je nach Modell | Nur SCSI |
 | Nikon Coolscan LS-9000 ED | Keins | Unsupported | Wird nicht als verwendbar behandelt |
 | Reflecta ProScan/CrystalScan/DigitDia und PIE PowerSlide | `pieusb`; alte SCSI-Modelle mit `pie` | Je nach Modell und Modellnummer | Nur gemeldete Optionen |
@@ -283,16 +304,16 @@ scanimage -L
 
 | Symptom | Ursache | Vorgehen |
 |---|---|---|
-| `scanimage: command not found` | `sane-backends` fehlt oder liegt unter dem anderen Homebrew-Präfix | `command -v scanimage` prüfen. Apple Silicon nutzt `/opt/homebrew/bin`, Intel `/usr/local/bin` |
+| `scanimage: command not found` | SANE ist nicht installiert oder sein `bin` fehlt im aktuellen `PATH` | Standard-`sane-backends` installieren; für Coolscan den gepatchten Helfer und den obigen `export` verwenden |
 | Der Scanner fehlt in der USB-Liste | Hub, Dock, Adapter, Kabel oder Stromversorgung | Direkt am Mac anschließen, einen anderen Anschluss probieren und Hubs vermeiden. USB-2.0-Filmscanner scheitern häufig an USB-C-Adaptern |
 | `no SANE devices found`, obwohl `sane-find-scanner` das Gerät sieht | Kein aktives Backend ist für dieses Modell zuständig | Die [SANE-Geräteliste](https://www.sane-project.org/sane-supported-devices.html) prüfen und danach das Protokoll aus Schritt 3 lesen |
 | Der Scanner steht in der USB-Liste, `scanimage -L` bleibt leer und `repair-sane-config` meldet `notNeeded` | Eine Hardware-Revision, die SANE nicht kennt | Die USB product ID mit der Tabelle [Scanner-Unterstützung](#scanner-unterstützung) vergleichen. Eine neuere Revision unter altem Produktnamen lässt sich von dieser Seite nicht beheben |
 | Ein Coolscan LS-50 oder LS-5000 verschwindet aus der USB-Liste | Bekannter Defekt des USB-Anschlusses bei diesen Geräten | Mit anderem Kabel und Anschluss prüfen. Wenn der Mac das Gerät nie aufzählt, ist es ein Hardwaredefekt und kein Treiberproblem |
 | `another process has device opened for exclusive access`, `device busy`, `is not configured` | Ein anderes Programm belegt bereits die USB-Schnittstelle | VueScan, SilverFast, Digitale Bilder und Herstellerwerkzeuge beenden, den Scanner neu anschließen und erneut versuchen |
 | Nur `sudo scanimage -L` findet das Gerät | Die Schnittstelle ist belegt oder wurde nie freigegeben | Zuerst die Belegung oben lösen. negaflow startet das Plug-in nie als root, `sudo` ist daher keine Lösung |
-| Terminal findet es, negaflow nicht | SANE liegt außerhalb der Standardpräfixe | Das Plug-in sucht nur unter `/opt/homebrew`, `/usr/local` und `/usr`. MacPorts (`/opt/local`) und selbst gebaute Präfixe werden nicht verwendet, daher `sane-backends` mit Homebrew installieren |
+| Terminal findet es, negaflow nicht | SANE liegt außerhalb der unterstützten Homebrew-Keg-Pfade | Den enthaltenen Installer erneut ausführen; MacPorts und andere manuelle Präfixe werden nicht verwendet |
 | `open of device ... failed: Invalid argument` | Die USB-Adresse hat sich nach dem ersten Öffnen geändert, oder das SANE-Konfigurationsverzeichnis fehlt | `detect` erneut ausführen und prüfen, ob `/opt/homebrew/etc/sane.d` oder `/usr/local/etc/sane.d` vorhanden ist |
-| Vor einem `brew upgrade` funktionierte es | Backend-Regression in einer neueren `sane-backends`-Version | `brew list --versions sane-backends` mit der funktionierenden Version vergleichen |
+| Vor einer Aktualisierung funktionierte es | Das ausgewählte SANE-Keg wurde entfernt oder ersetzt | Den passenden Installer erneut ausführen und `brew list --versions sane-backends sane-backends-negaflow` prüfen |
 | Leere Liste nach Installation eines älteren negaflow-Plug-ins | Eine alte Version hat Backends in `dll.conf` deaktiviert | `repair-sane-config` ausführen, beschrieben unter [SANE-Konfiguration](#sane-konfiguration) |
 
 ### 3. Backend-Protokoll lesen
@@ -306,7 +327,7 @@ Um auf ein Backend einzugrenzen, dessen eigene Variable verwenden, etwa `SANE_DE
 oder `SANE_DEBUG_EPSON2=128`.
 
 Eine Meldung ist nur mit macOS-Version, Mac-Modell, `scanimage --version`,
-`brew list --versions sane-backends`, Scannermodell und der Ausgabe der drei Schritte oben
+`brew list --versions sane-backends sane-backends-negaflow`, Scannermodell und der Ausgabe der drei Schritte oben
 verwertbar.
 
 ## Exakte Werte und Fehlerverhalten
@@ -370,7 +391,7 @@ Beispiel für einen vollständigen Scan:
 
 ## SANE-Konfiguration
 
-Aktuelle Versionen filtern Homebrews gemeinsame `dll.conf` nicht.<br>
+Das gepatchte Keg nutzt sein eigenes `etc/sane.d` und ändert die `dll.conf` einer normalen Homebrew-Installation nicht.<br>
 `detect` repariert automatisch nur Zeilen, die eine ältere Version des negaflow-Plugins deaktiviert hat, und bewahrt Kommentare der Distribution und des Benutzers. Dieselbe Reparatur kann manuell ausgeführt werden:
 
 ```bash
@@ -423,6 +444,7 @@ NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 
 Dieser Build prüft das festgelegte offizielle Homebrew-Paket vor der Übernahme seiner Installer-Komponente, erstellt anschließend die Apple-Silicon- und die Universal-Variante und kontrolliert jedes PKG und DMG ohne Installation.<br>
 Mit `NEGAFLOW_INSTALLER_ARCHITECTURE` auf `arm64` oder `universal` wird nur eine Variante gebaut; der Standardwert `all` baut beide.<br>
+Mit `NEGAFLOW_INSTALLER_VARIANT=all` werden Standard- und Coolscan-Familie gebaut; standardmäßig wird nur die Standardfamilie gebaut.<br>
 Für den Distributionsmodus werden zusätzlich `NEGAFLOW_INSTALLER_MODE=distribution`, eine `NEGAFLOW_INSTALLER_IDENTITY` für das PKG sowie die bereits verwendete App-Signaturidentität und das Notarisierungsprofil benötigt.
 
 ## Lizenz
@@ -430,7 +452,9 @@ Für den Distributionsmodus werden zusätzlich `NEGAFLOW_INSTALLER_MODE=distribu
 Dieses Projekt wird unter [GPL-2.0-or-later](LICENSE) veröffentlicht.<br>
 Release-Archive enthalten den Lizenzhinweis und den vollständigen Text der GNU GPL v2 in [COPYING](COPYING).
 
-Der Komplettinstaller enthält außerdem die [Hinweise zu Drittsoftware](THIRD_PARTY_NOTICES.md) für die enthaltene Homebrew-Komponente und die über das Netzwerk installierten SANE-Backends.<br>
+Die Installer enthalten außerdem die [Hinweise zu Drittsoftware](THIRD_PARTY_NOTICES.md) für
+die enthaltene Homebrew-Komponente und, bei der Coolscan-Variante, die auf dem Mac des Benutzers
+gebauten gepatchten SANE-Quellen.<br>
 Das vollständige Quellarchiv derselben Plug-in-Version wird neben dem Release-ZIP veröffentlicht und<br>
 ist außerdem im ZIP, im PKG-Inhalt und im DMG enthalten.
 

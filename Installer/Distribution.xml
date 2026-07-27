@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <installer-gui-script minSpecVersion="2">
-    <title>negaflow SANE Scanner</title>
+    <title>@INSTALLER_TITLE@</title>
     <organization>com.habinsong.negaflow</organization>
     <options customize="never" hostArchitectures="@HOST_ARCHITECTURES@" rootVolumeOnly="true"/>
 
     <volume-check>
         <allowed-os-versions>
-            <os-version min="14.0.0"/>
+            <os-version min="@MIN_OS_VERSION@"/>
         </allowed-os-versions>
     </volume-check>
 
     <choices-outline>
         <line choice="default">
             <line choice="sh.brew.homebrew"/>
-            <line choice="com.habinsong.negaflow.scanner-sane.setup"/>
+            <line choice="@SETUP_IDENTIFIER@"/>
         </line>
     </choices-outline>
 
@@ -25,10 +25,10 @@
         <pkg-ref id="sh.brew.homebrew"/>
     </choice>
     <choice
-        id="com.habinsong.negaflow.scanner-sane.setup"
+        id="@SETUP_IDENTIFIER@"
         visible="false"
         selected="true">
-        <pkg-ref id="com.habinsong.negaflow.scanner-sane.setup"/>
+        <pkg-ref id="@SETUP_IDENTIFIER@"/>
     </choice>
 
     <pkg-ref
@@ -36,7 +36,7 @@
         onConclusion="none"
         version="@HOMEBREW_VERSION@">#HomebrewComponent.pkg</pkg-ref>
     <pkg-ref
-        id="com.habinsong.negaflow.scanner-sane.setup"
+        id="@SETUP_IDENTIFIER@"
         onConclusion="none"
         version="@PLUGIN_VERSION@">#negaflowScannerSetup.pkg</pkg-ref>
 

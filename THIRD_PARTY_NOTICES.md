@@ -1,6 +1,7 @@
 # Third-party notices
 
-The one-shot installer contains or installs the following independent software.
+The standard and Coolscan installers contain or install the following
+independent software.
 
 ## Homebrew 6.0.11
 
@@ -43,12 +44,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## SANE backends
 
 - Project: <https://www.sane-project.org/>
-- Homebrew formula: <https://formulae.brew.sh/formula/sane-backends>
-- License reported by Homebrew: GPL-2.0-or-later
-- Distribution method: downloaded and installed by Homebrew on the user's Mac
+- Upstream source:
+  <https://gitlab.com/-/project/429008/uploads/843c156420e211859e974f78f64c3ea3/sane-backends-1.4.0.tar.gz>
+- Upstream version: 1.4.0
+- Upstream SHA-256: `f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72`
+- License: GPL-2.0-or-later
+- Upstream fix: <https://gitlab.com/sane-project/backends/-/commit/9bea1ee256c744098576acee98053e094b4a14a2>
+- Distribution method: the standard installer asks Homebrew for stock `sane-backends`; the
+  Coolscan installer downloads the pinned upstream source and builds it on the user's Mac using
+  `Formula/sane-backends-negaflow.rb`
 
-The installer does not contain or redistribute a `sane-backends` bottle. The version and dependencies
-are resolved by the official Homebrew formula at installation time.
+The installer distribution does not contain or redistribute a `sane-backends` bottle or SANE runtime binary.
+The Coolscan installer's GPL source payload contains a Homebrew formula with the upstream two-line
+`coolscan2`/`coolscan3` word-list allocation fix. Homebrew verifies the pinned source SHA-256,
+applies that patch, and builds the separate `sane-backends-negaflow` keg locally.
 
 ## negaflow-scanner-sane
 
@@ -56,8 +65,8 @@ are resolved by the official Homebrew formula at installation time.
 - License: GPL-2.0-or-later
 
 The Swift implementation in this repository was written for this plug-in. It invokes the separately
-installed `scanimage` command and does not contain SANE backend source, headers, libraries, or device
-tables. See [PROVENANCE.md](PROVENANCE.md) for the source and distribution inventory.
+installed `scanimage` command and does not link SANE headers or libraries. See
+[PROVENANCE.md](PROVENANCE.md) for the source and distribution inventory.
 
 The plug-in's [license notice](LICENSE) and the complete [GNU GPL v2 text](COPYING) are included in
 the release ZIP, package, and disk image. The matching complete source archive is published beside

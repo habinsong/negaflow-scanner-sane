@@ -25,6 +25,7 @@ mkdir -p "$SOURCE_ROOT"
 cp -pR \
   "$ROOT/.github" \
   "$ROOT/Config" \
+  "$ROOT/Formula" \
   "$ROOT/Installer" \
   "$ROOT/Sources" \
   "$ROOT/Tests" \

@@ -1,0 +1,93 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: package postinstall must run as root." >&2
+  exit 1
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+plugin_source="$script_dir/sane"
+
+case "$(uname -m)" in
+  arm64) brew="/opt/homebrew/bin/brew" ;;
+  x86_64) brew="/usr/local/bin/brew" ;;
+  *)
+    echo "[negaflow-coolscan-installer] ERROR: unsupported architecture: $(uname -m)" >&2
+    exit 1
+    ;;
+esac
+
+if [[ ! -x "$brew" ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: Homebrew was not installed at the supported prefix." >&2
+  exit 1
+fi
+
+console_user="$(stat -f "%Su" /dev/console 2>/dev/null || true)"
+case "$console_user" in
+  ""|root|loginwindow|_mbsetupuser)
+    echo "[negaflow-coolscan-installer] ERROR: no supported logged-in user was found." >&2
+    exit 1
+    ;;
+esac
+
+console_home="$(dscl . -read "/Users/$console_user" NFSHomeDirectory 2>/dev/null \
+  | sed 's/^NFSHomeDirectory: //')"
+if [[ -z "$console_home" || "$console_home" != /* || "$console_home" == "/" \
+      || ! -d "$console_home" ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: could not determine the logged-in user's home." >&2
+  exit 1
+fi
+
+run_brew_as_console_user() {
+  if "$brew" help as-console-user >/dev/null 2>&1; then
+    "$brew" as-console-user "$@"
+    return
+  fi
+
+  /usr/bin/sudo -H -u "$console_user" /usr/bin/env -i \
+    "HOME=$console_home" \
+    "USER=$console_user" \
+    "LOGNAME=$console_user" \
+    "PATH=${brew%/brew}:/usr/bin:/bin:/usr/sbin:/sbin" \
+    "$brew" "$@"
+}
+
+formula="$plugin_source/Formula/sane-backends-negaflow.rb"
+if [[ ! -s "$formula" ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: patched SANE formula is missing." >&2
+  exit 1
+fi
+
+echo "[negaflow-coolscan-installer] preparing the local negaflow Homebrew tap..."
+if ! run_brew_as_console_user tap | /usr/bin/grep -Fqx negaflow/scanner; then
+  run_brew_as_console_user tap-new negaflow/scanner --no-git
+fi
+tap_path="$(run_brew_as_console_user --repository negaflow/scanner)"
+if [[ -z "$tap_path" || "$tap_path" != /* || ! -d "$tap_path" ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: local Homebrew tap was not created." >&2
+  exit 1
+fi
+/usr/bin/sudo -H -u "$console_user" /bin/mkdir -p "$tap_path/Formula"
+/usr/bin/sudo -H -u "$console_user" /bin/cp "$formula" \
+  "$tap_path/Formula/sane-backends-negaflow.rb"
+
+echo "[negaflow-coolscan-installer] building the patched SANE backends for the logged-in user..."
+run_brew_as_console_user install negaflow/scanner/sane-backends-negaflow
+sane_prefix="$(run_brew_as_console_user --prefix sane-backends-negaflow)"
+scanimage="$sane_prefix/bin/scanimage"
+if [[ ! -x "$scanimage" ]]; then
+  echo "[negaflow-coolscan-installer] ERROR: patched scanimage was not installed." >&2
+  exit 1
+fi
+run_brew_as_console_user list --versions sane-backends-negaflow
+
+echo "[negaflow-coolscan-installer] installing the negaflow scanner plug-in for $console_user..."
+/usr/bin/sudo -H -u "$console_user" /usr/bin/env -i \
+  "HOME=$console_home" \
+  "USER=$console_user" \
+  "LOGNAME=$console_user" \
+  "PATH=/usr/bin:/bin:/usr/sbin:/sbin" \
+  /bin/bash "$script_dir/install-plugin-user.sh" "$plugin_source"
+
+echo "[negaflow-coolscan-installer] complete. Restart negaflow and approve the scanner plug-in."

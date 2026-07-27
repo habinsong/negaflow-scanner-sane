@@ -205,6 +205,33 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
     }
 
+    func testPieWithoutDepthOptionIsFixedEightBit() {
+        let dump = """
+            --mode Color|Gray [Color]
+            --resolution 300|600|1200dpi [600]
+            --preview[=(yes|no)] [no]
+            -l 0..36mm [0]
+            -t 0..24mm [0]
+            -x 1..36mm [36]
+            -y 1..24mm [24]
+        """
+        XCTAssertEqual(
+            SANEBackend.parseCapabilities(dump, backendHint: "pie").supportedBitDepths,
+            [.eight]
+        )
+        var options = ScanOptions.strongDefault(scannerID: "sane-pie:scsi:/dev/sg0")
+        options.bitDepth = .eight
+        options.resolution = Resolution(600)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        let media = SANEBackend.resolveMedia(
+            dump: dump,
+            options: options,
+            deviceTypeHint: "film scanner"
+        )
+        XCTAssertEqual(media.fixedDepth, .eight)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+    }
+
     // MARK: 다른 백엔드는 추정하지 않는다
 
     func testOtherBackendsWithoutDepthOptionStayUnknown() {

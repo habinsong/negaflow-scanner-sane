@@ -8,7 +8,7 @@ final class ReleaseScriptContractTests: XCTestCase {
             script.range(of: #"notarize_artifact "$BUILT_PKG" "pkg""#)
         )
         let packageCopy = try XCTUnwrap(
-            script.range(of: #"cp "$BUILT_PKG" "$DMG_ROOT/Install negaflow Scanner.pkg""#)
+            script.range(of: #"cp "$BUILT_PKG" "$DMG_ROOT/$DMG_PKG_NAME""#)
         )
         let diskImageNotarization = try XCTUnwrap(
             script.range(of: #"notarize_artifact "$BUILT_DMG" "dmg""#)
@@ -65,9 +65,22 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(workflow.contains("NEGAFLOW_NOTARY_PRIVATE_KEY_BASE64"))
         XCTAssertTrue(workflow.contains("scripts/verify-release.sh"))
         XCTAssertTrue(workflow.contains("scripts/verify-installer.sh"))
+        XCTAssertTrue(workflow.contains("cd .build/release-artifacts"))
+        XCTAssertTrue(workflow.contains("shasum -a 256 -c *-SHA256SUMS.txt"))
         XCTAssertTrue(workflow.contains("actions/upload-artifact@v7"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_RELEASE_MODE: local"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_INSTALLER_MODE: local"))
+    }
+
+    func testMacOS26WorkflowsActuallyBuildPatchedCoolscanFormula() throws {
+        for path in [
+            ".github/workflows/ci.yml",
+            ".github/workflows/distribution.yml",
+        ] {
+            let workflow = try source(named: path)
+            XCTAssertTrue(workflow.contains("runs-on: macos-26"), path)
+            XCTAssertTrue(workflow.contains("bash scripts/install-patched-sane.sh"), path)
+        }
     }
 
     func testInstallerBuildsAndVerifiesAppleSiliconAndUniversalVariants() throws {
@@ -79,6 +92,21 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(builder.contains(#""$INSTALLER_ARCHITECTURE""#))
         XCTAssertTrue(verifier.contains(#"[[ "$architectures" == "arm64" ]]"#))
         XCTAssertTrue(verifier.contains(#"grep -qw x86_64 <<<"$architectures""#))
+    }
+
+    func testInstallerSeparatesStandardAndPatchedCoolscanVariants() throws {
+        let builder = try source(named: "scripts/build-installer.sh")
+        let verifier = try source(named: "scripts/verify-installer.sh")
+
+        XCTAssertTrue(builder.contains("NEGAFLOW_INSTALLER_VARIANT"))
+        XCTAssertTrue(builder.contains(#"MIN_OS_VERSION="14.0""#))
+        XCTAssertTrue(builder.contains(#"MIN_OS_VERSION="26.0""#))
+        XCTAssertTrue(builder.contains(#"ARTIFACT_PLATFORM="macos""#))
+        XCTAssertTrue(builder.contains(#"ARTIFACT_PLATFORM="coolscan-macos26""#))
+        XCTAssertTrue(builder.contains("Installer/Scripts/postinstall-coolscan"))
+        XCTAssertTrue(verifier.contains(#"EXPECTED_VARIANT="$4""#))
+        XCTAssertTrue(verifier.contains(#"EXPECTED_MIN_OS="14.0""#))
+        XCTAssertTrue(verifier.contains(#"EXPECTED_MIN_OS="26.0""#))
     }
 
     private var repositoryRoot: URL {

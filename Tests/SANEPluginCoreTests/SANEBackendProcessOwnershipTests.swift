@@ -4,6 +4,38 @@ import Darwin
 @testable import SANEPluginCore
 
 final class SANEBackendProcessOwnershipTests: XCTestCase {
+    func testUtilityScanimageProcessTimesOutAndReleasesOwnedSlot() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-utility-timeout-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        try """
+        #!/bin/sh
+        exec /bin/sleep 10
+        """.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(
+            scanimagePath: executableURL.path,
+            utilityProcessTimeout: 0.1,
+            acquisitionFirstProgressTimeout: 1
+        )
+        let started = Date()
+        do {
+            _ = try await backend.runScanimage(args: ["-L"])
+            XCTFail("응답하지 않는 scanimage 조회를 성공으로 처리했습니다.")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .timeout)
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2)
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+    }
+
     func testSequentialPositionedScansInvokeOneAcquisitionPerROIWithExactGeometry() async throws {
         let fixture = try makePositionedFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
@@ -27,7 +59,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
             .split(separator: "\n")
             .map(String.init)
         XCTAssertEqual(invocations.count, 2, "ROI마다 scanimage acquisition을 한 번씩 실행해야 합니다.")
-        XCTAssertTrue(invocations.allSatisfy { $0.contains("-d epson2:libusb:001:005") })
+        XCTAssertTrue(invocations.allSatisfy { $0.contains("-d epson2 ") })
         XCTAssertTrue(invocations[0].contains("-l 12.5 -t 21.2 -x 36 -y 24"))
         XCTAssertTrue(invocations[1].contains("-l 100.1 -t 120.2 -x 36 -y 24"))
         XCTAssertTrue(invocations.allSatisfy { $0.contains("--format=tiff") })
@@ -118,6 +150,165 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         XCTAssertEqual(result.height, 1)
     }
 
+    func testFirstProgressTimeoutRetriesOnceAndCleansUpOwnedProcess() async throws {
+        let fixture = try makeFixture(blockingScan: true)
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.15
+        )
+        let phases = PhaseBox()
+
+        do {
+            _ = try await backend.startFullScan(fixture.options) { update in
+                phases.append(update.phase)
+            }
+            XCTFail("첫 이미지 데이터가 없는 scanimage를 성공으로 처리했습니다.")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .timeout)
+            XCTAssertTrue(error.message.contains("첫 이미지 데이터"))
+        }
+
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+            .map(String.init)
+        XCTAssertEqual(acquisitions.count, 2, "첫 데이터 timeout은 한 번만 재시도해야 합니다.")
+        XCTAssertTrue(acquisitions.allSatisfy { $0.contains("-d genesys ") })
+        XCTAssertFalse(
+            phases.contains(.scanningRGB),
+            "scanimage가 실제 진행률을 내기 전에 RGB 스캔 진행률을 만들면 안 됩니다."
+        )
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.options.temporaryOutputURL!.path))
+    }
+
+    func testProgressStallAfterFirstProgressFailsWithoutRetry() async throws {
+        let fixture = try makeFixture(blockingScan: false, progressBeforeDelay: true)
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.15,
+            acquisitionProgressStallTimeout: 0.15
+        )
+
+        do {
+            _ = try await backend.startFullScan(fixture.options) { _ in }
+            XCTFail("첫 progress 뒤 멈춘 scanimage를 성공으로 처리했습니다.")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .timeout)
+            XCTAssertTrue(error.message.contains("진행률"))
+        }
+
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+        XCTAssertEqual(acquisitions.count, 1, "이미 acquisition이 시작된 stall은 자동 재시도하면 안 됩니다.")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.options.temporaryOutputURL!.path))
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+    }
+
+    func testStderrNoiseDoesNotHideProgressStall() async throws {
+        let fixture = try makeFixture(
+            blockingScan: false,
+            progressBeforeDelay: true,
+            noiseDuringDelay: true
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.15,
+            acquisitionProgressStallTimeout: 0.15
+        )
+
+        do {
+            _ = try await backend.startFullScan(fixture.options) { _ in }
+            XCTFail("새 progress 없이 stderr만 출력하는 acquisition을 성공으로 처리했습니다.")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .timeout)
+            XCTAssertTrue(error.message.contains("진행률"))
+        }
+
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+        XCTAssertEqual(acquisitions.count, 1)
+    }
+
+    func testPeriodicProgressKeepsLongRunningAcquisitionAlive() async throws {
+        let fixture = try makeFixture(
+            blockingScan: false,
+            progressUpdatesDuringDelay: true
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.5,
+            acquisitionProgressStallTimeout: 0.5
+        )
+
+        let result = try await backend.startFullScan(fixture.options) { _ in }
+
+        XCTAssertEqual(result.width, 1)
+        XCTAssertEqual(result.height, 1)
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+        XCTAssertEqual(acquisitions.count, 1)
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+    }
+
+    func testUnknownProgressKeepsLongRunningAcquisitionAlive() async throws {
+        let fixture = try makeFixture(
+            blockingScan: false,
+            unknownProgressUpdatesDuringDelay: true
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.5,
+            acquisitionProgressStallTimeout: 0.5
+        )
+
+        let result = try await backend.startFullScan(fixture.options) { _ in }
+
+        XCTAssertEqual(result.width, 1)
+        XCTAssertEqual(result.height, 1)
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+        XCTAssertEqual(acquisitions.count, 1)
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+    }
+
+    func testDeviceIOErrorAfterProgressIsNotRetried() async throws {
+        let fixture = try makeFixture(
+            blockingScan: false,
+            failAfterProgress: true
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let backend = SANEBackend(
+            scanimagePath: fixture.executableURL.path,
+            acquisitionFirstProgressTimeout: 0.15,
+            acquisitionProgressStallTimeout: 0.15
+        )
+
+        do {
+            _ = try await backend.startFullScan(fixture.options) { _ in }
+            XCTFail("이미 진행된 뒤의 I/O 오류를 성공으로 처리했습니다.")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .ioFailure)
+            XCTAssertTrue(error.message.lowercased().contains("device i/o"))
+        }
+
+        let acquisitions = try String(contentsOf: fixture.argumentLogURL, encoding: .utf8)
+            .split(separator: "\n")
+        XCTAssertEqual(acquisitions.count, 1, "이미 움직인 acquisition을 자동 재시도하면 안 됩니다.")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.options.temporaryOutputURL!.path))
+        XCTAssertNil(backend.snapshotOwnedScanProcess())
+    }
+
+    func testPieusbIsExcludedFromAutomaticProgressWatchdog() {
+        XCTAssertFalse(SANEBackend.usesAutomaticAcquisitionWatchdog(backend: "pieusb"))
+        XCTAssertTrue(SANEBackend.usesAutomaticAcquisitionWatchdog(backend: "epson2"))
+        XCTAssertTrue(SANEBackend.usesAutomaticAcquisitionWatchdog(backend: "genesys"))
+    }
+
     func testProcessImplementationContainsNoGlobalNameKillOrShellInterpolation() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -142,16 +333,95 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         var options: ScanOptions
     }
 
-    private func makeFixture(blockingScan: Bool) throws -> Fixture {
+    private final class PhaseBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var phases: [ScanPhase] = []
+
+        func append(_ phase: ScanPhase) {
+            lock.lock()
+            phases.append(phase)
+            lock.unlock()
+        }
+
+        func contains(_ phase: ScanPhase) -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return phases.contains(phase)
+        }
+    }
+
+    private func makeFixture(
+        blockingScan: Bool,
+        progressBeforeDelay: Bool = false,
+        progressUpdatesDuringDelay: Bool = false,
+        unknownProgressUpdatesDuringDelay: Bool = false,
+        failAfterProgress: Bool = false,
+        noiseDuringDelay: Bool = false
+    ) throws -> Fixture {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("negaflow-sane-process-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let sourceTIFF = root.appendingPathComponent("source.tiff")
         try writeScannerRGB16TIFF(pixels: [0.1, 0.2, 0.3], width: 1, height: 1, to: sourceTIFF)
         let executableURL = root.appendingPathComponent("scanimage-owned-fixture")
-        let acquisition = blockingScan
-            ? "exec /bin/sleep 30"
-            : "exec /bin/cat \(shellQuote(sourceTIFF.path))"
+        let acquisition: String
+        if blockingScan {
+            acquisition = "exec /bin/sleep 30"
+        } else if failAfterProgress {
+            acquisition = """
+            printf 'Progress: 5%%\\r' >&2
+            printf 'scanimage: Error during device I/O\\n' >&2
+            exit 1
+            """
+        } else if unknownProgressUpdatesDuringDelay {
+            acquisition = """
+            printf 'Progress: (unknown)\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: (unknown)\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: (unknown)\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: (unknown)\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: (unknown)\\r' >&2
+            /bin/sleep 0.15
+            exec /bin/cat \(shellQuote(sourceTIFF.path))
+            """
+        } else if progressUpdatesDuringDelay {
+            acquisition = """
+            printf 'Progress: 1%%\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: 25%%\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: 60%%\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: 80%%\\r' >&2
+            /bin/sleep 0.15
+            printf 'Progress: 95%%\\r' >&2
+            /bin/sleep 0.15
+            exec /bin/cat \(shellQuote(sourceTIFF.path))
+            """
+        } else if progressBeforeDelay {
+            if noiseDuringDelay {
+                acquisition = """
+                printf 'Progress: 1%%\\r' >&2
+                /bin/sleep 0.06
+                printf 'scanner still busy\\n' >&2
+                /bin/sleep 0.06
+                printf 'scanner still busy\\n' >&2
+                /bin/sleep 0.3
+                exec /bin/cat \(shellQuote(sourceTIFF.path))
+                """
+            } else {
+                acquisition = """
+                printf 'Progress: 1%%\\r' >&2
+                /bin/sleep 0.3
+                exec /bin/cat \(shellQuote(sourceTIFF.path))
+                """
+            }
+        } else {
+            acquisition = "exec /bin/cat \(shellQuote(sourceTIFF.path))"
+        }
         let script = """
         #!/bin/sh
         if [ "$1" = "hold" ]; then
@@ -160,6 +430,10 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         fi
         if [ "$1" = "-L" ]; then
           echo "device \\`genesys:libusb:000:010' is a PLUSTEK Ownership Test film scanner"
+          exit 0
+        fi
+        if [ "$1" = "-f" ]; then
+          printf 'genesys:libusb:000:010\\tPLUSTEK\\tOwnership Test\\tfilm scanner\\n'
           exit 0
         fi
         if [ "$1" = "-A" ]; then
@@ -171,6 +445,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
           echo "-y 1..24mm (in steps of 1) [24]"
           exit 0
         fi
+        printf '%s\\n' "$*" >> \(shellQuote(root.appendingPathComponent("arguments.log").path))
         \(acquisition)
         """
         try script.write(to: executableURL, atomically: true, encoding: .utf8)
@@ -214,6 +489,10 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         #!/bin/sh
         if [ "$1" = "-L" ]; then
           echo "device \\`epson2:libusb:001:005' is a Epson Position Test flatbed scanner"
+          exit 0
+        fi
+        if [ "$1" = "-f" ]; then
+          printf 'epson2:libusb:001:005\\tEpson\\tPosition Test\\tflatbed scanner\\n'
           exit 0
         fi
         if [ "$1" = "-A" ]; then

@@ -7,7 +7,7 @@
 #
 # negaflow 앱은 시작 시 이 디렉토리를 스캔해 플러그인을 발견하고, JSON/CLI 프로토콜로만 통신한다.
 #
-# 요구사항: Swift(SwiftPM), 그리고 런타임에 SANE `scanimage`(예: `brew install sane-backends`).
+# 요구사항: Swift(SwiftPM), Homebrew.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

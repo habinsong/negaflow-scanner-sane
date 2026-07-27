@@ -6,6 +6,8 @@ import ImageIO
 extension SANEBackend {
     static func findScanimage() -> String {
         let candidates = [
+            "/opt/homebrew/opt/sane-backends-negaflow/bin/scanimage",
+            "/usr/local/opt/sane-backends-negaflow/bin/scanimage",
             "/opt/homebrew/bin/scanimage",
             "/usr/local/bin/scanimage",
             "/usr/bin/scanimage",
@@ -17,12 +19,14 @@ extension SANEBackend {
     /// SANE 설정 디렉토리(dll.conf, genesys.conf 등이 있는 곳)를 찾는다.
     /// Homebrew 로 설치한 경우 기본 컴파일 경로에 없으므로 SANE_CONFIG_DIR 가 필요하다.
     /// scanimage 가 이 디렉토리를 못 찾으면 "open of device failed: Invalid argument".
-    static func findSaneConfigDir() -> String? {
-        // 1) 환경변수가 이미 있으면 그대로 사용.
-        if let v = ProcessInfo.processInfo.environment["SANE_CONFIG_DIR"],
-           FileManager.default.fileExists(atPath: v) { return v }
-        // 2) Homebrew 표준 경로 후보.
-        let overrideConfigDir = ProcessInfo.processInfo.environment["NEGAFLOW_SCANIMAGE_PATH"]
+    static func findSaneConfigDir(
+        scanimagePath: String? = nil,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> String? {
+        // 선택된 scanimage와 같은 keg의 설정을 우선한다. patched scanimage에
+        // stock SANE_CONFIG_DIR가 섞이면 Coolscan backend 패치가 우회될 수 있다.
+        let selectedScanimage = scanimagePath ?? environment["NEGAFLOW_SCANIMAGE_PATH"]
+        let selectedConfigDir = selectedScanimage
             .map {
                 URL(fileURLWithPath: $0)
                     .deletingLastPathComponent()
@@ -30,12 +34,18 @@ extension SANEBackend {
                     .appendingPathComponent("etc/sane.d")
                     .path
             }
+        if let selectedConfigDir,
+           FileManager.default.fileExists(atPath: selectedConfigDir) {
+            return selectedConfigDir
+        }
+        // 같은 keg 설정이 없을 때만 명시적 환경변수를 보존한다.
+        if let v = environment["SANE_CONFIG_DIR"],
+           FileManager.default.fileExists(atPath: v) { return v }
         let candidates = [
-            overrideConfigDir,
             "/opt/homebrew/etc/sane.d",
             "/usr/local/etc/sane.d",
             "/etc/sane.d",
-        ].compactMap { $0 }
+        ]
         for c in candidates {
             if FileManager.default.fileExists(atPath: c) { return c }
         }
@@ -45,10 +55,17 @@ extension SANEBackend {
     /// GUI .app 환경에서는 기본 PATH 가 /usr/bin:/bin 뿐이라 scanimage 가
     /// 의존하는 동적 라이브러리(libsane)나 SANE_CONFIG_DIR 를 못 찾는다.
     /// 따라서 Process 에 명시적으로 환경을 주입한다.
-    static func makeSaneEnvironment() -> [String: String] {
-        var env = ProcessInfo.processInfo.environment
+    static func makeSaneEnvironment(
+        scanimagePath: String? = nil,
+        baseEnvironment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> [String: String] {
+        var env = baseEnvironment
+        // scanimage -A/--help 파싱은 영문 옵션명과 "." 소수점을 계약으로 사용한다.
+        env["LC_ALL"] = "C"
+        env["LANG"] = "C"
         // Homebrew 경로를 PATH 앞에 추가(libsane*.dylib 해석 + 일반 도구 접근).
-        let toolPrefix = ProcessInfo.processInfo.environment["NEGAFLOW_SCANIMAGE_PATH"]
+        let selectedScanimage = scanimagePath ?? baseEnvironment["NEGAFLOW_SCANIMAGE_PATH"]
+        let toolPrefix = selectedScanimage
             .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
         let pathPrefixes = [
             toolPrefix,
@@ -60,17 +77,28 @@ extension SANEBackend {
         let existing = env["PATH"] ?? "/usr/bin:/bin"
         env["PATH"] = "\(pathPrefixes):\(existing)"
         // SANE 설정 디렉토리.
-        if let cfg = findSaneConfigDir() {
+        if let cfg = findSaneConfigDir(
+            scanimagePath: selectedScanimage,
+            environment: baseEnvironment
+        ) {
             env["SANE_CONFIG_DIR"] = cfg
         }
-        // 백엔드 라이브러리 경로(SANE가 .so/.dylib 를 찾는 위치).
-        let overrideLibDir = ProcessInfo.processInfo.environment["NEGAFLOW_SCANIMAGE_PATH"]
+        // SANE dll backend가 동적 backend를 찾을 때 실제로 읽는 검색 경로.
+        // SANE_BACKENDS_PATH라는 환경변수는 upstream SANE 1.4 계약에 없다.
+        let selectedLibDir = selectedScanimage
             .map { URL(fileURLWithPath: $0).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("lib/sane").path }
-        let libdirs = [overrideLibDir, "/opt/homebrew/lib/sane", "/usr/local/lib/sane"]
+        let selectedLibDirs = [selectedLibDir]
             .compactMap { $0 }
             .filter { FileManager.default.fileExists(atPath: $0) }
-        if !libdirs.isEmpty, env["SANE_BACKENDS_PATH"] == nil {
-            env["SANE_BACKENDS_PATH"] = libdirs.joined(separator: ":")
+        if !selectedLibDirs.isEmpty {
+            // 선택한 scanimage와 backend를 한 keg에서 가져와야 patched Coolscan
+            // backend가 stock 환경변수에 의해 우회되지 않는다.
+            let selectedPath = selectedLibDirs.joined(separator: ":")
+            if let existing = env["LD_LIBRARY_PATH"], !existing.isEmpty {
+                env["LD_LIBRARY_PATH"] = "\(selectedPath):\(existing)"
+            } else {
+                env["LD_LIBRARY_PATH"] = selectedPath
+            }
         }
         return env
     }

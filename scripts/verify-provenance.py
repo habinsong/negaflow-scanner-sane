@@ -99,11 +99,16 @@ def verify_distribution_policy() -> None:
             fail(f"required release notice is missing: {required}")
 
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("pluginVersion") != "1.0.0":
-        fail("manifest pluginVersion must be 1.0.0")
+    if manifest.get("pluginVersion") != "1.0.1":
+        fail("manifest pluginVersion must be 1.0.1")
 
-    installer_names = tuple(
+    standard_installer_names = tuple(
         f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos-{architecture}-installer.dmg"
+        for architecture in ("arm64", "universal")
+    )
+    coolscan_installer_names = tuple(
+        "negaflow-scanner-sane-"
+        f"{manifest['pluginVersion']}-coolscan-macos26-{architecture}-installer.dmg"
         for architecture in ("arm64", "universal")
     )
     for readme_name in (
@@ -115,7 +120,7 @@ def verify_distribution_policy() -> None:
         "README_de.md",
     ):
         readme = (ROOT / readme_name).read_text(encoding="utf-8")
-        for installer_name in installer_names:
+        for installer_name in standard_installer_names + coolscan_installer_names:
             if installer_name not in readme:
                 fail(f"{readme_name} does not name the current installer: {installer_name}")
 
@@ -125,6 +130,8 @@ def verify_distribution_policy() -> None:
         "0545b1b85053ad6292799e8f9b11caee373cb377364f4d293cc4711487a9b944",
         "BSD 2-Clause",
         "does not contain or redistribute a `sane-backends` bottle",
+        "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72",
+        "9bea1ee256c744098576acee98053e094b4a14a2",
     ):
         if marker not in notices:
             fail(f"third-party notice is incomplete: {marker}")
@@ -143,6 +150,17 @@ def verify_distribution_policy() -> None:
     ):
         if marker in release_text:
             fail(f"release scripts bundle a SANE runtime: {marker}")
+
+    formula = (ROOT / "Formula/sane-backends-negaflow.rb").read_text(encoding="utf-8")
+    for marker in (
+        'version "1.4.0-negaflow.1"',
+        "depends_on macos: :tahoe",
+        'sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"',
+        "cs2_xmalloc (3 * sizeof (SANE_Word))",
+        "cs3_xmalloc(3 *",
+    ):
+        if marker not in formula:
+            fail(f"patched SANE formula is incomplete: {marker}")
 
 
 def main() -> None:

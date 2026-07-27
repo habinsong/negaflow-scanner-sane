@@ -6,12 +6,44 @@ VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
 OUTPUT_DIR="${NEGAFLOW_INSTALLER_OUTPUT_DIR:-$ROOT/.build/release-artifacts}"
 INSTALLER_MODE="${NEGAFLOW_INSTALLER_MODE:-local}"
 INSTALLER_ARCHITECTURE="${NEGAFLOW_INSTALLER_ARCHITECTURE:-all}"
+INSTALLER_VARIANT="${NEGAFLOW_INSTALLER_VARIANT:-standard}"
 APP_SIGN_IDENTITY="${NEGAFLOW_CODESIGN_IDENTITY:--}"
 PKG_SIGN_IDENTITY="${NEGAFLOW_INSTALLER_IDENTITY:-}"
 HOMEBREW_VERSION="${NEGAFLOW_HOMEBREW_PKG_VERSION:-6.0.11}"
 HOMEBREW_SHA256="${NEGAFLOW_HOMEBREW_PKG_SHA256:-0545b1b85053ad6292799e8f9b11caee373cb377364f4d293cc4711487a9b944}"
 HOMEBREW_TEAM_ID="${NEGAFLOW_HOMEBREW_TEAM_ID:-927JGANW46}"
 HOMEBREW_URL="${NEGAFLOW_HOMEBREW_PKG_URL:-https://github.com/Homebrew/brew/releases/download/$HOMEBREW_VERSION/Homebrew.pkg}"
+
+case "$INSTALLER_VARIANT" in
+  all)
+    for variant in standard coolscan; do
+      NEGAFLOW_INSTALLER_VARIANT="$variant" bash "$0"
+    done
+    exit 0
+    ;;
+  standard)
+    MIN_OS_VERSION="14.0"
+    INSTALLER_TITLE="negaflow SANE Scanner"
+    INSTALLER_DESCRIPTION="Installs the standard Homebrew SANE backends and the negaflow scanner plug-in."
+    SANE_PACKAGE_NAME="sane-backends"
+    SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.setup"
+    POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall"
+    ARTIFACT_PLATFORM="macos"
+    ;;
+  coolscan)
+    MIN_OS_VERSION="26.0"
+    INSTALLER_TITLE="negaflow SANE Scanner for Nikon Coolscan"
+    INSTALLER_DESCRIPTION="Installs the patched SANE 1.4.0 Coolscan backends and the negaflow scanner plug-in."
+    SANE_PACKAGE_NAME="sane-backends-negaflow"
+    SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.coolscan.setup"
+    POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall-coolscan"
+    ARTIFACT_PLATFORM="coolscan-macos26"
+    ;;
+  *)
+    echo "[build-installer] ERROR: NEGAFLOW_INSTALLER_VARIANT must be standard, coolscan, or all." >&2
+    exit 2
+    ;;
+esac
 
 case "$INSTALLER_ARCHITECTURE" in
   all)
@@ -51,7 +83,7 @@ case "$INSTALLER_MODE" in
     ;;
 esac
 
-BASE_NAME="negaflow-scanner-sane-$VERSION-macos-$INSTALLER_ARCHITECTURE-installer"
+BASE_NAME="negaflow-scanner-sane-$VERSION-$ARTIFACT_PLATFORM-$INSTALLER_ARCHITECTURE-installer"
 SOURCE_NAME="negaflow-scanner-sane-$VERSION-source.tar.gz"
 PKG_NAME="$BASE_NAME.pkg"
 DMG_NAME="$BASE_NAME.dmg"
@@ -139,10 +171,14 @@ if [[ ! -s "$SOURCE_ARCHIVE" ]]; then
   exit 1
 fi
 
-cp "$ROOT/Installer/Scripts/postinstall" "$SETUP_SCRIPTS/postinstall"
+cp "$POSTINSTALL_SOURCE" "$SETUP_SCRIPTS/postinstall"
 cp "$ROOT/Installer/Scripts/install-plugin-user.sh" "$SETUP_SCRIPTS/install-plugin-user.sh"
 cp "$PLUGIN_BINARY" "$SETUP_SCRIPTS/sane/negaflow-scanner-sane"
 cp "$ROOT/manifest.json" "$SETUP_SCRIPTS/sane/manifest.json"
+if [[ "$INSTALLER_VARIANT" == "coolscan" ]]; then
+  mkdir -p "$SETUP_SCRIPTS/sane/Formula"
+  cp "$ROOT/Formula/sane-backends-negaflow.rb" "$SETUP_SCRIPTS/sane/Formula/"
+fi
 cp "$SOURCE_ARCHIVE" "$SETUP_SCRIPTS/sane/"
 cp \
   "$ROOT/LICENSE" \
@@ -164,15 +200,18 @@ chmod +x \
 pkgbuild \
   --nopayload \
   --scripts "$SETUP_SCRIPTS" \
-  --identifier com.habinsong.negaflow.scanner-sane.setup \
+  --identifier "$SETUP_IDENTIFIER" \
   --version "$VERSION" \
-  --min-os-version 14.0 \
+  --min-os-version "$MIN_OS_VERSION" \
   "$COMPONENTS/negaflowScannerSetup.pkg"
 
 RENDERED_DISTRIBUTION="$WORK/Distribution.xml"
 sed \
   -e "s/@HOMEBREW_VERSION@/$HOMEBREW_VERSION/g" \
   -e "s/@PLUGIN_VERSION@/$VERSION/g" \
+  -e "s/@MIN_OS_VERSION@/$MIN_OS_VERSION/g" \
+  -e "s/@SETUP_IDENTIFIER@/$SETUP_IDENTIFIER/g" \
+  -e "s/@INSTALLER_TITLE@/$INSTALLER_TITLE/g" \
   -e "s/@HOST_ARCHITECTURES@/$(
     if [[ "$INSTALLER_ARCHITECTURE" == "arm64" ]]; then
       printf 'arm64'
@@ -182,11 +221,22 @@ sed \
   )/g" \
   "$ROOT/Installer/Distribution.xml" >"$RENDERED_DISTRIBUTION"
 
+RENDERED_RESOURCES="$WORK/resources"
+mkdir -p "$RENDERED_RESOURCES"
+cp "$ROOT/Installer/Resources/LICENSE.html" "$RENDERED_RESOURCES/LICENSE.html"
+cp "$ROOT/Installer/Resources/CONCLUSION.html" "$RENDERED_RESOURCES/CONCLUSION.html"
+sed \
+  -e "s#@INSTALLER_TITLE@#$INSTALLER_TITLE#g" \
+  -e "s#@INSTALLER_DESCRIPTION@#$INSTALLER_DESCRIPTION#g" \
+  -e "s#@SANE_PACKAGE_NAME@#$SANE_PACKAGE_NAME#g" \
+  -e "s#@MIN_OS_VERSION@#$MIN_OS_VERSION#g" \
+  "$ROOT/Installer/Resources/WELCOME.html" >"$RENDERED_RESOURCES/WELCOME.html"
+
 BUILT_PKG="$WORK/$PKG_NAME"
 productbuild_args=(
   --distribution "$RENDERED_DISTRIBUTION"
   --package-path "$COMPONENTS"
-  --resources "$ROOT/Installer/Resources"
+  --resources "$RENDERED_RESOURCES"
 )
 if [[ "$INSTALLER_MODE" == "distribution" ]]; then
   productbuild_args+=(--sign "$PKG_SIGN_IDENTITY" --timestamp)
@@ -217,7 +267,12 @@ fi
 
 DMG_ROOT="$WORK/dmg"
 mkdir -p "$DMG_ROOT"
-cp "$BUILT_PKG" "$DMG_ROOT/Install negaflow Scanner.pkg"
+if [[ "$INSTALLER_VARIANT" == "coolscan" ]]; then
+  DMG_PKG_NAME="Install negaflow Scanner for Coolscan.pkg"
+else
+  DMG_PKG_NAME="Install negaflow Scanner.pkg"
+fi
+cp "$BUILT_PKG" "$DMG_ROOT/$DMG_PKG_NAME"
 cp "$SOURCE_ARCHIVE" "$DMG_ROOT/"
 cp \
   "$ROOT/THIRD_PARTY_NOTICES.md" \
@@ -234,7 +289,7 @@ cp \
 
 BUILT_DMG="$WORK/$DMG_NAME"
 hdiutil create \
-  -volname "negaflow Scanner Installer" \
+  -volname "$INSTALLER_TITLE" \
   -srcfolder "$DMG_ROOT" \
   -fs HFS+ \
   -format UDZO \
@@ -255,7 +310,8 @@ NEGAFLOW_INSTALLER_MODE="$INSTALLER_MODE" \
   bash "$ROOT/scripts/verify-installer.sh" \
     "$BUILT_PKG" \
     "$BUILT_DMG" \
-    "$INSTALLER_ARCHITECTURE"
+    "$INSTALLER_ARCHITECTURE" \
+    "$INSTALLER_VARIANT"
 
 mv -f "$BUILT_PKG" "$OUTPUT_DIR/$PKG_NAME"
 mv -f "$BUILT_DMG" "$OUTPUT_DIR/$DMG_NAME"
@@ -266,3 +322,4 @@ echo "[build-installer] dmg: $OUTPUT_DIR/$DMG_NAME"
 echo "[build-installer] checksums: $OUTPUT_DIR/$CHECKSUM_NAME"
 echo "[build-installer] mode: $INSTALLER_MODE"
 echo "[build-installer] architecture: $INSTALLER_ARCHITECTURE"
+echo "[build-installer] variant: $INSTALLER_VARIANT"

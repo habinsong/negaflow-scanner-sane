@@ -52,12 +52,35 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
     nonisolated(unsafe) var scanCancellationRequested = false
     nonisolated(unsafe) var stderrBuffer = ""
     nonisolated(unsafe) var scanProgressBuffer = ""
+    let utilityProcessTimeout: TimeInterval
+    let acquisitionFirstProgressTimeout: TimeInterval
+    let acquisitionProgressStallTimeout: TimeInterval
 
     /// nil이면 PATH에서 `scanimage`를 찾는다.
-    public init(scanimagePath: String? = nil) {
+    public convenience init(scanimagePath: String? = nil) {
+        self.init(
+            scanimagePath: scanimagePath,
+            utilityProcessTimeout: 180,
+            acquisitionFirstProgressTimeout: 180,
+            acquisitionProgressStallTimeout: 180
+        )
+    }
+
+    init(
+        scanimagePath: String? = nil,
+        utilityProcessTimeout: TimeInterval = 180,
+        acquisitionFirstProgressTimeout: TimeInterval,
+        acquisitionProgressStallTimeout: TimeInterval? = nil
+    ) {
         self.scanimage = scanimagePath
             ?? ProcessInfo.processInfo.environment["NEGAFLOW_SCANIMAGE_PATH"]
             ?? Self.findScanimage()
+        self.utilityProcessTimeout = max(utilityProcessTimeout, 0.05)
+        self.acquisitionFirstProgressTimeout = max(acquisitionFirstProgressTimeout, 0.05)
+        self.acquisitionProgressStallTimeout = max(
+            acquisitionProgressStallTimeout ?? acquisitionFirstProgressTimeout,
+            0.05
+        )
     }
 
     public func getLastError() -> ScannerError? { lastError }
@@ -92,6 +115,7 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var source: String?
         var mode: String?
         var filmType: String?
+        var filmTypeOptionName: String? = nil
         var depthArgument: Int?
         /// `--depth`가 없거나 비활성인 고정 심도 기기의 실제 심도. 값이 있으면 `--depth`를
         /// 전송하지 않으며, 요청 심도가 이 값과 다르면 스캔 전에 실패시킨다.
@@ -108,6 +132,14 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var hasModeOption: Bool = false
         var hasDepthOption: Bool = false
         var hasFilmTypeOption: Bool = false
+        /// pieusb는 full scan 뒤 다음 슬라이드로 이동하는 `--advance`의 기본값이 yes다.
+        /// 앱이 배치 이동을 요청하지 않았으므로 옵션이 확인된 경우 항상 no를 보낸다.
+        var hasAdvanceOption: Bool = false
+        /// epson2의 내부 색/감마 처리를 끄기 위해 장치가 실제 노출한 원문 enum 값을 보낸다.
+        var colorCorrection: String? = nil
+        var gammaCorrection: String? = nil
+        var hasColorCorrectionOption: Bool = false
+        var hasGammaCorrectionOption: Bool = false
         var brightnessRange: ScannerOptionRange?
         var contrastRange: ScannerOptionRange?
         var hardwareExposureRange: ScannerOptionRange?
@@ -116,6 +148,8 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var scanTopRange: ScannerOptionRange? = nil
         var scanWidthRange: ScannerOptionRange?
         var scanHeightRange: ScannerOptionRange?
+        var scanSurfaceRightMM: Double? = nil
+        var scanSurfaceBottomMM: Double? = nil
         var irStrategy: IRStrategy = .none
         var irPassMode: String?       // 별도 IR 패스에서 쓸 --mode 값(Gray 우선)
         var acquisitionDevice: String?

@@ -11,9 +11,12 @@ were adapted by the same author from that author's negaflow ScannerKit and
 Chromabase contracts so that the two independently built programs can exchange
 the same JSON and TIFF files. They contain no SANE implementation.
 
-The package does not compile, link, or vendor SANE headers, libraries, backend
-source, or device tables. It launches the separately installed `scanimage`
-executable and parses its documented command output.
+The Swift package does not compile or link SANE headers or libraries. It
+launches the separately installed `scanimage` executable and parses its
+documented command output. The standard installer asks Homebrew for stock
+`sane-backends`. The separate macOS 26 Coolscan installer includes a Homebrew
+formula that downloads SANE 1.4.0 and applies the upstream `coolscan2`/`coolscan3`
+word-list allocation fix before building SANE as a separate keg.
 
 SANE option names, device identifiers, USB identifiers, and values returned by
 `scanimage -L` or `scanimage -A` are interoperability facts. The plug-in keeps
@@ -22,14 +25,18 @@ reported by that device. Device behavior is not inferred by copying a SANE
 backend implementation.
 
 The source tree contains no C, C++, Objective-C, third-party package dependency,
-vendored source tree, or prebuilt SANE binary. Release verification rejects
-those additions.
+vendored SANE tree, or prebuilt SANE binary. Release verification rejects
+those additions. The small patch embedded in the Homebrew formula is
+GPL-2.0-or-later and is distributed with the plug-in's complete source.
 
 ## SANE and negaflow boundary
 
-SANE is installed independently through the official Homebrew
-`sane-backends` formula. This repository's one-shot installer does not contain
-a SANE bottle. The plug-in and SANE remain separately replaceable command-line
+SANE is installed independently. The standard macOS 14 installer uses
+Homebrew's stock `sane-backends`; the separate macOS 26 Coolscan installer uses
+the keg-only `sane-backends-negaflow` formula. That formula downloads the pinned
+official SANE 1.4.0 source and builds it locally after applying the upstream
+two-line Coolscan fix. Neither installer contains a SANE bottle or runtime
+binary. The plug-in and SANE remain separately replaceable command-line
 programs.
 
 negaflow and this plug-in exchange a versioned JSON/NDJSON protocol through a
@@ -39,7 +46,7 @@ particular distribution is an aggregate or a derivative work must be assessed
 from the actual code, communication semantics, and files distributed.
 
 - SANE source: <https://gitlab.com/sane-project/backends>
-- GNU license FAQ: <https://www.gnu.org/licenses/gpl-faq.en.html>
+- GNU license FAQ: <https://www.gnu.org/licenses/gpl-faq.html.en>
 - Apache/GPL compatibility: <https://www.apache.org/licenses/GPL-compatibility>
 
 ## One-shot installer
@@ -49,15 +56,18 @@ official Homebrew installer after checking its SHA-256, Apple Developer ID
 Installer signature, Team ID, and notarization status. Homebrew is BSD
 2-Clause licensed; the complete notice is in `THIRD_PARTY_NOTICES.md`.
 
-The installer then asks Homebrew to download and install `sane-backends` on the
-user's Mac. The plug-in package includes:
+The standard installer asks Homebrew to install stock `sane-backends`. The
+Coolscan installer asks Homebrew to build and install
+`sane-backends-negaflow` on the user's Mac. Both plug-in packages include:
 
 - `LICENSE` and the complete GPL v2 text in `COPYING`;
 - `THIRD_PARTY_NOTICES.md`;
 - this provenance record;
 - the matching complete plug-in source archive.
 
-The standalone release publishes that same source archive beside the binary
+The Coolscan package additionally includes
+`Formula/sane-backends-negaflow.rb`, including the upstream Coolscan fix.
+The standalone release publishes the same source archive beside the binary
 ZIP and embeds it in the ZIP. Release verification compares both copies and
 checks the source tree needed to rebuild the plug-in.
 
@@ -73,7 +83,8 @@ python3 scripts/verify-provenance.py
 ```
 
 The check inventories every tracked or release-candidate file, rejects vendored
-native code and SANE linkage, checks the pinned Homebrew notice and installer
-policy, and confirms that release scripts do not copy `scanimage` or a SANE
-library. It cannot prove similarity against every program on the internet or
-replace a rights review when new code, assets, or dependencies are introduced.
+native code and SANE linkage, checks the pinned Homebrew and SANE notices and
+installer policy, and confirms that release scripts do not copy `scanimage` or
+a SANE library. It cannot prove similarity against every program on the
+internet or replace a rights review when new code, assets, or dependencies are
+introduced.

@@ -1,19 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -ne 3 ]]; then
-  echo "usage: $0 <installer-pkg> <installer-dmg> <arm64|universal>" >&2
+if [[ "$#" -ne 4 ]]; then
+  echo "usage: $0 <installer-pkg> <installer-dmg> <arm64|universal> <standard|coolscan>" >&2
   exit 2
 fi
 
 PKG="$1"
 DMG="$2"
 EXPECTED_ARCHITECTURE="$3"
+EXPECTED_VARIANT="$4"
 MODE="${NEGAFLOW_INSTALLER_MODE:-local}"
 case "$EXPECTED_ARCHITECTURE" in
   arm64|universal) ;;
   *)
     echo "[verify-installer] ERROR: expected architecture must be arm64 or universal." >&2
+    exit 2
+    ;;
+esac
+case "$EXPECTED_VARIANT" in
+  standard)
+    EXPECTED_MIN_OS="14.0"
+    EXPECTED_SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.setup"
+    DMG_PKG_NAME="Install negaflow Scanner.pkg"
+    ;;
+  coolscan)
+    EXPECTED_MIN_OS="26.0"
+    EXPECTED_SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.coolscan.setup"
+    DMG_PKG_NAME="Install negaflow Scanner for Coolscan.pkg"
+    ;;
+  *)
+    echo "[verify-installer] ERROR: expected variant must be standard or coolscan." >&2
     exit 2
     ;;
 esac
@@ -56,7 +73,7 @@ if [[ -z "$homebrew_line" || -z "$setup_line" || "$homebrew_line" -ge "$setup_li
 fi
 grep -Fq 'homebrew_required()' "$DISTRIBUTION"
 grep -Fq 'installation_check()' "$DISTRIBUTION"
-grep -Fq 'min="14.0.0"' "$DISTRIBUTION"
+grep -Fq "min=\"$EXPECTED_MIN_OS\"" "$DISTRIBUTION"
 
 HOMEBREW_PACKAGE_INFO="$(find "$EXPANDED" -path '*HomebrewComponent.pkg/PackageInfo' -print -quit)"
 SETUP_PACKAGE_INFO="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/PackageInfo' -print -quit)"
@@ -65,7 +82,7 @@ if [[ -z "$HOMEBREW_PACKAGE_INFO" || -z "$SETUP_PACKAGE_INFO" ]]; then
   exit 1
 fi
 grep -Fq 'identifier="sh.brew.homebrew"' "$HOMEBREW_PACKAGE_INFO"
-grep -Fq 'identifier="com.habinsong.negaflow.scanner-sane.setup"' "$SETUP_PACKAGE_INFO"
+grep -Fq "identifier=\"$EXPECTED_SETUP_IDENTIFIER\"" "$SETUP_PACKAGE_INFO"
 
 POSTINSTALL="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/postinstall' -print -quit)"
 USER_INSTALLER="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/install-plugin-user.sh' -print -quit)"
@@ -76,6 +93,7 @@ LICENSE_NOTICE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane
 GPL_TEXT="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/COPYING' -print -quit)"
 THIRD_PARTY_NOTICE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/THIRD_PARTY_NOTICES.md' -print -quit)"
 PROVENANCE="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/PROVENANCE.md' -print -quit)"
+SANE_FORMULA="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/Scripts/sane/Formula/sane-backends-negaflow.rb' -print -quit)"
 if [[ -z "$POSTINSTALL" || -z "$USER_INSTALLER" || -z "$PLUGIN" || -z "$MANIFEST" \
       || -z "$SOURCE_ARCHIVE" || -z "$LICENSE_NOTICE" || -z "$GPL_TEXT" \
       || -z "$THIRD_PARTY_NOTICE" || -z "$PROVENANCE" ]]; then
@@ -89,7 +107,22 @@ test -s "$PROVENANCE"
 
 bash -n "$POSTINSTALL"
 bash -n "$USER_INSTALLER"
-grep -Fq 'run_brew_as_console_user install sane-backends' "$POSTINSTALL"
+if [[ "$EXPECTED_VARIANT" == "standard" ]]; then
+  test -z "$SANE_FORMULA"
+  grep -Fq 'run_brew_as_console_user install sane-backends' "$POSTINSTALL"
+  if grep -Fq 'sane-backends-negaflow' "$POSTINSTALL"; then
+    echo "[verify-installer] ERROR: standard installer contains the patched Coolscan install path." >&2
+    exit 1
+  fi
+else
+  test -s "$SANE_FORMULA"
+  grep -Fq 'run_brew_as_console_user tap | /usr/bin/grep -Fqx negaflow/scanner' "$POSTINSTALL"
+  grep -Fq 'run_brew_as_console_user tap-new negaflow/scanner --no-git' "$POSTINSTALL"
+  grep -Fq 'run_brew_as_console_user install negaflow/scanner/sane-backends-negaflow' "$POSTINSTALL"
+  grep -Fq 'depends_on macos: :tahoe' "$SANE_FORMULA"
+  grep -Fq 'word_list = (SANE_Word *) cs2_xmalloc (3 * sizeof (SANE_Word));' "$SANE_FORMULA"
+  grep -Fq '(SANE_Word *) cs3_xmalloc(3 *' "$SANE_FORMULA"
+fi
 codesign --verify --strict --verbose=2 "$PLUGIN"
 architectures="$(lipo -archs "$PLUGIN")"
 case "$EXPECTED_ARCHITECTURE" in
@@ -109,6 +142,7 @@ tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/LICENSE$' >/d
 tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/COPYING$' >/dev/null
 tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/THIRD_PARTY_NOTICES.md$' >/dev/null
 tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/PROVENANCE.md$' >/dev/null
+tar -tzf "$SOURCE_ARCHIVE" | grep -E '^negaflow-scanner-sane-[^/]+/Formula/sane-backends-negaflow.rb$' >/dev/null
 
 TEST_HOME="$TEMPORARY/user-home"
 mkdir -p "$TEST_HOME"
@@ -158,7 +192,7 @@ mkdir -p "$TEMPORARY/mount"
 hdiutil attach "$DMG" -readonly -nobrowse -mountpoint "$TEMPORARY/mount" >/dev/null
 mounted=1
 
-DMG_PKG="$TEMPORARY/mount/Install negaflow Scanner.pkg"
+DMG_PKG="$TEMPORARY/mount/$DMG_PKG_NAME"
 test -s "$DMG_PKG"
 test -s "$TEMPORARY/mount/THIRD_PARTY_NOTICES.md"
 test -s "$TEMPORARY/mount/LICENSE"
@@ -184,4 +218,4 @@ fi
 hdiutil detach "$TEMPORARY/mount" >/dev/null
 mounted=0
 
-echo "[verify-installer] valid: mode=$MODE expected=$EXPECTED_ARCHITECTURE architectures=$architectures"
+echo "[verify-installer] valid: mode=$MODE variant=$EXPECTED_VARIANT expected=$EXPECTED_ARCHITECTURE architectures=$architectures"

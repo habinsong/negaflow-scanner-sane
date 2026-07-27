@@ -75,7 +75,15 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 device.name
             )
             XCTAssertTrue(
-                log.contains("--source TPU8x10 --mode Color --film-type Negative Film"),
+                log.contains("--source TPU8x10 --mode Color"),
+                device.name
+            )
+            XCTAssertTrue(
+                log.contains("--film-type Negative Film"),
+                device.name
+            )
+            XCTAssertTrue(
+                log.contains("--color-correction None --gamma-correction User defined"),
                 device.name
             )
             XCTAssertTrue(log.contains("-l 10 -t 20 -x 36 -y 24"), device.name)
@@ -85,6 +93,13 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 optionReads.count,
                 2,
                 "Epson은 capability의 base/source 조회 뒤 실제 scan에서 -A를 다시 실행하지 않아야 합니다: \(device.name)"
+            )
+            let acquisitions = log.split(separator: "\n").filter {
+                !$0.hasPrefix("-L") && !$0.hasPrefix("-f") && !$0.hasPrefix("-A")
+            }
+            XCTAssertTrue(
+                acquisitions.allSatisfy { $0.contains("-d epson2 ") },
+                "단일 epson2 USB 장치는 주소가 바뀌어도 유효한 backend 선택자를 써야 합니다: \(device.name)"
             )
         }
     }
@@ -160,13 +175,17 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 "genesys는 capability에서 한 번 조회하고 preview/full scan에서 -A를 다시 실행하지 않아야 합니다: \(device.name)"
             )
             XCTAssertTrue(
+                optionReads.allSatisfy {
+                    $0.contains("-d \(device.address) ")
+                        || $0.hasSuffix("-d \(device.address)")
+                },
+                "capability 조회는 발견한 전체 장치 ID를 유지해야 합니다: \(device.name)"
+            )
+            XCTAssertTrue(
                 invocations
-                    .filter { !$0.hasPrefix("-L") && !$0.hasPrefix("-f") }
-                    .allSatisfy {
-                        $0.contains("-d \(device.address) ")
-                            || $0.hasSuffix("-d \(device.address)")
-                    },
-                "정상 genesys 장치는 backend 첫 장치가 아니라 전체 장치 ID를 유지해야 합니다: \(device.name)"
+                    .filter { !$0.hasPrefix("-L") && !$0.hasPrefix("-f") && !$0.hasPrefix("-A") }
+                    .allSatisfy { $0.contains("-d genesys ") },
+                "단일 genesys USB 장치는 주소가 바뀌어도 유효한 backend 선택자를 써야 합니다: \(device.name)"
             )
             if device.supportsInfrared {
                 XCTAssertTrue(log.contains("--source Transparency Adapter Infrared"), device.name)
@@ -227,6 +246,11 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
             XCTAssertEqual(invocations.filter { $0.hasPrefix("-A ") }.count, 1, device.name)
             let acquisition = try XCTUnwrap(invocations.last, device.name)
             XCTAssertTrue(
+                acquisition.contains("-d \(device.address) "),
+                "coolscan3는 빈 장치명을 거부하므로 전체 장치 주소로 열어야 합니다: \(device.name)"
+            )
+            XCTAssertFalse(acquisition.contains("-d coolscan3 "), device.name)
+            XCTAssertTrue(
                 acquisition.contains("--tl-x 0 --tl-y 0 --br-x 5668 --br-y 3779"),
                 device.name
             )
@@ -234,6 +258,7 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
             XCTAssertFalse(acquisition.contains("--batch"), device.name)
             XCTAssertFalse(acquisition.contains("--mode"), device.name)
             XCTAssertFalse(acquisition.contains("--source"), device.name)
+            XCTAssertTrue(acquisition.contains("--negative=no"), device.name)
         }
     }
 
@@ -290,8 +315,13 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 invocations.last { $0.contains("--resolution 3600") },
                 device.name
             )
+            XCTAssertTrue(
+                fullInvocation.contains("-d \(device.address) "),
+                "축약이 필요하지 않은 backend는 발견한 전체 장치 주소를 유지해야 합니다: \(device.name)"
+            )
             XCTAssertTrue(fullInvocation.contains("--mode Color"), device.name)
             XCTAssertFalse(fullInvocation.contains("--clean-image=yes"), device.name)
+            XCTAssertTrue(fullInvocation.contains("--advance=no"), device.name)
         }
     }
 

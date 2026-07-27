@@ -31,7 +31,7 @@ struct VirtualSANEDevice: Sendable {
         opticFilm(name: "OpticFilm 7200 v2", productID: "0x0c07", resolutions: [900, 1800, 3600, 7200]),
         opticFilm(name: "OpticFilm 7200i", productID: "0x0c04", resolutions: [900, 1800, 3600, 7200], infrared: true),
         opticFilm(name: "OpticFilm 7300", productID: "0x0c12", resolutions: [900, 1800, 3600, 7200]),
-        opticFilm(name: "OpticFilm 7400", productID: "0x0c3a", resolutions: [600, 1200, 1800, 3600, 7200]),
+        opticFilm(name: "OpticFilm 7400 (v2)", productID: "0x0c3a", resolutions: [600, 1200, 2400, 3600, 7200]),
         opticFilm(name: "OpticFilm 7500i", productID: "0x0c13", resolutions: [900, 1800, 3600, 7200], infrared: true),
         opticFilm(name: "OpticFilm 7600i", productID: "0x0c3b", resolutions: [900, 1800, 3600, 7200], infrared: true),
         opticFilm(name: "OpticFilm 8100", productID: "0x130c", resolutions: [600, 1200, 2400, 3600, 7200]),
@@ -52,7 +52,7 @@ struct VirtualSANEDevice: Sendable {
         pieusb(name: "Reflecta DigitDia 6000", productID: "0x0142"),
     ]
 
-    static let unsupportedOpticFilmProductIDs: Set<String> = ["0x1825"]
+    static let unsupportedOpticFilmProductIDs: Set<String> = ["0x1824", "0x1825"]
 
     private static func epson(name: String, model: String, productID: String) -> VirtualSANEDevice {
         VirtualSANEDevice(
@@ -91,7 +91,7 @@ struct VirtualSANEDevice: Sendable {
         let optionDump = """
         All options specific to device `genesys':
           Scan Mode:
-            --mode Color|Gray [Gray]
+            --mode Color|Gray [Color]
             --source \(sources) [Transparency Adapter]
             --preview[=(yes|no)] [no]
             --depth 16 [16]
@@ -123,6 +123,7 @@ struct VirtualSANEDevice: Sendable {
         All options specific to device `coolscan3':
           --preview[=(yes|no)] [no]
           --infrared[=(yes|no)] [no]
+          --negative[=(yes|no)] [no]
           --depth 8|14 [8]
           --resolution 4000|2000|1000dpi [4000]
           --tl-x 0..5959pel (in steps of 1) [0]
@@ -154,6 +155,7 @@ struct VirtualSANEDevice: Sendable {
           --depth 8|16 [8]
           --resolution 900|1800|3600|7200dpi [3600]
           --clean-image[=(yes|no)] [no]
+          --advance[=(yes|no)] [yes]
           -l 0..36.33mm (in steps of 0.01) [0]
           -t 0..25mm (in steps of 0.01) [0]
           -x 1..36.33mm (in steps of 0.01) [36.33]
@@ -189,6 +191,8 @@ struct VirtualSANEDevice: Sendable {
             --depth 8|16 [8]
             --resolution 50..6400dpi (in steps of 1) [300]
             --film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]
+            --gamma-correction Default|User defined|High density printing|Low density printing|High contrast printing [Default]
+            --color-correction None|Built in CCT profile|User defined CCT profile [Built in CCT profile]
           Geometry:
             -l 0..\(widthMM)mm (in steps of 0.1) [0]
             -t 0..\(heightMM)mm (in steps of 0.1) [0]
@@ -253,6 +257,16 @@ struct VirtualScanimageFixture {
         let script = """
         #!/bin/sh
         printf '%s\\n' "$*" >> \(shellQuote(invocationLogURL.path))
+        selected_device=""
+        previous=""
+        for argument in "$@"; do
+          if [ "$previous" = "-d" ]; then selected_device="$argument"; fi
+          previous="$argument"
+        done
+        if [ "$selected_device" = "coolscan2" ] || [ "$selected_device" = "coolscan3" ]; then
+          printf 'scanimage: open of device %s failed: Invalid argument\\n' "$selected_device" >&2
+          exit 1
+        fi
         if [ "$1" = "-f" ]; then
           printf '%s\\n' \(shellQuote(formattedDeviceLine))
           exit 0

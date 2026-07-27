@@ -47,6 +47,11 @@ for readme in README.md README_ko.md README_ja.md README_zh-Hans.md README_fr.md
   test -s "$PLUGIN/$readme"
 done
 test -x "$RELEASE_ROOT/install.sh"
+bash -n "$RELEASE_ROOT/install.sh"
+if find "$RELEASE_ROOT" -path '*/Formula/sane-backends-negaflow.rb' -print -quit | grep -q .; then
+  echo "[verify-release] ERROR: standard ZIP contains the Coolscan Formula installer." >&2
+  exit 1
+fi
 [ "$(plutil -extract schemaVersion raw "$MANIFEST")" = "1" ]
 [ "$(plutil -extract protocolVersion raw "$MANIFEST")" = "2" ]
 [ "$(plutil -extract id raw "$MANIFEST")" = "sane" ]
@@ -68,7 +73,8 @@ dsym_uuids="$(dwarfdump --uuid "$dsym_bundle" | awk '{print $2}' | sort)"
 [ -n "$executable_uuids" ]
 [ "$executable_uuids" = "$dsym_uuids" ]
 
-NEGAFLOW_PLUGINS_DIR="$TEMPORARY/installed" bash "$RELEASE_ROOT/install.sh" >/dev/null
+NEGAFLOW_PLUGINS_DIR="$TEMPORARY/installed" \
+  bash "$RELEASE_ROOT/install.sh" >/dev/null
 INSTALLED="$TEMPORARY/installed/sane/negaflow-scanner-sane"
 test -x "$INSTALLED"
 test -s "$TEMPORARY/installed/sane/$SOURCE_NAME"

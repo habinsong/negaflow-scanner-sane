@@ -39,7 +39,9 @@ extension SANEBackend {
         case .list(let dpis):
             resolutions = dpis.map { Resolution($0) }
         case .range(let min, let max):
-            let standards = [100, 150, 300, 600, 1200, 2400, 3200, 4800, 6400, 7200, 9600, 12800]
+            let standards = [
+                100, 150, 300, 600, 1200, 2400, 3200, 3600, 4800, 6400, 7200, 9600, 12800,
+            ]
             var dpis = standards.filter {
                 $0 >= min
                     && $0 <= max
@@ -186,7 +188,11 @@ extension SANEBackend {
     /// 투과/필름 소스인지(Transparency Adapter/TPA, Transparency Unit/TPU, TPU8x10, Film ...).
     static func isTransparencySource(_ s: String) -> Bool {
         let l = s.lowercased()
-        return l.contains("transparency") || l.contains("tpa") || l.contains("tpu") || l.contains("film")
+        return l.contains("transparency")
+            || l.contains("tpa")
+            || l.contains("tpu")
+            || l.contains("film")
+            || l.contains("slide")
     }
 
     /// Epson V700/V750/V800/V850 계열은 일반 TPU와 전체 8x10 투과 영역을 별도 source로
@@ -198,11 +204,13 @@ extension SANEBackend {
     ///   • 옵션이 비활성인데 제약 목록이 값 하나뿐이면 그 값이 곧 고정 심도다. 값이 여럿인데
     ///     비활성이면 우리가 모르는 이유로 잠긴 상태이므로 아무 값도 고르지 않는다.
     ///   • epson2는 심도가 하나뿐인 구형 기기에서 옵션 자체를 노출하지 않고 항상 8비트로
-    ///     전송한다(sane-epson2 문서). 문서화된 계약이 있는 백엔드에만 적용하며, 다른
-    ///     백엔드에서 옵션이 없다고 8비트로 추정하지 않는다.
+    ///     전송한다(sane-epson2 문서).
+    ///   • pie는 Color/Gray 결과의 SANE_Parameters.depth를 항상 8로 설정하며 별도 depth
+    ///     옵션을 제공하지 않는다. 이 두 backend에만 적용하고, 다른 backend에서 옵션이
+    ///     없다고 8비트로 추정하지 않는다.
     static func fixedDepth(_ opts: SaneOptionDump, backendHint: String?) -> BitDepth? {
         guard opts.hasOption("depth") else {
-            return backendHint == "epson2" ? .eight : nil
+            return ["epson2", "pie"].contains(backendHint) ? .eight : nil
         }
         guard !opts.isActive("depth") else { return nil }
         let tokens = opts.constraintIntTokens("depth")

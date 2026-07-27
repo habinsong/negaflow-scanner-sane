@@ -11,6 +11,12 @@ final class SANEBackendEnvironmentTests: XCTestCase {
                       "SANE 환경의 PATH 에 Homebrew 경로가 있어야 GUI 앱이 scanimage 를 찾는다. PATH=\(path)")
     }
 
+    func testSaneEnvironmentUsesStableEnglishNumericLocale() {
+        let env = SANEBackend.makeSaneEnvironment()
+        XCTAssertEqual(env["LC_ALL"], "C")
+        XCTAssertEqual(env["LANG"], "C")
+    }
+
     func testSaneEnvironmentHasConfigDirWhenHomebrewInstalled() throws {
         // 이 머신에는 /opt/homebrew/etc/sane.d 가 있으므로 SANE_CONFIG_DIR 가 잡혀야 한다.
         let fm = FileManager.default
@@ -30,6 +36,40 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         if let dir = SANEBackend.findSaneConfigDir() {
             XCTAssertTrue(FileManager.default.fileExists(atPath: dir))
         }
+    }
+
+    func testSelectedScanimageUsesMatchingKegConfigurationAndBackends() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-keg-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bin = root.appendingPathComponent("bin")
+        let config = root.appendingPathComponent("etc/sane.d")
+        let backends = root.appendingPathComponent("lib/sane")
+        let staleConfig = root.appendingPathComponent("stock/etc/sane.d")
+        let staleBackends = root.appendingPathComponent("stock/lib/sane")
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: config, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: backends, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: staleConfig, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: staleBackends, withIntermediateDirectories: true)
+
+        let scanimage = bin.appendingPathComponent("scanimage").path
+        let env = SANEBackend.makeSaneEnvironment(
+            scanimagePath: scanimage,
+            baseEnvironment: [
+                "PATH": "/usr/bin:/bin",
+                "SANE_CONFIG_DIR": staleConfig.path,
+                "LD_LIBRARY_PATH": staleBackends.path,
+            ]
+        )
+
+        XCTAssertEqual(env["SANE_CONFIG_DIR"], config.path)
+        XCTAssertEqual(
+            env["LD_LIBRARY_PATH"],
+            "\(backends.path):\(staleBackends.path)"
+        )
+        XCTAssertNil(env["SANE_BACKENDS_PATH"])
+        XCTAssertTrue(env["PATH"]?.hasPrefix("\(bin.path):") == true)
     }
 
     // MARK: - USB 주소 재획득 회귀 테스트
@@ -152,7 +192,8 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         let backend = SANEBackend(scanimagePath: executableURL.path)
         let exact = try await backend.currentDeviceAddress(
             targetDevice: "genesys:libusb:000:012",
-            targetBackend: "genesys"
+            targetBackend: "genesys",
+            allowSingleBackendSelector: true
         )
         XCTAssertEqual(exact, "genesys:libusb:000:012")
 
@@ -160,12 +201,67 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         do {
             _ = try await backend.currentDeviceAddress(
                 targetDevice: "genesys:libusb:000:099",
-                targetBackend: "genesys"
+                targetBackend: "genesys",
+                allowSingleBackendSelector: true
             )
             XCTFail("재연결 뒤 같은 backend 장치 중 임의의 첫 장치를 선택했습니다.")
         } catch let error as ScannerError {
             XCTAssertEqual(error.code, .notConnected)
             XCTAssertTrue(error.message.contains("제조사·모델 정보가 없어"))
+        }
+    }
+
+    func testBackendOnlySelectorIsLimitedToGenesysAndEpson2() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-selector-policy-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        let script = """
+        #!/bin/sh
+        if [ "$1" = "-f" ]; then
+          printf 'genesys:libusb:000:011\\tPLUSTEK\\tOpticFilm 8100\\tfilm scanner\\n'
+          printf 'epson2:libusb:001:005\\tEPSON\\tPerfection V850 Pro\\tflatbed scanner\\n'
+          printf 'coolscan3:usb:libusb:001:4001\\tNikon\\tLS-50 ED\\tfilm scanner\\n'
+          printf 'coolscan2:usb:libusb:001:4000\\tNikon\\tLS-40 ED\\tfilm scanner\\n'
+          printf 'pieusb:libusb:001:0145\\tReflecta\\tProScan 7200\\tslide scanner\\n'
+          printf 'avision:libusb:001:0099\\tAvision\\tUnknown USB\\tflatbed scanner\\n'
+          exit 0
+        fi
+        exit 1
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let cases = [
+            ("genesys:libusb:000:011", "genesys", "genesys"),
+            ("epson2:libusb:001:005", "epson2", "epson2"),
+            (
+                "coolscan3:usb:libusb:001:4001",
+                "coolscan3",
+                "coolscan3:usb:libusb:001:4001"
+            ),
+            (
+                "coolscan2:usb:libusb:001:4000",
+                "coolscan2",
+                "coolscan2:usb:libusb:001:4000"
+            ),
+            ("pieusb:libusb:001:0145", "pieusb", "pieusb:libusb:001:0145"),
+            ("avision:libusb:001:0099", "avision", "avision:libusb:001:0099"),
+        ]
+
+        for (targetDevice, targetBackend, expected) in cases {
+            let backend = SANEBackend(scanimagePath: executableURL.path)
+            let resolved = try await backend.currentDeviceAddress(
+                targetDevice: targetDevice,
+                targetBackend: targetBackend,
+                allowSingleBackendSelector: true
+            )
+            XCTAssertEqual(resolved, expected, targetBackend)
         }
     }
 
@@ -196,7 +292,7 @@ final class SANEBackendEnvironmentTests: XCTestCase {
                 targetDevice: "genesys:libusb:000:011",
                 targetBackend: "genesys",
                 expectedIdentity: .init(vendor: "PLUSTEK", model: "OpticFilm 8100"),
-                allowSingleGenesysSelector: true
+                allowSingleBackendSelector: true
             )
             XCTFail("같은 genesys 백엔드의 다른 모델로 대체했습니다.")
         } catch let error as ScannerError {
@@ -289,7 +385,7 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         _ = try await backend.currentDeviceAddress(
             targetDevice: "genesys:libusb:002:001",
             targetBackend: "genesys",
-            allowSingleGenesysSelector: true
+            allowSingleBackendSelector: true
         )
         backend.noteDeviceOpened()
         XCTAssertEqual(
@@ -383,7 +479,7 @@ final class SANEBackendEnvironmentTests: XCTestCase {
             targetDevice: "genesys:libusb:000:011",
             targetBackend: "genesys",
             expectedIdentity: .init(vendor: "plustek", model: "  OpticFilm   8100 "),
-            allowSingleGenesysSelector: false
+            allowSingleBackendSelector: false
         )
         XCTAssertEqual(resolved, "genesys:libusb:000:014")
     }
@@ -513,6 +609,67 @@ final class SANEBackendEnvironmentTests: XCTestCase {
             1,
             "성공한 capability 토큰 뒤 scan은 -A 없이 검증된 단일 genesys 선택자를 사용해야 합니다."
         )
+    }
+
+    func testCapabilityTokenRedumpsOptionsWhenRequestedModeChanges() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-mode-token-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        let invocationLog = directory.appendingPathComponent("invocations.log")
+        let script = """
+        #!/bin/sh
+        printf '%s\\n' "$*" >> \(shellQuote(invocationLog.path))
+        if [ "$1" = "-f" ]; then
+          printf 'genesys:libusb:000:011\\tPLUSTEK\\tMode Test\\tfilm scanner\\n'
+          exit 0
+        fi
+        case " $* " in
+          *" --mode Gray "*)
+            echo "--mode Color|Gray [Gray]"
+            echo "--source Transparency Adapter [Transparency Adapter]"
+            echo "--depth 8 [8]"
+            ;;
+          *)
+            echo "--mode Color|Gray [Color]"
+            echo "--source Transparency Adapter [Transparency Adapter]"
+            echo "--depth 8|16 [16]"
+            ;;
+        esac
+        echo "--resolution 600|3600dpi [600]"
+        echo "-l 0..36mm (in steps of 1) [0]"
+        echo "-t 0..24mm (in steps of 1) [0]"
+        echo "-x 1..36mm (in steps of 1) [36]"
+        echo "-y 1..24mm (in steps of 1) [24]"
+        exit 0
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(scanimagePath: executableURL.path)
+        let scannerID = "sane-genesys:libusb:000:011"
+        let report = try await backend.getCapabilitiesReport(scannerID: scannerID)
+        var options = ScanOptions.strongDefault(scannerID: scannerID)
+        options.colorMode = .gray
+        options.bitDepth = .eight
+        options.resolution = Resolution(600)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        options.capabilityToken = report.capabilityToken
+
+        let sessionID = try backend.beginScanSession()
+        defer { backend.endScanSession(sessionID) }
+        let media = try await backend.resolveMedia(options: options)
+        XCTAssertEqual(media.mode, "Gray")
+        XCTAssertEqual(media.depthArgument, 8)
+
+        let invocations = try String(contentsOf: invocationLog, encoding: .utf8)
+        XCTAssertTrue(invocations.contains("-A -d genesys:libusb:000:011 --mode Color"))
+        XCTAssertTrue(invocations.contains("--mode Gray --resolution 600 --depth 8"))
     }
 
     private func shellQuote(_ value: String) -> String {

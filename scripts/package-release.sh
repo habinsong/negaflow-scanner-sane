@@ -61,7 +61,9 @@ cp \
   "$ROOT/README_de.md" \
   "$PLUGIN_DIR/"
 cp "$ROOT/scripts/install-release.sh" "$RELEASE_ROOT/install.sh"
-chmod +x "$PLUGIN_DIR/negaflow-scanner-sane" "$RELEASE_ROOT/install.sh"
+chmod +x \
+  "$PLUGIN_DIR/negaflow-scanner-sane" \
+  "$RELEASE_ROOT/install.sh"
 
 bash "$ROOT/scripts/create-source-archive.sh" "$STAGING/$SOURCE_NAME"
 cp "$STAGING/$SOURCE_NAME" "$PLUGIN_DIR/$SOURCE_NAME"

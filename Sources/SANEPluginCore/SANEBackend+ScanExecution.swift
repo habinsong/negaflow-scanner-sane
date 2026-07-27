@@ -37,11 +37,10 @@ extension SANEBackend {
 
         // 중요: USB 장치 주소(libusb:bus:dev)는 스캐너 리셋/재열거로 매번 바뀐다.
         // scannerID에 박힌 과거 주소로 open하면 "Invalid argument"로 실패한다.
-        // 따라서 스캔 직전에 반드시 scanimage -L 로 현재 주소를 다시 얻는다.
+        // 따라서 스캔 직전에 반드시 scanimage 장치 목록에서 현재 주소를 다시 얻는다.
         // 소스/모드/깊이/해상도/IR을 장치 옵션에서 한 번 해석(주소가 바뀌어도 media는 불변).
         let media = try await resolveValidatedMedia(options: options)
         progress(ScanProgress(phase: .warmingLamp, fraction: 0.02, message: "Warming lamp"))
-        progress(ScanProgress(phase: .scanningRGB, fraction: 0.1, message: "Scanning RGB"))
 
         let t0 = Date()
         var warnings: [String] = []
@@ -253,6 +252,30 @@ extension SANEBackend {
             throw ScannerError(.unsupportedOption, "요청 filmType polarity를 정확히 적용할 수 없습니다.")
         }
 
+        let backend = backendName(
+            of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+        if backend == "pieusb", !media.hasAdvanceOption {
+            throw ScannerError(
+                .unsupportedOption,
+                "pieusb의 자동 슬라이드 이동을 끌 활성 --advance 옵션이 없습니다."
+            )
+        }
+        if backend == "epson2" {
+            if media.hasColorCorrectionOption, media.colorCorrection == nil {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "epson2의 내부 color correction을 끌 수 없습니다."
+                )
+            }
+            if media.hasGammaCorrectionOption, media.gammaCorrection == nil {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "epson2의 선형 gamma 설정을 정확히 적용할 수 없습니다."
+                )
+            }
+        }
+
         if media.usesCornerPixelGeometry {
             guard media.originXPixels != nil,
                   media.originYPixels != nil,
@@ -288,6 +311,20 @@ extension SANEBackend {
                 }
             } else if options.scanArea.originXMM != 0 || options.scanArea.originYMM != 0 {
                 throw ScannerError(.unsupportedOption, "요청 scanArea 원점을 적용할 -l/-t 옵션이 없습니다.")
+            }
+            if let surfaceRight = media.scanSurfaceRightMM,
+               options.scanArea.originXMM + options.scanArea.widthMM > surfaceRight + 1e-9 {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "요청 scanArea의 원점+폭이 스캔 가능한 오른쪽 경계를 넘습니다."
+                )
+            }
+            if let surfaceBottom = media.scanSurfaceBottomMM,
+               options.scanArea.originYMM + options.scanArea.heightMM > surfaceBottom + 1e-9 {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "요청 scanArea의 원점+높이가 스캔 가능한 아래쪽 경계를 넘습니다."
+                )
             }
         }
 
@@ -473,8 +510,14 @@ extension SANEBackend {
         scanProgressRange: ClosedRange<Double>,
         progress: @escaping @Sendable (ScanProgress) -> Void
     ) async throws {
+        let backend = Self.backendName(
+            of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+        // pieusb는 full scan 자체가 다음 슬라이드 이동을 수반할 수 있다. 같은 요청을
+        // 자동 재시도하면 다른 프레임을 덮어쓸 수 있으므로 한 번만 실행한다.
+        let attemptCount = backend == "pieusb" ? 1 : 2
         var lastStderr = ""
-        for attempt in 0..<2 {
+        for attempt in 0..<attemptCount {
             if attempt > 0 {
                 invalidateAddressCache()
             }
@@ -491,7 +534,7 @@ extension SANEBackend {
                     pass: pass,
                     brightness: brightness
                 )
-                let ec = try await runScanimageTo(
+                let acquisition = try await runScanimageTo(
                     args: args,
                     outputURL: outputURL,
                     phase: pass == .infrared ? .scanningIR : .scanningRGB,
@@ -502,7 +545,7 @@ extension SANEBackend {
                 if isScanCancellationRequested() {
                     throw ScannerError(.cancelled, "스캔이 취소되었습니다.")
                 }
-                if ec == 0 {
+                if acquisition.exitCode == 0 {
                     if Self.containsInexactOptionWarning(stderr) {
                         throw ScannerError(
                             .unsupportedOption,
@@ -512,7 +555,9 @@ extension SANEBackend {
                     return
                 }
                 lastStderr = stderr
-                if attempt == 0, Self.isStaleDeviceError(lastStderr) {
+                if attempt == 0, attemptCount > 1,
+                   !acquisition.madeProgress,
+                   Self.isStaleDeviceError(lastStderr) {
                     progress(ScanProgress(
                         phase: .warmingLamp,
                         fraction: staleRetryProgress,
@@ -520,12 +565,30 @@ extension SANEBackend {
                     ))
                     continue
                 }
-                let detail = lastStderr.isEmpty ? "scanimage exit \(ec)" : "scanimage exit \(ec): \(lastStderr)"
+                let detail = lastStderr.isEmpty
+                    ? "scanimage exit \(acquisition.exitCode)"
+                    : "scanimage exit \(acquisition.exitCode): \(lastStderr)"
                 self.lastError = ScannerError(.ioFailure, detail)
                 throw lastError!
             } catch let err as ScannerError {
+                if attempt == 0, backend == "genesys",
+                   err.code == .timeout,
+                   err.message.contains("첫 이미지 데이터"),
+                   !isScanCancellationRequested() {
+                    try? FileManager.default.removeItem(at: outputURL)
+                    invalidateAddressCache()
+                    progress(ScanProgress(
+                        phase: .warmingLamp,
+                        fraction: staleRetryProgress,
+                        message: "Re-detecting scanner"
+                    ))
+                    continue
+                }
+                try? FileManager.default.removeItem(at: outputURL)
+                self.lastError = err
                 throw err
             } catch {
+                try? FileManager.default.removeItem(at: outputURL)
                 self.lastError = ScannerError(.ioFailure, error.localizedDescription)
                 throw error
             }
@@ -613,7 +676,8 @@ extension SANEBackend {
             ) {
                 return live
             }
-            if let acquisitionDevice = media.acquisitionDevice {
+            if let acquisitionDevice = media.acquisitionDevice,
+               !Self.isVolatileUSBSelector(acquisitionDevice) {
                 return acquisitionDevice
             }
         }
@@ -621,15 +685,19 @@ extension SANEBackend {
             targetDevice: raw,
             targetBackend: backend,
             expectedIdentity: media.expectedDeviceIdentity,
-            allowSingleGenesysSelector: forceRefresh
+            allowSingleBackendSelector: true
         )
+    }
+
+    static func isVolatileUSBSelector(_ value: String) -> Bool {
+        value.contains(":libusb:")
     }
 
     private func currentDeviceAddressWithRetry(
         targetDevice: String?,
         targetBackend: String?,
         expectedIdentity: DeviceIdentity?,
-        allowSingleGenesysSelector: Bool
+        allowSingleBackendSelector: Bool
     ) async throws -> String {
         var lastError: Error?
         // 목록 조회를 반복해도 고칠 수 없는 실패(모호한 다중 장치, 모델 불일치)는 즉시
@@ -640,8 +708,7 @@ extension SANEBackend {
                     targetDevice: targetDevice,
                     targetBackend: targetBackend,
                     expectedIdentity: expectedIdentity,
-                    // 정확한 주소를 먼저 쓰고, 그래도 못 찾을 때만 단일 genesys 선택자로 내려간다.
-                    allowSingleGenesysSelector: allowSingleGenesysSelector || attempt > 0,
+                    allowSingleBackendSelector: allowSingleBackendSelector,
                     ownedByScanSession: true
                 )
             } catch let error as ScannerError where !Self.isRetryableAddressError(error) {
@@ -704,7 +771,28 @@ extension SANEBackend {
         if let mode { args += ["--mode", mode] }
 
         if pass == .main {
-            if let filmType = media.filmType { args += ["--film-type", filmType] }
+            let backend = Self.backendName(
+                of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+            )
+            if backend == "pieusb", media.hasAdvanceOption {
+                args += ["--advance=no"]
+            }
+            if backend == "epson2" {
+                if let colorCorrection = media.colorCorrection {
+                    args += ["--color-correction", colorCorrection]
+                }
+                if let gammaCorrection = media.gammaCorrection {
+                    args += ["--gamma-correction", gammaCorrection]
+                }
+            }
+            if let filmType = media.filmType,
+               let optionName = media.filmTypeOptionName {
+                if optionName == "negative" {
+                    args += ["--negative=\(filmType)"]
+                } else {
+                    args += ["--\(optionName)", filmType]
+                }
+            }
             if media.hasBrightnessOption {
                 if let brightness {
                     args += ["--brightness=\(brightness)"]

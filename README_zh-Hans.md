@@ -47,7 +47,8 @@ negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 
 - 按当前 negaflow 与 Homebrew 安装方式，需要 macOS 14.0 或更高版本
 - negaflow
-- 运行时需要 [SANE backends](https://formulae.brew.sh/formula/sane-backends)
+- 普通扫描仪使用 Homebrew 标准 `sane-backends`
+- Nikon Coolscan 专用修补路径仅支持 macOS 26 或更高版本
 - 仅从源码构建时需要 Swift 5.9 或更高版本
 
 独立可执行文件在 `Package.swift` 中仍以 macOS 13 为 deployment target。<br>
@@ -63,18 +64,29 @@ negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 xcode-select --install
 ```
 
-安装包有两种。请从 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载其中一个并打开，然后运行 `Install negaflow Scanner.pkg`。
+安装包有四种。普通 SANE 扫描仪使用标准版；macOS 26 或更高版本上的 Nikon Coolscan
+使用单独的 Coolscan 版。
 
-| 安装包 | 适用机型 | 插件二进制 |
+| 安装包 | SANE 路径 | 插件二进制 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.0-macos-arm64-installer.dmg` | Apple Silicon Mac（M1 及以上） | 仅 `arm64` |
-| `negaflow-scanner-sane-1.0.0-macos-universal-installer.dmg` | Apple Silicon 和 Intel Mac | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.1-macos-arm64-installer.dmg` | 标准版，macOS 14+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.1-macos-universal-installer.dmg` | 标准版，macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.1-coolscan-macos26-arm64-installer.dmg` | Coolscan 修补版，macOS 26+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.1-coolscan-macos26-universal-installer.dmg` | Coolscan 修补版，macOS 26+ | `arm64` + `x86_64` |
 
-两者功能完全相同。<br>
-Apple Silicon 专用包体积更小，且无法安装在 Intel Mac 上；Universal 包可在所有 Mac 上运行。
+标准 DMG 内运行 `Install negaflow Scanner.pkg`；Coolscan DMG 内运行
+`Install negaflow Scanner for Coolscan.pkg`。
 
-若系统中没有 Homebrew，安装包会先安装官方 Homebrew 组件，再依次为当前登录用户安装 `sane-backends` 和 negaflow 插件。<br>
+标准版安装 Homebrew 的 `sane-backends`。Coolscan 版从官方 SANE 1.4.0 源码构建
+`sane-backends-negaflow`，只应用 upstream 的 `coolscan2`/`coolscan3` 分配修复。<br>
 安装需要互联网连接和管理员密码；若已安装 Homebrew，则直接复用现有安装。
+
+标准版和 macOS 26 以下系统不会主动阻止 Coolscan。stock SANE 可能适用于某些设备，
+但不含该分配修复；受支持的修补路径是 macOS 26 以上 Coolscan 版。
+
+后续 upstream 还加入了至少 LS-5000 firmware 1.03 所需的 Coolscan3
+load/eject/reset 参数块初始化。该修改有意不包含在两行补丁中，因此即使使用 Coolscan
+版，LS-5000 的装片、退片和复位仍未经过验证，并可能失败。
 
 完成后重新启动 negaflow，在“加载扫描仪”中检查插件信息并批准它。
 
@@ -96,11 +108,17 @@ Apple Silicon 专用包体积更小，且无法安装在 Intel Mac 上；Univers
 brew --version
 ```
 
-安装 SANE backends。<br>
-若已安装，同一命令会显示当前状态。
+macOS 14 以上标准路径：
 
 ```bash
 brew install sane-backends
+```
+
+macOS 26 以上 Coolscan 修补路径：
+
+```bash
+bash scripts/install-patched-sane.sh
+export PATH="$(brew --prefix sane-backends-negaflow)/bin:$PATH"
 ```
 
 检查已安装的命令和版本：
@@ -108,12 +126,10 @@ brew install sane-backends
 ```bash
 command -v scanimage
 scanimage --version
-brew list --versions sane-backends
+brew list --versions sane-backends sane-backends-negaflow
 ```
 
-`scanimage` 通常位于 Apple Silicon Mac 的 `/opt/homebrew/bin/scanimage`，或 Intel Mac 的 `/usr/local/bin/scanimage`。<br>
-即使图形应用的 `PATH` 较短，插件也会检查这两个位置。<br>
-SANE 配置通常位于 `/opt/homebrew/etc/sane.d` 或 `/usr/local/etc/sane.d`。
+若修补后的 keg 存在，插件会使用其绝对路径以及同一 keg 的 `etc/sane.d` 和 `lib/sane`。
 
 ### 3. 连接并检查扫描仪
 
@@ -160,7 +176,8 @@ cd negaflow-scanner-sane
 ./install.sh
 ```
 
-安装已打包版本不需要 Swift 工具链，但 SANE 仍需单独安装。
+安装已打包版本不需要 Swift 工具链。`install.sh` 只安装插件，因此请先安装标准 SANE
+或 macOS 26 Coolscan 修补版。
 
 ### 5. 在 negaflow 中批准并验证
 
@@ -186,7 +203,8 @@ cd negaflow-scanner-sane
 
 | 扫描仪系列 | SANE 后端 | SANE 1.4 状态 | 插件处理路径 |
 |---|---|---|---|
-| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400、7500i、7600i | `genesys` | Complete | 专用胶片扫描仪路径 |
+| Plustek OpticFilm 7200、7200 v2、7200i、7300、7400 v2、7500i、7600i | `genesys` | Complete | 专用胶片扫描仪路径 |
+| Plustek OpticFilm 7400 v1 | `genesys` | 支持表标为 Complete，但机型专用修正在 SANE 1.4.0 之后才合入 | capability 驱动路径；stock 1.4.0 实机结果未验证 |
 | Plustek OpticFilm 8100，USB `07b3:130c` | `genesys` | Complete | 专用胶片扫描仪路径 |
 | Plustek OpticFilm 8100，USB `07b3:1824` | 无 | Unsupported | 不作为可用设备处理 |
 | Plustek OpticFilm 8200i，USB `07b3:130d` | `genesys` | Complete | 专用胶片扫描仪路径 |
@@ -194,7 +212,7 @@ cd negaflow-scanner-sane
 | Plustek OpticFilm 120、120 Pro、135、135i、9000i Ai | 无 | Unsupported | 不作为可用设备处理 |
 | Epson Perfection V700/V750（GT-X900）、V800/V850（GT-X980） | `epson2` | Good | 在设备报告时使用透射源和定位式平板区域 |
 | Nikon Coolscan LS-2000、LS-40 ED、LS-50 ED、LS-4000 ED、LS-8000 ED | `coolscan3` | 视型号为 Complete 至 Minimal | 专用胶片扫描仪路径 |
-| Nikon Coolscan LS-5000 ED | `coolscan3` | 后端列表中有，但实际使用报告并不完整 | 专用胶片扫描仪路径 |
+| Nikon Coolscan LS-5000 ED | `coolscan3` | SANE 1.4 中未经测试，可能与 LS-50 类似 | 专用胶片扫描仪路径 |
 | Nikon Coolscan LS-20、LS-30、LS-1000 | `coolscan` | 视型号而定 | 仅 SCSI |
 | Nikon Coolscan LS-9000 ED | 无 | Unsupported | 不作为可用设备处理 |
 | Reflecta ProScan/CrystalScan/DigitDia、PIE PowerSlide | `pieusb`，旧 SCSI 型号使用 `pie` | 视型号与型号编号而定 | 仅使用设备报告的选项 |
@@ -271,16 +289,16 @@ scanimage -L
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `scanimage: command not found` | 未安装 `sane-backends`，或装在另一个 Homebrew 路径 | 检查 `command -v scanimage`。Apple Silicon 为 `/opt/homebrew/bin`，Intel 为 `/usr/local/bin` |
+| `scanimage: command not found` | 未安装 SANE，或其 `bin` 不在当前 shell 的 `PATH` 中 | 普通扫描仪安装 `sane-backends`；Coolscan 使用上面的修补助手与 `export` |
 | USB 列表中没有扫描仪 | 集线器、扩展坞、转接头、线缆或供电 | 去掉集线器直连 Mac，并换一个端口。USB 2.0 胶片扫描仪经过 USB-C 转接常常失败 |
 | `sane-find-scanner` 能看到，但提示 `no SANE devices found` | 没有已启用的后端支持该型号 | 查看 [SANE 支持设备列表](https://www.sane-project.org/sane-supported-devices.html)，再阅读第 3 步的日志 |
 | USB 列表中有，`scanimage -L` 为空，且 `repair-sane-config` 返回 `notNeeded` | SANE 不认识的硬件版本 | 将 USB product ID 与[扫描仪支持](#扫描仪支持)表对照。沿用旧产品名销售的新版本无法从这一侧解决 |
 | Coolscan LS-50 或 LS-5000 从 USB 列表中消失 | 这些机型上已知的 USB 端口故障 | 换线缆和端口确认。如果 Mac 完全无法枚举，则是硬件故障而非驱动问题 |
 | `another process has device opened for exclusive access`、`device busy`、`is not configured` | 其他程序已占用 USB 接口 | 退出 VueScan、SilverFast、图像捕捉和厂商工具，重新连接扫描仪后再试 |
 | 只有 `sudo scanimage -L` 能找到 | 接口被占用或未释放 | 先解决上面的占用问题。negaflow 不会以 root 运行插件，所以 `sudo` 不是解决办法 |
-| 终端能找到，negaflow 找不到 | SANE 装在标准路径之外 | 插件只查找 `/opt/homebrew`、`/usr/local` 和 `/usr` 下的位置。MacPorts（`/opt/local`）和自行编译的路径不会被使用，请用 Homebrew 安装 `sane-backends` |
+| 终端能找到，negaflow 找不到 | SANE 不在支持的 Homebrew keg 路径 | 重新运行随附安装程序；不会使用 MacPorts 或其他手动编译路径 |
 | `open of device ... failed: Invalid argument` | 首次打开后 USB 地址发生变化，或缺少 SANE 配置目录 | 重新执行 `detect`，并确认存在 `/opt/homebrew/etc/sane.d` 或 `/usr/local/etc/sane.d` |
-| `brew upgrade` 之前可用 | 新版 `sane-backends` 的后端回归问题 | 用 `brew list --versions sane-backends` 与可用时的版本对比 |
+| 更新前可用 | 当前选择的 SANE keg 被删除或替换 | 重新运行对应的安装程序，并检查 `brew list --versions sane-backends sane-backends-negaflow` |
 | 安装旧版 negaflow 插件后列表为空 | 旧版本在 `dll.conf` 中禁用了后端 | 执行 [SANE 配置](#sane-配置)中的 `repair-sane-config` |
 
 ### 3. 阅读后端日志
@@ -294,7 +312,7 @@ SANE_DEBUG_DLL=3 scanimage -L 2>&1 | tail -40
 `SANE_DEBUG_EPSON2=128`。
 
 反馈问题时需要一并提供 macOS 版本、Mac 机型、`scanimage --version`、
-`brew list --versions sane-backends`、扫描仪型号以及上述三步的输出。
+`brew list --versions sane-backends sane-backends-negaflow`、扫描仪型号以及上述三步的输出。
 
 ## 请求值与失败处理
 
@@ -352,7 +370,7 @@ negaflow 会把 `capabilities` 返回的不透明 `capabilityToken` 自动带入
 
 ## SANE 配置
 
-当前版本不会筛选 Homebrew 共享的 `dll.conf`。<br>
+修补后的 keg 使用自己的 `etc/sane.d`，不会修改普通 Homebrew 安装的 `dll.conf`。<br>
 `detect` 会自动修复旧版 negaflow 插件禁用的行，同时保留发行版和用户原有的注释。也可以手动执行相同修复：
 
 ```bash
@@ -405,6 +423,7 @@ NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 
 该构建会先验证固定版本的官方 Homebrew 安装包，再纳入其安装组件，随后同时生成 Apple Silicon 专用版和 Universal 版，并在不实际安装的情况下分别检查各自的 PKG 和 DMG。<br>
 将 `NEGAFLOW_INSTALLER_ARCHITECTURE` 设为 `arm64` 或 `universal` 只构建其中一种；默认值 `all` 会构建两种。<br>
+设置 `NEGAFLOW_INSTALLER_VARIANT=all` 会同时构建标准版和 Coolscan 版；默认只构建标准版。<br>
 用于正式分发时，还需要 `NEGAFLOW_INSTALLER_MODE=distribution`、PKG 使用的 `NEGAFLOW_INSTALLER_IDENTITY`，以及现有的应用签名身份和公证配置。
 
 ## 许可证
@@ -412,7 +431,8 @@ NEGAFLOW_OVERWRITE_INSTALLER=1 ./scripts/build-installer.sh
 本项目采用 [GPL-2.0-or-later](LICENSE) 发布。<br>
 发布归档同时包含许可证说明和 GNU GPL v2 全文 [COPYING](COPYING)。
 
-一键安装程序还包含关于所附 Homebrew 安装组件和通过网络安装的 SANE backends 的 [第三方声明](THIRD_PARTY_NOTICES.md)。<br>
+安装程序还包含所附 Homebrew 组件，以及 Coolscan 版在用户 Mac 上构建的修补版 SANE
+源码的[第三方声明](THIRD_PARTY_NOTICES.md)。<br>
 同版本插件的完整源代码归档会在发布 ZIP 内及同一发布位置提供，<br>
 同时也包含在 PKG 安装内容和 DMG 中。
 

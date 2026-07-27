@@ -1,7 +1,7 @@
 import Foundation
 
 private struct SANECapabilitySnapshot: Codable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var deviceID: String
@@ -10,12 +10,23 @@ private struct SANECapabilitySnapshot: Codable {
     var deviceIdentity: SANEBackend.DeviceIdentity?
     var deviceType: String?
     var optionDump: String
+    /// optionDump가 실제로 적용해 조회한 모드. 다른 모드 요청에는 이 덤프를 재사용하지 않는다.
+    var validatedMode: ColorMode?
 }
 
 extension SANEBackend {
     /// 장치 문자열의 백엔드 이름. "genesys:libusb:000:010" → "genesys", "epson2:net:..." → "epson2".
     static func backendName(of deviceString: String) -> String {
         String(deviceString.prefix(while: { $0 != ":" }))
+    }
+
+    /// 주소 없는 `-d backend` 선택자를 실제 재열거 회피가 필요한 백엔드에만 허용한다.
+    ///
+    /// SANE의 dll 계층은 이 형식을 backend의 빈 장치명으로 전달한다. genesys와 epson2는
+    /// 빈 장치명을 첫 장치로 처리하지만, coolscan2/3처럼 거부하는 구현도 있으므로 USB
+    /// 백엔드 전체로 일반화하면 안 된다.
+    static func supportsStableBackendSelector(_ backend: String) -> Bool {
+        backend == "genesys" || backend == "epson2"
     }
 
     static func connectionType(of deviceString: String) -> ConnectionType {
@@ -188,7 +199,12 @@ extension SANEBackend {
             acquisitionDevice: devname,
             deviceIdentity: identity,
             deviceType: cachedDeviceType(for: devname),
-            optionDump: dump
+            optionDump: dump,
+            validatedMode: Self.validatedColorMode(
+                in: dump,
+                backend: backend,
+                deviceTypeHint: cachedDeviceType(for: devname)
+            )
         )
         let token: String
         do {
@@ -224,7 +240,7 @@ extension SANEBackend {
         targetDevice: String? = nil,
         targetBackend: String? = nil,
         expectedIdentity: DeviceIdentity? = nil,
-        allowSingleGenesysSelector: Bool = false,
+        allowSingleBackendSelector: Bool = false,
         ownedByScanSession: Bool = false
     ) async throws -> String {
         if let cached = liveCachedSelector(
@@ -261,17 +277,16 @@ extension SANEBackend {
             chosen = nil
         }
         if let chosen {
-            // 실기 genesys는 장치를 열고 닫을 때마다 USB 재열거를 유발해 방금 보고한 libusb
-            // 주소를 즉시 무효화하므로, 같은 genesys 장치가 하나일 때는 검증된 `-d genesys`
-            // 선택자를 쓴다. 이 선택자는 주소가 바뀌어도 계속 유효하다. 다른 backend의 장치명
-            // 축약은 SANE 계약이 보장하지 않으므로 Epson/Nikon/PIE 등은 보고된 전체 식별자를
-            // 그대로 유지한다.
+            // 주소 독립 선택자는 backend 구현이 빈 장치명을 지원하고, 같은 backend 장치가
+            // 정확히 하나일 때만 쓴다. 그 밖의 backend는 방금 목록에서 확인한 전체 주소를
+            // 유지해 coolscan2/3 같은 구현에 빈 장치명을 넘기지 않는다.
             let resolvedAddress: String
-            if allowSingleGenesysSelector,
-               targetBackend == "genesys",
+            if allowSingleBackendSelector,
+               let targetBackend,
+               Self.supportsStableBackendSelector(targetBackend),
                backendMatches.count == 1,
                chosen.devname.contains(":libusb:") {
-                resolvedAddress = "genesys"
+                resolvedAddress = targetBackend
             } else {
                 resolvedAddress = chosen.devname
             }
@@ -391,12 +406,29 @@ extension SANEBackend {
     func resolveMedia(options: ScanOptions) async throws -> MediaSelection {
         if let token = options.capabilityToken {
             let snapshot = try Self.decodeCapabilitySnapshot(token, for: options)
+            let raw = options.scannerID.replacingOccurrences(of: "sane-", with: "")
+            let selected: (devname: String, dump: String)
+            if snapshot.validatedMode == options.colorMode {
+                selected = (snapshot.acquisitionDevice, snapshot.optionDump)
+            } else {
+                // Color에서 읽은 depth/geometry 활성 상태를 Gray 요청에 재사용하지 않는다.
+                // 정상 Color 경로에는 추가 open이 없고, 실제로 다른 모드를 요청할 때만
+                // 그 모드를 적용한 -A를 한 번 읽는다.
+                selected = try await scanSpecificOptionsDump(
+                    sourceDump: snapshot.optionDump,
+                    devname: snapshot.acquisitionDevice,
+                    targetDevice: raw,
+                    backend: snapshot.backend,
+                    expectedIdentity: snapshot.deviceIdentity,
+                    options: options
+                )
+            }
             var media = Self.resolveMedia(
-                dump: snapshot.optionDump,
+                dump: selected.dump,
                 options: options,
                 deviceTypeHint: snapshot.deviceType
             )
-            media.acquisitionDevice = snapshot.acquisitionDevice
+            media.acquisitionDevice = selected.devname
             media.expectedDeviceIdentity = snapshot.deviceIdentity
             return media
         }
@@ -422,6 +454,7 @@ extension SANEBackend {
                 devname: devname,
                 targetDevice: raw,
                 backend: Self.backendName(of: raw),
+                expectedIdentity: cachedDeviceIdentity(for: devname),
                 options: options
             )
         }
@@ -485,12 +518,18 @@ extension SANEBackend {
                         targetDevice: raw,
                         targetBackend: backend,
                         expectedIdentity: expectedIdentity,
-                        allowSingleGenesysSelector: attempt == 2,
+                        allowSingleBackendSelector: attempt == 2,
                         ownedByScanSession: ownedByScanSession
                     )
                 }
+                // 단일-source genesys 필름 스캐너는 추가 open을 피하면서 주 사용 모드인
+                // Color 상태의 덤프를 얻는다. 다른 모드는 실제 요청 시 별도로 검증한다.
+                var baseArgs = ["-A", "-d", devname]
+                if backend == "genesys" {
+                    baseArgs += ["--mode", "Color"]
+                }
                 let baseDump = try await runScanimage(
-                    args: ["-A", "-d", devname],
+                    args: baseArgs,
                     ownedByScanSession: ownedByScanSession
                 )
                 guard !SaneOptionDump(baseDump).isEmpty else {
@@ -544,7 +583,7 @@ extension SANEBackend {
             targetDevice: targetDevice,
             targetBackend: backend,
             expectedIdentity: expectedIdentity,
-            allowSingleGenesysSelector: false,
+            allowSingleBackendSelector: false,
             ownedByScanSession: ownedByScanSession
         ), resolved != previous else {
             return nil
@@ -581,6 +620,7 @@ extension SANEBackend {
         devname: String,
         targetDevice: String,
         backend: String,
+        expectedIdentity: DeviceIdentity?,
         options: ScanOptions
     ) async throws -> (devname: String, dump: String) {
         let preliminary = Self.resolveMedia(dump: sourceDump, options: options)
@@ -603,7 +643,8 @@ extension SANEBackend {
                     previous: currentDevname,
                     targetDevice: targetDevice,
                     backend: backend,
-                    expectedIdentity: cachedDeviceIdentity(for: currentDevname),
+                    expectedIdentity: expectedIdentity
+                        ?? cachedDeviceIdentity(for: currentDevname),
                     ownedByScanSession: true
                 ) else { break }
                 currentDevname = reopened
@@ -694,6 +735,25 @@ extension SANEBackend {
             ?? pickModeValue(modeValues, colorMode: .gray)
     }
 
+    static func validatedColorMode(
+        in dump: String,
+        backend: String,
+        deviceTypeHint: String?
+    ) -> ColorMode? {
+        let opts = SaneOptionDump(dump)
+        if let selected = opts.selectedEnumValue("mode")?.lowercased() {
+            if selected.contains("color") { return .color }
+            if selected.contains("gray") || selected.contains("grey") { return .gray }
+            return nil
+        }
+        let type = (deviceTypeHint ?? "").lowercased()
+        if !opts.isActive("mode"),
+           type.contains("film") || type.contains("slide") || isDedicatedFilmBackend(backend) {
+            return .color
+        }
+        return nil
+    }
+
     /// 순수 함수(테스트 가능): capability 재조회 인자. nil이면 base 덤프를 그대로 쓴다.
     ///
     /// 모드는 필요할 때만 싣는다. 장치를 한 번 더 여는 것은 전용 필름 스캐너에서 다음
@@ -750,6 +810,23 @@ extension SANEBackend {
         // 모드: 장치 원문 값에서 선택(--mode 없으면 생략).
         let mode = pickModeValue(modeValues, colorMode: options.colorMode)
         let grayMode = pickModeValue(modeValues, colorMode: .gray)
+        let colorCorrectionValues = opts.enumValues("color-correction")
+        let gammaCorrectionValues = opts.enumValues("gamma-correction")
+        let colorCorrection = backend == "epson2"
+            ? colorCorrectionValues.first {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare("None") == .orderedSame
+            }
+            : nil
+        let gammaCorrection = backend == "epson2"
+            ? gammaCorrectionValues.first {
+                $0.lowercased().replacingOccurrences(of: " ", with: "")
+                    .contains("gamma=1.0")
+            } ?? gammaCorrectionValues.first {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare("User defined") == .orderedSame
+            }
+            : nil
 
         // 깊이: 16-bit host 계약은 SANE의 9...16-bit 샘플이 16-bit TIFF 컨테이너로
         // 기록되는 경우를 포함한다. 8-bit 요청을 16-bit로 바꾸거나 그 반대는 허용하지 않는다.
@@ -876,13 +953,49 @@ extension SANEBackend {
             usesCornerPixelGeometry = true
         }
 
-        // 필름 타입(epson2/epkowa): 투과 소스에서만 유효.
+        // 필름 타입: epson2의 --film-type, 구형 coolscan의 --type, coolscan2/3의
+        // bool --negative를 장치가 실제 노출한 이름대로 사용한다.
         var filmType: String? = nil
-        if opts.isActive("film-type"), let src = source, isTransparencySource(src) {
-            let requestedPolarity = options.filmType.requiresInversion ? "negative" : "positive"
-            filmType = opts.enumValues("film-type").first {
-                $0.lowercased().contains(requestedPolarity)
+        let filmTypeOptionName = opts.isActive("film-type")
+            ? "film-type"
+            : (opts.isActive("type")
+                ? "type"
+                : (opts.isActive("negative") ? "negative" : nil))
+        if let filmTypeOptionName,
+           source == nil || source.map({ isTransparencySource($0) }) == true {
+            if filmTypeOptionName == "negative",
+               backend == "coolscan2" || backend == "coolscan3" {
+                // 이 옵션은 필름 메타데이터가 아니라 스캐너 자체 색 반전이다.
+                // negaflow가 원본 네거티브 밀도를 현상하므로 장치 반전은 항상 끈다.
+                filmType = "no"
+            } else {
+                let preserveRawCoolscan = backend == "coolscan" && filmTypeOptionName == "type"
+                let requestedPolarity = preserveRawCoolscan || !options.filmType.requiresInversion
+                    ? "positive"
+                    : "negative"
+                let values = opts.enumValues(filmTypeOptionName)
+                let polarityMatches = values.filter { $0.lowercased().contains(requestedPolarity) }
+                if options.filmType.requiresInversion && !preserveRawCoolscan {
+                    filmType = polarityMatches.first {
+                        !$0.lowercased().contains("slide")
+                    } ?? polarityMatches.first
+                } else {
+                    filmType = polarityMatches.first {
+                        $0.lowercased().contains("slide")
+                    } ?? polarityMatches.first
+                }
             }
+        }
+
+        let scanLeftRange = opts.rangeUnit("l") == "mm" ? opts.numericRange("l") : nil
+        let scanTopRange = opts.rangeUnit("t") == "mm" ? opts.numericRange("t") : nil
+        let scanWidthRange = opts.rangeUnit("x") == "mm" ? opts.numericRange("x") : nil
+        let scanHeightRange = opts.rangeUnit("y") == "mm" ? opts.numericRange("y") : nil
+        let scanSurfaceRightMM = scanWidthRange.map {
+            max(scanLeftRange?.maximum ?? $0.maximum, (scanLeftRange?.minimum ?? 0) + $0.maximum)
+        }
+        let scanSurfaceBottomMM = scanHeightRange.map {
+            max(scanTopRange?.maximum ?? $0.maximum, (scanTopRange?.minimum ?? 0) + $0.maximum)
         }
 
         // 별도 파일로 검증할 수 있는 IR source/mode만 사용한다. coolscan3의 --infrared는
@@ -902,6 +1015,7 @@ extension SANEBackend {
             source: source,
             mode: mode,
             filmType: filmType,
+            filmTypeOptionName: filmTypeOptionName,
             depthArgument: depthArgument,
             fixedDepth: fixedDepth,
             resolvedDPI: resolvedDPI,
@@ -915,15 +1029,22 @@ extension SANEBackend {
             hasScanExposureOption: opts.isActive("scan-exposure-time"),
             hasModeOption: opts.isActive("mode"),
             hasDepthOption: opts.isActive("depth"),
-            hasFilmTypeOption: opts.isActive("film-type"),
+            hasFilmTypeOption: filmTypeOptionName != nil,
+            hasAdvanceOption: opts.isActive("advance"),
+            colorCorrection: colorCorrection,
+            gammaCorrection: gammaCorrection,
+            hasColorCorrectionOption: opts.isActive("color-correction"),
+            hasGammaCorrectionOption: opts.isActive("gamma-correction"),
             brightnessRange: opts.numericRange("brightness"),
             contrastRange: opts.numericRange("contrast"),
             hardwareExposureRange: opts.numericRange("scan-exposure-time"),
             resolutionRange: resolutionRange,
-            scanLeftRange: opts.rangeUnit("l") == "mm" ? opts.numericRange("l") : nil,
-            scanTopRange: opts.rangeUnit("t") == "mm" ? opts.numericRange("t") : nil,
-            scanWidthRange: opts.rangeUnit("x") == "mm" ? opts.numericRange("x") : nil,
-            scanHeightRange: opts.rangeUnit("y") == "mm" ? opts.numericRange("y") : nil,
+            scanLeftRange: scanLeftRange,
+            scanTopRange: scanTopRange,
+            scanWidthRange: scanWidthRange,
+            scanHeightRange: scanHeightRange,
+            scanSurfaceRightMM: scanSurfaceRightMM,
+            scanSurfaceBottomMM: scanSurfaceBottomMM,
             irStrategy: irStrategy,
             irPassMode: grayMode,
             dedicatedFilmDevice: dedicatedFilmDevice,

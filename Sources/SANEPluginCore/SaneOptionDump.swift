@@ -47,6 +47,17 @@ struct SaneOptionDump: Sendable {
         return v.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
+    /// enum 제약 뒤 대괄호에 표시된 현재 선택값. `[inactive]` 같은 상태 표시는 제외한다.
+    func selectedEnumValue(_ name: String) -> String? {
+        guard let raw = values[name] else { return nil }
+        return enumValues(name).first { candidate in
+            raw.range(
+                of: "[\(candidate)]",
+                options: [.caseInsensitive, .diacriticInsensitive]
+            ) != nil
+        }
+    }
+
     /// "8|14 [8]" → [8, 14]. 접미사(dpi 등) 제거. 비활성 옵션은 값이 없다.
     func intTokens(_ name: String) -> [Int] {
         guard isActive(name) else { return [] }
