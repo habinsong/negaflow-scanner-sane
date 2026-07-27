@@ -115,7 +115,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
     }
 
     func testCancelTerminatesOwnedDetectionProcessWithoutPoisoningNextRequest() async throws {
-        let fixture = try makeFixture(blockingScan: true)
+        let fixture = try makeFixture(blockingScan: true, blockingDiscovery: true)
         defer { try? FileManager.default.removeItem(at: fixture.root) }
         let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
 
@@ -352,6 +352,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
 
     private func makeFixture(
         blockingScan: Bool,
+        blockingDiscovery: Bool = false,
         progressBeforeDelay: Bool = false,
         progressUpdatesDuringDelay: Bool = false,
         unknownProgressUpdatesDuringDelay: Bool = false,
@@ -422,6 +423,12 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         } else {
             acquisition = "exec /bin/cat \(shellQuote(sourceTIFF.path))"
         }
+        let discovery = blockingDiscovery
+            ? "exec /bin/sleep 30"
+            : """
+              echo "device \\`genesys:libusb:000:010' is a PLUSTEK Ownership Test film scanner"
+              exit 0
+              """
         let script = """
         #!/bin/sh
         if [ "$1" = "hold" ]; then
@@ -429,8 +436,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
           while :; do /bin/sleep 1; done
         fi
         if [ "$1" = "-L" ]; then
-          echo "device \\`genesys:libusb:000:010' is a PLUSTEK Ownership Test film scanner"
-          exit 0
+          \(discovery)
         fi
         if [ "$1" = "-f" ]; then
           printf 'genesys:libusb:000:010\\tPLUSTEK\\tOwnership Test\\tfilm scanner\\n'
