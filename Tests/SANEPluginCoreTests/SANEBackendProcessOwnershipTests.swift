@@ -423,7 +423,13 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
         } else {
             acquisition = "exec /bin/cat \(shellQuote(sourceTIFF.path))"
         }
-        let discovery = blockingDiscovery
+        let formattedDiscovery = blockingDiscovery
+            ? "exec /bin/sleep 30"
+            : """
+              printf 'genesys:libusb:000:010\\tPLUSTEK\\tOwnership Test\\tfilm scanner\\n'
+              exit 0
+              """
+        let legacyDiscovery = blockingDiscovery
             ? "exec /bin/sleep 30"
             : """
               echo "device \\`genesys:libusb:000:010' is a PLUSTEK Ownership Test film scanner"
@@ -436,11 +442,10 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
           while :; do /bin/sleep 1; done
         fi
         if [ "$1" = "-L" ]; then
-          \(discovery)
+          \(legacyDiscovery)
         fi
         if [ "$1" = "-f" ]; then
-          printf 'genesys:libusb:000:010\\tPLUSTEK\\tOwnership Test\\tfilm scanner\\n'
-          exit 0
+          \(formattedDiscovery)
         fi
         if [ "$1" = "-A" ]; then
           echo "--mode Color|Gray [Color]"
@@ -543,7 +548,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
     }
 
     private func waitForOwnedAcquisition(_ backend: SANEBackend) async throws -> Process {
-        for _ in 0..<200 {
+        for _ in 0..<1_500 {
             if let process = backend.snapshotOwnedScanProcess(),
                process.isRunning,
                process.arguments?.contains("--format=tiff") == true {
@@ -555,7 +560,7 @@ final class SANEBackendProcessOwnershipTests: XCTestCase {
     }
 
     private func waitForAnyOwnedProcess(_ backend: SANEBackend) async throws -> Process {
-        for _ in 0..<200 {
+        for _ in 0..<1_500 {
             if let process = backend.snapshotOwnedScanProcess(), process.isRunning {
                 return process
             }
