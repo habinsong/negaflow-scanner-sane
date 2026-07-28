@@ -70,10 +70,10 @@ SANE ordinaires et la version Coolscan séparée pour Nikon Coolscan sous macOS 
 
 | Programme d'installation | Parcours SANE | Binaire du module |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.1-macos-arm64-installer.dmg` | Standard, macOS 14+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.1-macos-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.1-coolscan-macos26-arm64-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.1-coolscan-macos26-universal-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.2-macos-arm64-installer.dmg` | Standard, macOS 14+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.0.2-macos-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` + `x86_64` |
 
 Le DMG standard contient `Install negaflow Scanner.pkg`; le DMG Coolscan contient
 `Install negaflow Scanner for Coolscan.pkg`.

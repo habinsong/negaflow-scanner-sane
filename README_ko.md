@@ -68,10 +68,10 @@ Coolscan을 쓰는 경우에는 별도 Coolscan판을 받습니다.
 
 | 설치 파일 | SANE 경로 | 플러그인 바이너리 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.1-macos-arm64-installer.dmg` | 일반판, macOS 14 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.1-macos-universal-installer.dmg` | 일반판, macOS 14 이상 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.1-coolscan-macos26-arm64-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.1-coolscan-macos26-universal-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.2-macos-arm64-installer.dmg` | 일반판, macOS 14 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.0.2-macos-universal-installer.dmg` | 일반판, macOS 14 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` + `x86_64` |
 
 일반판 DMG에서는 `Install negaflow Scanner.pkg`, Coolscan판 DMG에서는
 `Install negaflow Scanner for Coolscan.pkg`를 실행합니다.
