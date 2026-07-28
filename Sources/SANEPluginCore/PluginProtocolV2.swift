@@ -120,13 +120,15 @@ public struct PluginAppliedScanOptionsV2: Codable, Sendable, Equatable {
     public var contrastAdjustment: Double?
     public var outputRawTIFF: Bool
 
-    public init(request: PluginScanRequestV2) {
+    /// `appliedScanArea`는 백엔드에 실제로 보낸 영역이다. 요청과 다를 수 있으므로
+    /// (epson2 정수 mm 정렬) 호스트는 이 값으로 결과 픽셀을 검증해야 한다.
+    public init(request: PluginScanRequestV2, appliedScanArea: ScanArea? = nil) {
         deviceID = request.deviceID
         resolutionDPI = request.resolutionDPI
         bitDepth = request.bitDepth
         colorMode = request.colorMode
         filmType = request.filmType
-        scanArea = request.scanArea
+        scanArea = appliedScanArea ?? request.scanArea
         infrared = request.infrared
         multiExposure = request.multiExposure
         hardwareExposureTime = request.hardwareExposureTime

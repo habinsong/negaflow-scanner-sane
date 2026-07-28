@@ -80,7 +80,7 @@ Das Standard-DMG enthält `Install negaflow Scanner.pkg`; das Coolscan-DMG enth�
 
 Die Standardvariante installiert Homebrews `sane-backends`. Die Coolscan-Variante baut
 `sane-backends-negaflow` aus offiziellem SANE 1.4.0 und wendet nur den upstream
-`coolscan2`/`coolscan3`-Allokationsfix an.<br>
+`coolscan2`/`coolscan3`-Allokationsfix sowie einen `epson2`-Scanhöhen-Fix an.<br>
 Internetzugang und ein Administratorpasswort sind erforderlich.<br>
 Eine vorhandene Homebrew-Installation wird weiterverwendet.
 
@@ -90,7 +90,7 @@ Coolscan-Variante für macOS 26.
 
 Eine spätere Upstream-Änderung initialisiert zusätzlich die Coolscan3-Parameterblöcke für
 Load/Eject/Reset, die mindestens bei LS-5000-Firmware 1.03 erforderlich sind. Sie bleibt bewusst
-außerhalb dieses Zwei-Zeilen-Patches; Laden, Auswerfen und Zurücksetzen des LS-5000 sind daher
+außerhalb dieses minimalen Patch-Satzes; Laden, Auswerfen und Zurücksetzen des LS-5000 sind daher
 auch mit der gepatchten Variante ungetestet und können fehlschlagen.
 
 Starten Sie negaflow anschließend neu, öffnen Sie „Scanner laden“, prüfen Sie die Plug-in-Angaben und geben Sie es frei.

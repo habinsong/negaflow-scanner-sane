@@ -894,6 +894,7 @@ extension SANEBackend {
         var rightPixels: Int? = nil
         var bottomPixels: Int? = nil
         var usesCornerPixelGeometry = false
+        var heightAlignmentMM: Double = 0
         if opts.rangeUnit("x") == "mm", opts.rangeUnit("y") == "mm",
            let xRange = opts.numericRange("x"), let yRange = opts.numericRange("y"),
            xRange.maximum > 0, yRange.maximum > 0 {
@@ -909,6 +910,19 @@ extension SANEBackend {
             if opts.rangeUnit("t") == "mm", let topRange = opts.numericRange("t"),
                topRange.containsExactly(options.scanArea.originYMM) {
                 originYMM = options.scanArea.originYMM
+            }
+            if backend == "epson2", let requestedHeight = heightMM {
+                let topMinimum = opts.rangeUnit("t") == "mm"
+                    ? (opts.numericRange("t")?.minimum ?? 0)
+                    : 0
+                let aligned = epson2AlignedHeightMM(
+                    originYMM: options.scanArea.originYMM,
+                    heightMM: requestedHeight,
+                    range: yRange,
+                    surfaceBottomMM: topMinimum + yRange.maximum
+                )
+                heightAlignmentMM = aligned - requestedHeight
+                heightMM = aligned
             }
         } else if requestedDPI > 0,
                   opts.rangeUnit("x") == "pel", opts.rangeUnit("y") == "pel",
@@ -1045,6 +1059,7 @@ extension SANEBackend {
             originYMM: originYMM,
             widthMM: widthMM,
             heightMM: heightMM,
+            heightAlignmentMM: heightAlignmentMM,
             hasPreviewOption: opts.isActive("preview"),
             hasBrightnessOption: supportsHardwareToneAdjustments && opts.isActive("brightness"),
             hasContrastOption: supportsHardwareToneAdjustments && opts.isActive("contrast"),
@@ -1089,6 +1104,38 @@ extension SANEBackend {
         case .none:
             return nil
         }
+    }
+
+    /// epson2는 스캔 라인 수를 다시 계산할 때 br_y를 정수 mm로 잘라낸다. backend/epson2-ops.c의
+    /// `((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi + 0.5) - s->top` 에서 캐스트가
+    /// 나눗셈보다 먼저 걸리기 때문이다(1.4.0과 master 모두 동일). br_y가 소수 mm면 결과 이미지의
+    /// 세로만 최대 1mm어치 짧아져서, 요청한 종횡비와 어긋나고 필름 컷이 조용히 잘린다.
+    ///
+    /// br_y를 정수 mm 경계로 **올려서** 절삭이 아무 일도 하지 않게 만든다. 올리면 스캔 범위가
+    /// 최대 1mm 넓어질 뿐 이미지가 잘리지 않는다. 범위나 스캔 가능 경계에 걸려 올릴 수 없을 때만
+    /// 내리고, 둘 다 불가능하면 요청값을 그대로 둔다.
+    static func epson2AlignedHeightMM(
+        originYMM: Double,
+        heightMM: Double,
+        range: ScannerOptionRange,
+        surfaceBottomMM: Double?
+    ) -> Double {
+        guard originYMM.isFinite, heightMM.isFinite, heightMM > 0 else { return heightMM }
+        let bottom = originYMM + heightMM
+        guard bottom.isFinite else { return heightMM }
+        if abs(bottom - bottom.rounded()) <= 1e-9 { return heightMM }
+
+        let grownBottom = bottom.rounded(.up)
+        let grown = grownBottom - originYMM
+        if range.containsExactly(grown),
+           surfaceBottomMM.map({ grownBottom <= $0 + 1e-9 }) ?? true {
+            return grown
+        }
+
+        let shrunk = bottom.rounded(.down) - originYMM
+        if shrunk > 0, range.containsExactly(shrunk) { return shrunk }
+
+        return heightMM
     }
 
     private static func pixelGeometryValue(

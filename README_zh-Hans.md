@@ -78,14 +78,14 @@ xcode-select --install
 `Install negaflow Scanner for Coolscan.pkg`。
 
 标准版安装 Homebrew 的 `sane-backends`。Coolscan 版从官方 SANE 1.4.0 源码构建
-`sane-backends-negaflow`，只应用 upstream 的 `coolscan2`/`coolscan3` 分配修复。<br>
+`sane-backends-negaflow`，应用 upstream 的 `coolscan2`/`coolscan3` 分配修复与 `epson2` 扫描高度修复。<br>
 安装需要互联网连接和管理员密码；若已安装 Homebrew，则直接复用现有安装。
 
 标准版和 macOS 26 以下系统不会主动阻止 Coolscan。stock SANE 可能适用于某些设备，
 但不含该分配修复；受支持的修补路径是 macOS 26 以上 Coolscan 版。
 
 后续 upstream 还加入了至少 LS-5000 firmware 1.03 所需的 Coolscan3
-load/eject/reset 参数块初始化。该修改有意不包含在两行补丁中，因此即使使用 Coolscan
+load/eject/reset 参数块初始化。该修改有意不包含在这组最小补丁中，因此即使使用 Coolscan
 版，LS-5000 的装片、退片和复位仍未经过验证，并可能失败。
 
 完成后重新启动 negaflow，在“加载扫描仪”中检查插件信息并批准它。

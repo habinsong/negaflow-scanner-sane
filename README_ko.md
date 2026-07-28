@@ -77,7 +77,7 @@ Coolscan을 쓰는 경우에는 별도 Coolscan판을 받습니다.
 `Install negaflow Scanner for Coolscan.pkg`를 실행합니다.
 
 일반판은 Homebrew 기본 `sane-backends`를 설치합니다. Coolscan판은 공식 SANE 1.4.0
-소스에 upstream `coolscan2`/`coolscan3` 할당 수정만 적용한
+소스에 upstream `coolscan2`/`coolscan3` 할당 수정과 `epson2` 스캔 높이 수정을 적용한
 `sane-backends-negaflow`를 빌드한 뒤 같은 플러그인을 설치합니다.<br>
 설치에는 인터넷 연결과 관리자 암호가 필요하며, 기존 Homebrew가 있으면 그대로 사용합니다.
 
@@ -86,7 +86,7 @@ Coolscan을 쓰는 경우에는 별도 Coolscan판을 받습니다.
 Coolscan판입니다.
 
 이후 upstream에는 적어도 LS-5000 펌웨어 1.03에서 필요한 Coolscan3
-load/eject/reset 매개변수 초기화도 반영됐습니다. 이 변경은 의도적으로 두 줄 패치 범위에
+load/eject/reset 매개변수 초기화도 반영됐습니다. 이 변경은 의도적으로 최소 패치 범위에
 넣지 않았으므로, 패치판에서도 LS-5000의 필름 로드·배출·리셋은 미검증이며 실패할 수 있습니다.
 
 설치가 끝나면 negaflow를 다시 실행하고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤 승인합니다.<br><br>

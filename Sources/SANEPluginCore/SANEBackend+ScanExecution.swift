@@ -70,6 +70,7 @@ extension SANEBackend {
         let duration = Date().timeIntervalSince(t0)
         let result = try validatedScanResult(
             options: options,
+            media: media,
             outputURL: outURL,
             infraredURL: infraredURL,
             duration: duration,
@@ -156,6 +157,7 @@ extension SANEBackend {
         let duration = Date().timeIntervalSince(t0)
         let result = try validatedScanResult(
             options: options,
+            media: media,
             outputURL: outputURL,
             infraredURL: infraredURL,
             duration: duration,
@@ -294,12 +296,16 @@ extension SANEBackend {
                 throw ScannerError(.unsupportedOption, "preview scanArea 원점을 적용할 수 없습니다.")
             }
         } else {
+            // 높이는 백엔드 절삭을 무해화하려고 1mm 미만으로 정렬될 수 있다(epson2AlignedHeightMM).
+            // 계약은 요청값이 아니라 실제로 보낼 값을 기준으로 확인한다.
+            let appliedHeightMM = options.scanArea.heightMM + media.heightAlignmentMM
             guard let widthRange = media.scanWidthRange,
                   let heightRange = media.scanHeightRange,
                   widthRange.containsExactly(options.scanArea.widthMM),
-                  heightRange.containsExactly(options.scanArea.heightMM),
+                  heightRange.containsExactly(appliedHeightMM),
+                  abs(media.heightAlignmentMM) < 1 + 1e-9,
                   media.widthMM == options.scanArea.widthMM,
-                  media.heightMM == options.scanArea.heightMM else {
+                  media.heightMM == appliedHeightMM else {
                 throw ScannerError(.unsupportedOption, "요청 scanArea를 mm 또는 pel 단위로 정확히 적용할 수 없습니다.")
             }
             if let leftRange = media.scanLeftRange, let topRange = media.scanTopRange {
@@ -320,7 +326,7 @@ extension SANEBackend {
                 )
             }
             if let surfaceBottom = media.scanSurfaceBottomMM,
-               options.scanArea.originYMM + options.scanArea.heightMM > surfaceBottom + 1e-9 {
+               options.scanArea.originYMM + appliedHeightMM > surfaceBottom + 1e-9 {
                 throw ScannerError(
                     .unsupportedOption,
                     "요청 scanArea의 원점+높이가 스캔 가능한 아래쪽 경계를 넘습니다."
@@ -448,6 +454,7 @@ extension SANEBackend {
 
     private func validatedScanResult(
         options: ScanOptions,
+        media: MediaSelection,
         outputURL: URL,
         infraredURL: URL?,
         duration: TimeInterval,
@@ -486,7 +493,13 @@ extension SANEBackend {
                 infraredFileURL: infraredURL,
                 scanDuration: duration,
                 backendUsed: .sane,
-                warnings: warnings
+                warnings: warnings,
+                appliedScanArea: ScanArea(
+                    originXMM: media.originXMM ?? options.scanArea.originXMM,
+                    originYMM: media.originYMM ?? options.scanArea.originYMM,
+                    widthMM: media.widthMM ?? options.scanArea.widthMM,
+                    heightMM: media.heightMM ?? options.scanArea.heightMM
+                )
             )
         } catch let error as ScannerError {
             try? FileManager.default.removeItem(at: outputURL)

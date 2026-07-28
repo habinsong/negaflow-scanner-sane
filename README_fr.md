@@ -80,7 +80,7 @@ Le DMG standard contient `Install negaflow Scanner.pkg`; le DMG Coolscan contien
 
 La version standard installe `sane-backends` de Homebrew. La version Coolscan compile
 `sane-backends-negaflow` depuis SANE 1.4.0 officiel avec uniquement le correctif upstream
-d'allocation `coolscan2`/`coolscan3`.<br>
+d'allocation `coolscan2`/`coolscan3` ainsi qu'un correctif de hauteur de numérisation `epson2`.<br>
 Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br>
 Une installation Homebrew existante est réutilisée.
 
@@ -90,7 +90,7 @@ corrigé pris en charge.
 
 Une modification upstream ultérieure initialise aussi les blocs de paramètres load/eject/reset
 de Coolscan3, nécessaires au moins au firmware 1.03 du LS-5000. Elle est volontairement exclue
-de ce correctif de deux lignes : le chargement, l'éjection et la réinitialisation du LS-5000
+de cet ensemble minimal de correctifs : le chargement, l'éjection et la réinitialisation du LS-5000
 restent donc non vérifiés et peuvent échouer.
 
 À la fin, redémarrez negaflow, ouvrez « Charger le scanner », vérifiez les informations du module et approuvez-le.

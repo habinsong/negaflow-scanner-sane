@@ -1,8 +1,8 @@
 class SaneBackendsNegaflow < Formula
-  desc "SANE scanner backends with the upstream Coolscan depth-list fix"
+  desc "SANE scanner backends with the Coolscan depth-list and epson2 scan-height fixes"
   homepage "https://www.sane-project.org/"
   url "https://gitlab.com/-/project/429008/uploads/843c156420e211859e974f78f64c3ea3/sane-backends-1.4.0.tar.gz"
-  version "1.4.0-negaflow.1"
+  version "1.4.0-negaflow.2"
   sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"
   license "GPL-2.0-or-later"
 
@@ -53,3 +53,9 @@ index e7488f8f..ff9393eb 100644
 @@ -506 +506 @@ cs3_init_options(cs3_t * s)
 -				(SANE_Word *) cs3_xmalloc(2 *
 +				(SANE_Word *) cs3_xmalloc(3 *
+diff --git a/backend/epson2-ops.c b/backend/epson2-ops.c
+--- a/backend/epson2-ops.c
++++ b/backend/epson2-ops.c
+@@ -1423 +1423 @@ e2_init_parameters(Epson_Scanner * s)
+-			((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *
++			(SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *

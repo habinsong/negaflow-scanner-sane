@@ -125,6 +125,8 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var originYMM: Double? = nil
         var widthMM: Double?          // mm 단위 장치에서만 -x/-y 를 전달(pel 단위 장치는 생략=전체영역)
         var heightMM: Double?
+        /// epson2의 정수 mm 절삭을 무해화하려고 heightMM에 더한 보정량(mm). 0이면 무보정.
+        var heightAlignmentMM: Double = 0
         var hasPreviewOption: Bool = false
         var hasBrightnessOption: Bool = false
         var hasContrastOption: Bool = false

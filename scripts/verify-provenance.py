@@ -153,11 +153,12 @@ def verify_distribution_policy() -> None:
 
     formula = (ROOT / "Formula/sane-backends-negaflow.rb").read_text(encoding="utf-8")
     for marker in (
-        'version "1.4.0-negaflow.1"',
+        'version "1.4.0-negaflow.2"',
         "depends_on macos: :tahoe",
         'sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"',
         "cs2_xmalloc (3 * sizeof (SANE_Word))",
         "cs3_xmalloc(3 *",
+        "(SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *",
     ):
         if marker not in formula:
             fail(f"patched SANE formula is incomplete: {marker}")

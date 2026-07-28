@@ -78,7 +78,7 @@ Nikon Coolscanでは専用版を使用します。
 `Install negaflow Scanner for Coolscan.pkg`を実行します。
 
 標準版はHomebrewの`sane-backends`をインストールします。Coolscan版は公式SANE 1.4.0に
-upstreamの`coolscan2`/`coolscan3`割り当て修正だけを適用した
+upstreamの`coolscan2`/`coolscan3`割り当て修正と`epson2`スキャン高さ修正を適用した
 `sane-backends-negaflow`をビルドします。<br>
 インターネット接続と管理者パスワードが必要です。<br>
 既存のHomebrewがある場合はそのまま使用します。
@@ -87,7 +87,7 @@ upstreamの`coolscan2`/`coolscan3`割り当て修正だけを適用した
 ありますが割り当て修正は含まれず、サポート対象の修正経路はmacOS 26以降の専用版です。
 
 その後のupstreamには、少なくともLS-5000 firmware 1.03で必要なCoolscan3の
-load/eject/resetパラメータ初期化も追加されています。この変更は意図的に2行パッチの
+load/eject/resetパラメータ初期化も追加されています。この変更は意図的に最小パッチの
 範囲外なので、専用版でもLS-5000のロード・排出・リセットは未検証で失敗する可能性があります。
 
 完了後にnegaflowを再起動し、「スキャナーを読み込む」でプラグイン情報を確認して承認します。

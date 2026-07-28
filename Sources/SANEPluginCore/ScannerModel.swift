@@ -298,18 +298,23 @@ public struct ScanResult: Codable, Sendable, Equatable {
     public var scanDuration: Double
     public var backendUsed: BackendType
     public var warnings: [String]
+    /// 요청 복사가 아니라 실제로 scanimage에 보낸 스캔 영역. 백엔드 절삭을 피하려고
+    /// 높이가 1mm 미만 정렬됐을 수 있으므로, 소비자는 이 값으로 결과를 검증해야 한다.
+    public var appliedScanArea: ScanArea?
 
     public init(
         rawFileURL: URL, previewImage: Data? = nil, width: Int, height: Int,
         resolution: Resolution, bitDepth: BitDepth, colorSpace: String = "Generic RGB",
         hasInfraredChannel: Bool = false, infraredFileURL: URL? = nil, scanDuration: Double = 0,
-        backendUsed: BackendType = .sane, warnings: [String] = []
+        backendUsed: BackendType = .sane, warnings: [String] = [],
+        appliedScanArea: ScanArea? = nil
     ) {
         self.rawFileURL = rawFileURL; self.previewImage = previewImage
         self.width = width; self.height = height; self.resolution = resolution
         self.bitDepth = bitDepth; self.colorSpace = colorSpace
         self.hasInfraredChannel = hasInfraredChannel; self.infraredFileURL = infraredFileURL
         self.scanDuration = scanDuration; self.backendUsed = backendUsed; self.warnings = warnings
+        self.appliedScanArea = appliedScanArea
     }
 }
 

@@ -243,7 +243,10 @@ case "scan":
             irPath: result.infraredFileURL?.path,
             hasInfrared: result.hasInfraredChannel,
             warnings: result.warnings.isEmpty ? nil : result.warnings,
-            appliedOptions: PluginAppliedScanOptionsV2(request: wire)
+            appliedOptions: PluginAppliedScanOptionsV2(
+                request: wire,
+                appliedScanArea: result.appliedScanArea
+            )
         )
     } catch {
         emitter.emit(type: "error", message: error.localizedDescription)
