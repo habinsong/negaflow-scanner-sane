@@ -359,6 +359,8 @@ negaflow renvoie automatiquement dans la requête suivante le `capabilityToken` 
 `capabilities`. Les appels directs en CLI doivent faire de même ; sans ce jeton, le contrôle de compatibilité
 plus lent reste utilisé.
 
+Les capacités sont lues dans l'état où la numérisation aura effectivement lieu. Les options SANE modifient l'activation des autres : `epson2` désactive la profondeur en Lineart et la luminosité dès qu'un gamma linéaire est choisi. Un relevé pris dans l'état par défaut de l'appareil ne décrit donc pas la numérisation. Le plug-in applique la source transparente, le mode de numérisation et les réglages neutres de couleur et de gamma, lit les options dans cet état et le conserve dans le jeton ; un autre mode demandé entraîne une relecture dans ce mode.
+
 Exemple de requête de numérisation complète :
 
 ```json

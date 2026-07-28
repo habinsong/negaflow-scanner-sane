@@ -363,6 +363,8 @@ negaflow gibt das undurchsichtige `capabilityToken` aus `capabilities` automatis
 Scan-Anfrage zurück. Direkte CLI-Aufrufer sollten denselben Wert mitsenden; ohne ihn läuft die langsamere
 Kompatibilitätsprüfung.
 
+Die Capabilities werden in dem Zustand gelesen, in dem der Scan tatsächlich läuft. SANE-Optionen ändern die Aktivierung anderer Optionen: `epson2` deaktiviert die Tiefe in Lineart und die Helligkeit, sobald ein lineares Gamma gewählt ist. Ein Auslesen im Standardzustand beschreibt den Scan daher nicht. Das Plug-in setzt Durchlichtquelle, Scanmodus sowie die neutralen Farb- und Gammawerte, liest die Optionen in diesem Zustand und hält ihn im Token fest; ein anderer angeforderter Modus wird in diesem Modus neu gelesen.
+
 Beispiel für einen vollständigen Scan:
 
 ```json

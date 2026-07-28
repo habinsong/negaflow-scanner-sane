@@ -352,6 +352,8 @@ A successful result contains `appliedOptions` only after the output TIFF and app
 negaflow automatically returns the opaque `capabilityToken` from `capabilities` in the following scan request.<br>
 Direct CLI callers should do the same; omitting it keeps the slower compatibility preflight.
 
+Capabilities are read in the state the scan will actually run in. SANE options change which other options are active — `epson2` marks depth inactive in Lineart and brightness inactive once a linear gamma is selected — so a dump taken in the device's default state does not describe the scan. The plug-in applies the transparency source, the scan mode and the neutral colour and gamma settings, reads the options in that state, and carries that state in the token. Requesting a different mode re-reads the options in that mode.
+
 Example full-scan request:
 
 ```json
