@@ -42,7 +42,19 @@ struct SaneOptionDump: Sendable {
 
     /// "A|B|C [default]" → ["A","B","C"] (원문 대소문자 보존).
     func enumValues(_ name: String) -> [String] {
-        guard isActive(name), var v = values[name] else { return [] }
+        guard isActive(name), let v = values[name] else { return [] }
+        return Self.parseEnumValues(v)
+    }
+
+    /// 활성 여부와 무관하게 열거 제약 목록만 읽는다. 앞선 옵션 적용으로 활성화될 옵션을
+    /// 같은 scanimage 호출의 뒤쪽에 배치할 때만 사용한다.
+    func constraintEnumValues(_ name: String) -> [String] {
+        guard let value = values[name] else { return [] }
+        return Self.parseEnumValues(value)
+    }
+
+    private static func parseEnumValues(_ raw: String) -> [String] {
+        var v = raw
         if let bracket = v.firstIndex(of: "[") { v = String(v[..<bracket]) }
         return v.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }

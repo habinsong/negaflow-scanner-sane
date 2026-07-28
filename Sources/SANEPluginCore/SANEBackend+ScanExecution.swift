@@ -381,6 +381,9 @@ extension SANEBackend {
         name: String
     ) throws {
         guard let value else { return }
+        if value == 0, range == nil {
+            return
+        }
         guard range?.containsExactly(value) == true else {
             throw ScannerError(.unsupportedOption, "요청 \(name) 값을 정확히 적용할 수 없습니다.")
         }
@@ -778,10 +781,10 @@ extension SANEBackend {
                 args += ["--advance=no"]
             }
             if backend == "epson2" {
-                if let colorCorrection = media.colorCorrection {
+                if media.hasColorCorrectionOption, let colorCorrection = media.colorCorrection {
                     args += ["--color-correction", colorCorrection]
                 }
-                if let gammaCorrection = media.gammaCorrection {
+                if media.hasGammaCorrectionOption, let gammaCorrection = media.gammaCorrection {
                     args += ["--gamma-correction", gammaCorrection]
                 }
             }

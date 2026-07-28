@@ -735,6 +735,24 @@ extension SANEBackend {
             ?? pickModeValue(modeValues, colorMode: .gray)
     }
 
+    private static func epsonRawColorCorrection(in opts: SaneOptionDump) -> String? {
+        opts.constraintEnumValues("color-correction").first {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare("None") == .orderedSame
+        }
+    }
+
+    private static func epsonRawGammaCorrection(in opts: SaneOptionDump) -> String? {
+        let values = opts.constraintEnumValues("gamma-correction")
+        return values.first {
+            $0.lowercased().replacingOccurrences(of: " ", with: "")
+                .contains("gamma=1.0")
+        } ?? values.first {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare("User defined") == .orderedSame
+        }
+    }
+
     static func validatedColorMode(
         in dump: String,
         backend: String,
@@ -762,13 +780,26 @@ extension SANEBackend {
     /// 호출에 모드를 함께 실어 추가 open 없이 심도를 활성화한다.
     static func capabilityRedumpArguments(baseDump: String, devname: String) -> [String]? {
         let opts = SaneOptionDump(baseDump)
+        let backend = backendName(of: devname)
         let source = preferredTransparencySource(in: opts.enumValues("source"))
         let depthNeedsMode = opts.hasOption("depth") && !opts.isActive("depth")
         let mode = (source != nil || depthNeedsMode) ? capabilityDumpMode(in: baseDump) : nil
-        guard source != nil || mode != nil else { return nil }
+        let selectedMode = mode ?? opts.selectedEnumValue("mode")
+        let colorCorrection = backend == "epson2"
+            && selectedMode?.lowercased().contains("color") == true
+            ? epsonRawColorCorrection(in: opts)
+            : nil
+        let gammaCorrection = backend == "epson2"
+            ? epsonRawGammaCorrection(in: opts)
+            : nil
+        guard source != nil || mode != nil || colorCorrection != nil || gammaCorrection != nil else {
+            return nil
+        }
         var args = ["-A", "-d", devname]
         if let source { args += ["--source", source] }
         if let mode { args += ["--mode", mode] }
+        if let colorCorrection { args += ["--color-correction", colorCorrection] }
+        if let gammaCorrection { args += ["--gamma-correction", gammaCorrection] }
         return args
     }
 
@@ -810,22 +841,11 @@ extension SANEBackend {
         // 모드: 장치 원문 값에서 선택(--mode 없으면 생략).
         let mode = pickModeValue(modeValues, colorMode: options.colorMode)
         let grayMode = pickModeValue(modeValues, colorMode: .gray)
-        let colorCorrectionValues = opts.enumValues("color-correction")
-        let gammaCorrectionValues = opts.enumValues("gamma-correction")
-        let colorCorrection = backend == "epson2"
-            ? colorCorrectionValues.first {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .caseInsensitiveCompare("None") == .orderedSame
-            }
+        let colorCorrection = backend == "epson2" && opts.isActive("color-correction")
+            ? epsonRawColorCorrection(in: opts)
             : nil
-        let gammaCorrection = backend == "epson2"
-            ? gammaCorrectionValues.first {
-                $0.lowercased().replacingOccurrences(of: " ", with: "")
-                    .contains("gamma=1.0")
-            } ?? gammaCorrectionValues.first {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .caseInsensitiveCompare("User defined") == .orderedSame
-            }
+        let gammaCorrection = backend == "epson2" && opts.isActive("gamma-correction")
+            ? epsonRawGammaCorrection(in: opts)
             : nil
 
         // 깊이: 16-bit host 계약은 SANE의 9...16-bit 샘플이 16-bit TIFF 컨테이너로
@@ -992,10 +1012,10 @@ extension SANEBackend {
         let scanWidthRange = opts.rangeUnit("x") == "mm" ? opts.numericRange("x") : nil
         let scanHeightRange = opts.rangeUnit("y") == "mm" ? opts.numericRange("y") : nil
         let scanSurfaceRightMM = scanWidthRange.map {
-            max(scanLeftRange?.maximum ?? $0.maximum, (scanLeftRange?.minimum ?? 0) + $0.maximum)
+            (scanLeftRange?.minimum ?? 0) + $0.maximum
         }
         let scanSurfaceBottomMM = scanHeightRange.map {
-            max(scanTopRange?.maximum ?? $0.maximum, (scanTopRange?.minimum ?? 0) + $0.maximum)
+            (scanTopRange?.minimum ?? 0) + $0.maximum
         }
 
         // 별도 파일로 검증할 수 있는 IR source/mode만 사용한다. coolscan3의 --infrared는
@@ -1011,6 +1031,8 @@ extension SANEBackend {
             }
         }
 
+        let supportsHardwareToneAdjustments = !(backend == "genesys" && options.bitDepth == .sixteen)
+
         return MediaSelection(
             source: source,
             mode: mode,
@@ -1024,8 +1046,8 @@ extension SANEBackend {
             widthMM: widthMM,
             heightMM: heightMM,
             hasPreviewOption: opts.isActive("preview"),
-            hasBrightnessOption: opts.isActive("brightness"),
-            hasContrastOption: opts.isActive("contrast"),
+            hasBrightnessOption: supportsHardwareToneAdjustments && opts.isActive("brightness"),
+            hasContrastOption: supportsHardwareToneAdjustments && opts.isActive("contrast"),
             hasScanExposureOption: opts.isActive("scan-exposure-time"),
             hasModeOption: opts.isActive("mode"),
             hasDepthOption: opts.isActive("depth"),
@@ -1035,8 +1057,8 @@ extension SANEBackend {
             gammaCorrection: gammaCorrection,
             hasColorCorrectionOption: opts.isActive("color-correction"),
             hasGammaCorrectionOption: opts.isActive("gamma-correction"),
-            brightnessRange: opts.numericRange("brightness"),
-            contrastRange: opts.numericRange("contrast"),
+            brightnessRange: supportsHardwareToneAdjustments ? opts.numericRange("brightness") : nil,
+            contrastRange: supportsHardwareToneAdjustments ? opts.numericRange("contrast") : nil,
             hardwareExposureRange: opts.numericRange("scan-exposure-time"),
             resolutionRange: resolutionRange,
             scanLeftRange: scanLeftRange,

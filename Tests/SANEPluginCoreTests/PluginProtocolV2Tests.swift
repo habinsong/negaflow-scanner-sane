@@ -165,6 +165,7 @@ final class PluginProtocolV2Tests: XCTestCase {
             -y 1..25mm (in steps of 0.01) [25]
         """
         var options = ScanOptions.strongDefault(scannerID: "sane-genesys:libusb:000:010")
+        options.bitDepth = .eight
         options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
         options.brightnessAdjustment = -1
         options.contrastAdjustment = 2

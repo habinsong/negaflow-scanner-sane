@@ -14,6 +14,8 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         --mode Lineart|Gray|Color [Lineart]
         --depth 8|12|14|16bit [inactive]
         --brightness -4..3 [0]
+        --gamma-correction Default|User defined|High density printing [Default]
+        --color-correction None|Built in CCT profile|User defined CCT profile [inactive]
         --resolution 50|100|300|600|1200|2400|3200|4800|6400|9600|12800dpi [25]
         --preview[=(yes|no)] [no]
         -l 0..215.9mm [0]
@@ -24,12 +26,14 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         --film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]
     """
 
-    /// `--source TPU8x10 --mode Color`를 적용한 상태.
+    /// 실제 스캔과 동일하게 source/mode/내부 색 처리 해제를 모두 적용한 상태.
     private let colorDump = """
     All options specific to device `epson2:libusb:002:002':
         --mode Lineart|Gray|Color [Color]
         --depth 8|12|14|16bit [8]
-        --brightness -4..3 [0]
+        --brightness -4..3 [inactive]
+        --gamma-correction Default|User defined|High density printing [User defined]
+        --color-correction None|Built in CCT profile|User defined CCT profile [None]
         --resolution 50|100|300|600|1200|2400|3200|4800|6400|9600|12800dpi [25]
         --preview[=(yes|no)] [no]
         -l 0..215.9mm [0]
@@ -67,7 +71,13 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
                 baseDump: lineartDefaultDump,
                 devname: "epson2:libusb:002:002"
             ),
-            ["-A", "-d", "epson2:libusb:002:002", "--source", "TPU8x10", "--mode", "Color"]
+            [
+                "-A", "-d", "epson2:libusb:002:002",
+                "--source", "TPU8x10",
+                "--mode", "Color",
+                "--color-correction", "None",
+                "--gamma-correction", "User defined",
+            ]
         )
     }
 
@@ -79,7 +89,12 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         )
         XCTAssertEqual(
             SANEBackend.capabilityRedumpArguments(baseDump: noSourceDump, devname: "epson2:libusb:002:002"),
-            ["-A", "-d", "epson2:libusb:002:002", "--mode", "Color"]
+            [
+                "-A", "-d", "epson2:libusb:002:002",
+                "--mode", "Color",
+                "--color-correction", "None",
+                "--gamma-correction", "User defined",
+            ]
         )
     }
 
@@ -118,15 +133,21 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         let capabilities = SANEBackend.parseCapabilities(colorDump, backendHint: "epson2")
         XCTAssertEqual(capabilities.supportedBitDepths, [.eight, .sixteen])
         XCTAssertEqual(capabilities.transparencyModes, ["Transparency Unit", "TPU8x10"])
+        XCTAssertNil(capabilities.brightnessRange)
+        XCTAssertTrue(capabilities.disabledReasons?["brightness"]?.contains("비활성") == true)
         XCTAssertFalse(capabilities.supportsInfrared, "stock epson2 빌드는 IR 채널을 노출하지 않는다.")
     }
 
     func testColorModeDumpSendsRequestedDepth() throws {
-        let options = gtx980Options()
+        var options = gtx980Options()
+        options.brightnessAdjustment = 0
         let media = SANEBackend.resolveMedia(dump: colorDump, options: options)
 
         XCTAssertNil(media.fixedDepth, "활성 --depth가 있으면 고정 심도 경로로 가지 않는다.")
         XCTAssertEqual(media.depthArgument, 16)
+        XCTAssertFalse(media.hasBrightnessOption)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+        options.brightnessAdjustment = nil
         XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
 
         let args = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
@@ -135,6 +156,9 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
             media: media
         )
         XCTAssertEqual(argValue(args, "--depth"), "16")
+        XCTAssertEqual(argValue(args, "--color-correction"), "None")
+        XCTAssertEqual(argValue(args, "--gamma-correction"), "User defined")
+        XCTAssertFalse(args.contains { $0.hasPrefix("--brightness") })
     }
 
     // MARK: 고정 심도 기기

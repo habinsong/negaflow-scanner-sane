@@ -165,12 +165,13 @@ final class SANEBackendCapabilityTests: XCTestCase {
     func testSaneScanArgsIncludeHardwareExposureTimeWhenRequested() {
         let backend = SANEBackend(scanimagePath: "/tmp/sane-head-install/bin/scanimage")
         var options = ScanOptions.strongDefault(scannerID: "sane-genesys:libusb:000:010")
+        options.bitDepth = .eight
         options.hardwareExposureTime = 30_000
         options.brightnessAdjustment = -12
         options.contrastAdjustment = 8
         let media = SANEBackend.MediaSelection(
             source: "Transparency Adapter", mode: "Color", filmType: nil,
-            depthArgument: 16, resolvedDPI: 3600,
+            depthArgument: 8, resolvedDPI: 3600,
             widthMM: 36.33, heightMM: 25,
             hasPreviewOption: true, hasBrightnessOption: true,
             hasContrastOption: true, hasScanExposureOption: true
@@ -190,6 +191,44 @@ final class SANEBackendCapabilityTests: XCTestCase {
         XCTAssertTrue(argValue(args, "--mode") == "Color")
         XCTAssertEqual(argValue(args, "-x"), "36.33")
         XCTAssertEqual(argValue(args, "-y"), "25")
+    }
+
+    func testGenesysSixteenBitOmitsEightBitOnlyToneAdjustments() throws {
+        let dump = """
+            --mode Color|Gray [Color]
+            --source Transparency Adapter [Transparency Adapter]
+            --depth 8|16 [8]
+            --brightness -100..100 (in steps of 1) [0]
+            --contrast -100..100 (in steps of 1) [0]
+            --resolution 3600dpi [3600]
+            --preview[=(yes|no)] [no]
+            -l 0..36mm [0]
+            -t 0..24mm [0]
+            -x 1..36mm [36]
+            -y 1..24mm [24]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-genesys:libusb:000:010")
+        options.bitDepth = .sixteen
+        options.resolution = Resolution(3600)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        let media = SANEBackend.resolveMedia(dump: dump, options: options)
+
+        XCTAssertFalse(media.hasBrightnessOption)
+        XCTAssertFalse(media.hasContrastOption)
+        XCTAssertNil(media.brightnessRange)
+        XCTAssertNil(media.contrastRange)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+
+        let args = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
+            devname: "genesys:libusb:000:010",
+            options: options,
+            media: media
+        )
+        XCTAssertFalse(args.contains { $0.hasPrefix("--brightness") })
+        XCTAssertFalse(args.contains { $0.hasPrefix("--contrast") })
+
+        options.brightnessAdjustment = 1
+        XCTAssertThrowsError(try SANEBackend.validateExactOptions(options, media: media))
     }
 
     func testScanimageProgressParserHandlesCarriageReturnAndFractionalPercent() {
@@ -395,7 +434,55 @@ final class SANEBackendCapabilityTests: XCTestCase {
         )
         XCTAssertEqual(argValue(args, "--source"), "Slide")
         XCTAssertEqual(argValue(args, "--type"), "Positive")
+        XCTAssertEqual(argValue(args, "--resolution"), "2700")
+        XCTAssertEqual(argValue(args, "--depth"), "10")
+        XCTAssertEqual(argValue(args, "-l"), "0")
+        XCTAssertEqual(argValue(args, "-t"), "0")
+        XCTAssertEqual(argValue(args, "-x"), "2700")
+        XCTAssertEqual(argValue(args, "-y"), "1800")
         XCTAssertFalse(args.contains("Automatic Slide Feeder"))
+    }
+
+    func testCoolscan2PreservesDepthResolutionAndCornerGeometry() throws {
+        let dump = """
+            --preview[=(yes|no)] [no]
+            --negative[=(yes|no)] [inactive]
+            --infrared[=(yes|no)] [no]
+            --depth 8|14 [8]
+            --resolution 4000|2000|1000dpi [4000]
+            --tl-x 0..5959pel [0]
+            --tl-y 0..3946pel [0]
+            --br-x 0..5959pel [5959]
+            --br-y 0..3946pel [3946]
+        """
+        var options = ScanOptions.strongDefault(
+            scannerID: "sane-coolscan2:usb:libusb:001:4000"
+        )
+        options.resolution = Resolution(4000)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        let media = SANEBackend.resolveMedia(
+            dump: dump,
+            options: options,
+            deviceTypeHint: "film scanner"
+        )
+
+        XCTAssertNil(media.filmTypeOptionName)
+        XCTAssertEqual(media.depthArgument, 14)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+
+        let args = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
+            devname: "coolscan2:usb:libusb:001:4000",
+            options: options,
+            media: media
+        )
+        XCTAssertEqual(argValue(args, "--resolution"), "4000")
+        XCTAssertEqual(argValue(args, "--depth"), "14")
+        XCTAssertEqual(argValue(args, "--tl-x"), "0")
+        XCTAssertEqual(argValue(args, "--tl-y"), "0")
+        XCTAssertEqual(argValue(args, "--br-x"), "5668")
+        XCTAssertEqual(argValue(args, "--br-y"), "3779")
+        XCTAssertFalse(args.contains { $0.hasPrefix("--negative") })
+        XCTAssertFalse(args.contains("--infrared"))
     }
 
     func testCoolscan3DisablesHardwareInversionWithEqualsSyntax() {
@@ -461,6 +548,22 @@ final class SANEBackendCapabilityTests: XCTestCase {
         XCTAssertThrowsError(try SANEBackend.validateExactOptions(options, media: media)) { error in
             XCTAssertTrue((error as? ScannerError)?.message.contains("원점+폭") == true)
         }
+
+        options.scanArea = ScanArea(originXMM: 200, originYMM: 0, widthMM: 10, heightMM: 24)
+        let narrowerMedia = SANEBackend.resolveMedia(dump: dump, options: options)
+        XCTAssertThrowsError(try SANEBackend.validateExactOptions(options, media: narrowerMedia)) { error in
+            XCTAssertTrue((error as? ScannerError)?.message.contains("원점+폭") == true)
+        }
+
+        options.scanArea = ScanArea(originXMM: 0, originYMM: 240, widthMM: 36, heightMM: 20)
+        let lowerMedia = SANEBackend.resolveMedia(dump: dump, options: options)
+        XCTAssertThrowsError(try SANEBackend.validateExactOptions(options, media: lowerMedia)) { error in
+            XCTAssertTrue((error as? ScannerError)?.message.contains("원점+높이") == true)
+        }
+
+        options.scanArea = ScanArea(originXMM: 0, originYMM: 240, widthMM: 36, heightMM: 10)
+        let inBoundsMedia = SANEBackend.resolveMedia(dump: dump, options: options)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: inBoundsMedia))
     }
 
     func testResolveMediaEpsonCustomBuildPlansInfraredModePass() {
@@ -514,6 +617,48 @@ final class SANEBackendCapabilityTests: XCTestCase {
         let media = SANEBackend.resolveMedia(dump: dump, options: opts)
         XCTAssertEqual(media.mode, "Color")
         XCTAssertEqual(media.irStrategy, .none, "별도 IR 파일을 만들지 않는 clean-image는 v2 IR 요청에 쓰지 않는다.")
+    }
+
+    func testPiePreservesFixedDepthResolutionAndMillimeterGeometry() throws {
+        let dump = """
+            --mode Color|Gray [Color]
+            --resolution 300|600|1200dpi [600]
+            --preview[=(yes|no)] [no]
+            -l 0..36mm [0]
+            -t 0..24mm [0]
+            -x 1..36mm [36]
+            -y 1..24mm [24]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-pie:scsi:/dev/sg0")
+        options.bitDepth = .eight
+        options.resolution = Resolution(600)
+        options.scanArea = ScanArea(
+            originXMM: 1,
+            originYMM: 2,
+            widthMM: 35,
+            heightMM: 22
+        )
+        let media = SANEBackend.resolveMedia(
+            dump: dump,
+            options: options,
+            deviceTypeHint: "film scanner"
+        )
+
+        XCTAssertEqual(media.fixedDepth, .eight)
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+
+        let args = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
+            devname: "pie:scsi:/dev/sg0",
+            options: options,
+            media: media
+        )
+        XCTAssertEqual(argValue(args, "--mode"), "Color")
+        XCTAssertEqual(argValue(args, "--resolution"), "600")
+        XCTAssertNil(argValue(args, "--depth"))
+        XCTAssertEqual(argValue(args, "-l"), "1")
+        XCTAssertEqual(argValue(args, "-t"), "2")
+        XCTAssertEqual(argValue(args, "-x"), "35")
+        XCTAssertEqual(argValue(args, "-y"), "22")
     }
 
     func testResolveMediaDoesNotGuessGenesysOptionsWhenDumpUnavailable() {
@@ -635,6 +780,38 @@ final class SANEBackendCapabilityTests: XCTestCase {
         )
         XCTAssertEqual(argValue(args, "--color-correction"), "None")
         XCTAssertEqual(argValue(args, "--gamma-correction"), "User defined")
+    }
+
+    func testEpson2GrayOmitsInactiveColorCorrection() throws {
+        let dump = """
+        --mode Color|Gray [Gray]
+        --source Flatbed|TPU8x10 [TPU8x10]
+        --depth 8|16 [16]
+        --resolution 3600dpi [3600]
+        --gamma-correction Default|User defined [User defined]
+        --color-correction None|Built in CCT profile [inactive]
+        --brightness -4..3 [inactive]
+        -l 0..215.9mm [0]
+        -t 0..297.1mm [0]
+        -x 1..203.2mm [203.2]
+        -y 1..254mm [254]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:002:002")
+        options.colorMode = .gray
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        let media = SANEBackend.resolveMedia(dump: dump, options: options)
+        XCTAssertNil(media.colorCorrection)
+        XCTAssertEqual(media.gammaCorrection, "User defined")
+        XCTAssertNoThrow(try SANEBackend.validateExactOptions(options, media: media))
+
+        let args = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
+            devname: "epson2",
+            options: options,
+            media: media
+        )
+        XCTAssertNil(argValue(args, "--color-correction"))
+        XCTAssertEqual(argValue(args, "--gamma-correction"), "User defined")
+        XCTAssertFalse(args.contains { $0.hasPrefix("--brightness") })
     }
 
     func testEpson2PrefersExplicitGammaOnePointZero() {

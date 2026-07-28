@@ -453,6 +453,128 @@ final class SANEBackendEnvironmentTests: XCTestCase {
         XCTAssertFalse(report.capabilityToken.isEmpty)
     }
 
+    func testEpsonCapabilityAndScanFollowReloadedInactiveBrightnessState() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("negaflow-sane-epson-reload-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceTIFF = directory.appendingPathComponent("source.tiff")
+        let previewOutputTIFF = directory.appendingPathComponent("preview.tiff")
+        let outputTIFF = directory.appendingPathComponent("output.tiff")
+        let invocationLog = directory.appendingPathComponent("invocations.log")
+        try writeScannerRGB16TIFF(
+            pixels: [0.1, 0.2, 0.3],
+            width: 1,
+            height: 1,
+            to: sourceTIFF
+        )
+
+        let executableURL = directory.appendingPathComponent("scanimage")
+        let script = """
+        #!/bin/sh
+        printf '%s\\n' "$*" >> \(shellQuote(invocationLog.path))
+        if [ "$1" = "-f" ]; then
+          printf 'epson2:libusb:000:001\\tEpson\\tGT-X900\\tflatbed scanner\\n'
+          exit 0
+        fi
+        case " $* " in
+          *" -A "*)
+            case " $* " in
+              *" --gamma-correction User defined "*)
+                echo "--mode Lineart|Gray|Color [Color]"
+                echo "--depth 8|12|14|16bit [8]"
+                echo "--brightness -4..3 [inactive]"
+                echo "--gamma-correction Default|User defined [User defined]"
+                echo "--color-correction None|Built in CCT profile [None]"
+                echo "--source Flatbed|Transparency Unit|TPU8x10 [TPU8x10]"
+                echo "--film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]"
+                echo "-l 0..215.9mm [0]"
+                echo "-t 0..297.18mm [0]"
+                echo "-x 0..203.2mm [203.2]"
+                echo "-y 0..254mm [254]"
+                ;;
+              *)
+                echo "--mode Lineart|Gray|Color [Lineart]"
+                echo "--depth 8|12|14|16bit [inactive]"
+                echo "--brightness -4..3 [0]"
+                echo "--gamma-correction Default|User defined [Default]"
+                echo "--color-correction None|Built in CCT profile [inactive]"
+                echo "--source Flatbed|Transparency Unit|TPU8x10 [Flatbed]"
+                echo "--film-type Positive Film|Negative Film|Positive Slide|Negative Slide [inactive]"
+                echo "-l 0..215.9mm [0]"
+                echo "-t 0..297.18mm [0]"
+                echo "-x 0..215.9mm [215.9]"
+                echo "-y 0..297.18mm [297.18]"
+                ;;
+            esac
+            echo "--resolution 3200dpi [3200]"
+            echo "--preview[=(yes|no)] [no]"
+            exit 0
+            ;;
+        esac
+        case " $* " in
+          *" --gamma-correction User defined "*)
+            case " $* " in
+              *" --brightness="*)
+                echo "scanimage: attempted to set inactive option brightness" >&2
+                exit 1
+                ;;
+            esac
+            ;;
+        esac
+        exec /bin/cat \(shellQuote(sourceTIFF.path))
+        """
+        try script.write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let backend = SANEBackend(scanimagePath: executableURL.path)
+        let scannerID = "sane-epson2:libusb:000:001"
+        let report = try await backend.getCapabilitiesReport(scannerID: scannerID)
+        XCTAssertNil(report.capabilities.brightnessRange)
+        XCTAssertEqual(report.capabilities.maxScanArea.widthMM, 203.2, accuracy: 0.000_001)
+        XCTAssertEqual(report.capabilities.maxScanArea.heightMM, 254, accuracy: 0.000_001)
+
+        var previewOptions = ScanOptions.strongDefault(scannerID: scannerID)
+        previewOptions.resolution = .preview
+        previewOptions.bitDepth = .sixteen
+        previewOptions.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        previewOptions.temporaryOutputURL = previewOutputTIFF
+        previewOptions.capabilityToken = report.capabilityToken
+
+        _ = try await backend.startPreviewScan(previewOptions) { _ in }
+
+        var options = ScanOptions.strongDefault(scannerID: scannerID)
+        options.resolution = Resolution(3200)
+        options.bitDepth = .sixteen
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        options.temporaryOutputURL = outputTIFF
+        options.capabilityToken = report.capabilityToken
+
+        _ = try await backend.startFullScan(options) { _ in }
+
+        let invocations = try String(contentsOf: invocationLog, encoding: .utf8)
+            .split(separator: "\n")
+            .map(String.init)
+        XCTAssertTrue(invocations.contains {
+            $0.contains(
+                "--source TPU8x10 --mode Color --color-correction None "
+                    + "--gamma-correction User defined"
+            )
+        })
+        let acquisitions = invocations.filter {
+            !$0.hasPrefix("-L") && !$0.hasPrefix("-f") && !$0.hasPrefix("-A")
+        }
+        XCTAssertEqual(acquisitions.count, 2)
+        XCTAssertTrue(acquisitions.contains { $0.contains("--preview=yes") })
+        XCTAssertTrue(acquisitions.allSatisfy { $0.contains("--gamma-correction User defined") })
+        XCTAssertTrue(acquisitions.allSatisfy { $0.contains("--film-type Negative Film") })
+        XCTAssertTrue(acquisitions.allSatisfy { !$0.contains("--brightness") })
+    }
+
     func testReconnectAcceptsSameModelAtNewAddress() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("negaflow-sane-same-model-\(UUID().uuidString)")

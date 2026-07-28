@@ -148,10 +148,14 @@ extension SANEBackend {
                 : "scanimage -A에 --scan-exposure-time이 없어 실제 다중노출을 켤 수 없습니다."
         }
         if brightnessRange == nil {
-            disabledReasons["brightness"] = "scanimage -A에 --brightness 옵션이 없습니다."
+            disabledReasons["brightness"] = opts.hasOption("brightness")
+                ? "현재 스캔 옵션 조합에서 --brightness가 비활성입니다."
+                : "scanimage -A에 --brightness 옵션이 없습니다."
         }
         if contrastRange == nil {
-            disabledReasons["contrast"] = "scanimage -A에 --contrast 옵션이 없습니다."
+            disabledReasons["contrast"] = opts.hasOption("contrast")
+                ? "현재 스캔 옵션 조합에서 --contrast가 비활성입니다."
+                : "scanimage -A에 --contrast 옵션이 없습니다."
         }
         if !supportsScanArea {
             disabledReasons["scanArea"] = "scanimage -A에 mm 단위 -x/-y 범위가 없어 요청 영역을 정확히 적용할 수 없습니다."
