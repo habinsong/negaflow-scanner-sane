@@ -103,23 +103,23 @@ jobs:
           )
           bash scripts/verify-release.sh .build/release-artifacts
           NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-macos-arm64-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-macos-arm64-installer.dmg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.pkg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg \
             arm64 \
             standard
           NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-macos-universal-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-macos-universal-installer.dmg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.pkg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg \
             universal \
             standard
           NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.dmg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.pkg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg \
             arm64 \
             coolscan
           NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.dmg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.pkg \
+            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg \
             universal \
             coolscan
       - name: Upload notarized artifacts

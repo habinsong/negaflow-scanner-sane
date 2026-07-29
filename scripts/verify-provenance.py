@@ -99,8 +99,8 @@ def verify_distribution_policy() -> None:
             fail(f"required release notice is missing: {required}")
 
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("pluginVersion") != "1.0.2":
-        fail("manifest pluginVersion must be 1.0.2")
+    if manifest.get("pluginVersion") != "1.0.3":
+        fail("manifest pluginVersion must be 1.0.3")
 
     standard_installer_names = tuple(
         f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos-{architecture}-installer.dmg"

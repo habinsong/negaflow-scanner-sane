@@ -69,10 +69,10 @@ xcode-select --install
 
 | 安装包 | SANE 路径 | 插件二进制 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.2-macos-arm64-installer.dmg` | 标准版，macOS 14+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.0.2-macos-universal-installer.dmg` | 标准版，macOS 14+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.dmg` | Coolscan 修补版，macOS 26+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.dmg` | Coolscan 修补版，macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg` | 标准版，macOS 14+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg` | 标准版，macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg` | Coolscan 修补版，macOS 26+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg` | Coolscan 修补版，macOS 26+ | `arm64` + `x86_64` |
 
 标准 DMG 内运行 `Install negaflow Scanner.pkg`；Coolscan DMG 内运行
 `Install negaflow Scanner for Coolscan.pkg`。

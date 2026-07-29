@@ -69,10 +69,10 @@ Coolscan users on macOS 26 or later should use the separate Coolscan variant.
 
 | Installer | SANE path | Plug-in binary |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.2-macos-arm64-installer.dmg` | Standard, macOS 14+ | `arm64` only |
-| `negaflow-scanner-sane-1.0.2-macos-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.2-coolscan-macos26-arm64-installer.dmg` | Patched Coolscan, macOS 26+ | `arm64` only |
-| `negaflow-scanner-sane-1.0.2-coolscan-macos26-universal-installer.dmg` | Patched Coolscan, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg` | Standard, macOS 14+ | `arm64` only |
+| `negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg` | Patched Coolscan, macOS 26+ | `arm64` only |
+| `negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg` | Patched Coolscan, macOS 26+ | `arm64` + `x86_64` |
 
 The standard DMG contains `Install negaflow Scanner.pkg`; the Coolscan DMG contains
 `Install negaflow Scanner for Coolscan.pkg`.
