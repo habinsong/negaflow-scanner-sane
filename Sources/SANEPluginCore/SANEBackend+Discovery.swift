@@ -844,11 +844,7 @@ extension SANEBackend {
         let colorCorrection = backend == "epson2" && opts.isActive("color-correction")
             ? epsonRawColorCorrection(in: opts)
             : nil
-        // 감마: epson2는 모드/소스를 세우기 전 덤프에서 gamma-correction을 비활성으로 내놓을 수
-        // 있다. 그때 옵션을 건너뛰면 장치 기본 감마(비선형)로 스캔해 놓고 호스트는 선형 raw로
-        // 읽어 색이 어긋난다. 인자는 --mode 뒤에 실려 같은 호출 안에서 활성화되므로, 제약
-        // 목록에서 선형 값을 골라 항상 명시한다. 고를 값이 없으면 preflight가 닫힌 실패로 막는다.
-        let gammaCorrection = backend == "epson2"
+        let gammaCorrection = backend == "epson2" && opts.isActive("gamma-correction")
             ? epsonRawGammaCorrection(in: opts)
             : nil
 
@@ -1075,7 +1071,7 @@ extension SANEBackend {
             colorCorrection: colorCorrection,
             gammaCorrection: gammaCorrection,
             hasColorCorrectionOption: opts.isActive("color-correction"),
-            hasGammaCorrectionOption: opts.hasOption("gamma-correction"),
+            hasGammaCorrectionOption: opts.isActive("gamma-correction"),
             brightnessRange: supportsHardwareToneAdjustments ? opts.numericRange("brightness") : nil,
             contrastRange: supportsHardwareToneAdjustments ? opts.numericRange("contrast") : nil,
             hardwareExposureRange: opts.numericRange("scan-exposure-time"),
