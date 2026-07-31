@@ -30,6 +30,11 @@ jobs:
         run: python3 scripts/verify-provenance.py
       - name: Test
         run: swift test -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
+      - name: Remove unused runner tap
+        run: |
+          if brew tap | grep -Fqx aws/tap; then
+            brew untap aws/tap
+          fi
       - name: Build and install patched Coolscan SANE
         run: bash scripts/install-patched-sane.sh
 
