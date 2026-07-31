@@ -3,6 +3,7 @@
 <p align="center">SANE-Filmscanner-Plug-in für negaflow unter macOS</p>
 
 <p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/de/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="Website"></a>
   <a href="#voraussetzungen"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 oder neuer"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 oder neuer"></a>
   <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow-Scannerprotokoll v2"></a>
@@ -16,6 +17,12 @@
   <a href="README_zh-Hans.md">简体中文</a> ·
   <a href="README_fr.md">Français</a> ·
   <strong>Deutsch</strong>
+</p>
+
+<p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/de/">Website</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/de/camera-scanning/">Anleitung zum Abfotografieren</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/de/faq/">FAQ</a>
 </p>
 
 ---

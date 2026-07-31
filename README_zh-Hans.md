@@ -3,6 +3,7 @@
 <p align="center">适用于 macOS 版 negaflow 的 SANE 胶片扫描仪插件</p>
 
 <p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/zh/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="网站"></a>
   <a href="#系统要求"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 或更高版本"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 或更高版本"></a>
   <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 扫描仪协议 v2"></a>
@@ -16,6 +17,12 @@
   <strong>简体中文</strong> ·
   <a href="README_fr.md">Français</a> ·
   <a href="README_de.md">Deutsch</a>
+</p>
+
+<p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/zh/">网站</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/zh/camera-scanning/">相机翻拍指南</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/zh/faq/">常见问题</a>
 </p>
 
 ---

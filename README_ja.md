@@ -3,6 +3,7 @@
 <p align="center">macOS版negaflow用 SANEフィルムスキャナープラグイン</p>
 
 <p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/ja/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="ウェブサイト"></a>
   <a href="#動作環境"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14以降"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9以降"></a>
   <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflowスキャナープロトコル v2"></a>
@@ -16,6 +17,12 @@
   <a href="README_zh-Hans.md">简体中文</a> ·
   <a href="README_fr.md">Français</a> ·
   <a href="README_de.md">Deutsch</a>
+</p>
+
+<p align="center">
+  <a href="https://habinsong.github.io/negaflow-site/ja/">ウェブサイト</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/ja/camera-scanning/">カメラスキャンのガイド</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/ja/faq/">FAQ</a>
 </p>
 
 ---
