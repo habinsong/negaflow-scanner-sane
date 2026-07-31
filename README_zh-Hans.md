@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/zh/">网站</a> ·
-  <a href="https://habinsong.github.io/negaflow-site/zh/camera-scanning/">相机翻拍指南</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/zh/supported-scanners/">扫描仪支持</a> ·
   <a href="https://habinsong.github.io/negaflow-site/zh/faq/">常见问题</a>
 </p>
 

@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/fr/">Site web</a> ·
-  <a href="https://habinsong.github.io/negaflow-site/fr/camera-scanning/">Guide de numérisation à l'appareil</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/fr/supported-scanners/">Scanners pris en charge</a> ·
   <a href="https://habinsong.github.io/negaflow-site/fr/faq/">FAQ</a>
 </p>
 

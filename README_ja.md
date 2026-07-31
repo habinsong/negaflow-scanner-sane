@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/ja/">ウェブサイト</a> ·
-  <a href="https://habinsong.github.io/negaflow-site/ja/camera-scanning/">カメラスキャンのガイド</a> ·
+  <a href="https://habinsong.github.io/negaflow-site/ja/supported-scanners/">対応スキャナー</a> ·
   <a href="https://habinsong.github.io/negaflow-site/ja/faq/">FAQ</a>
 </p>
 
