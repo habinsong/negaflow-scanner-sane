@@ -120,7 +120,7 @@
  }
  device_list_type;
  
-@@ -1378,6 +1475,266 @@
+@@ -1378,6 +1475,231 @@
  }
  #endif // WITH_USB_RECORD_REPLAY
  
@@ -132,61 +132,35 @@
 +  return handle != NULL && handle != INVALID_HANDLE_VALUE;
 +}
 +
-+/** transfer deadline requested through sanei_usb_set_timeout, in ms */
++/** how long a transfer may take — see the note below, it is not enforceable
++ *
++ * Neither the driver nor this backend can put a deadline on a transfer.
++ *
++ * IOCTL_SET_TIMEOUT reports success and changes nothing: measured against a
++ * real scanner, IOCTL_GET_TIMEOUT answers ERROR_NOT_SUPPORTED and a transfer
++ * the device never answers still takes the driver's own two minutes.
++ *
++ * Opening the handle for overlapped I/O does not help either, which is worth
++ * writing down because it looks like it should.  usbscan.sys completes
++ * IOCTL_SEND_USB_REQUEST synchronously in the calling thread, so
++ * DeviceIoControl blocks for the full two minutes and never returns
++ * ERROR_IO_PENDING — there is nothing to wait on and nothing to cancel.
++ * Measured: a probe that asked for five seconds took 120,015 ms.
++ *
++ * The remaining lever is CancelSynchronousIo from a second thread, which
++ * would mean a watchdog around every one of the thousands of small transfers
++ * a scan makes.  That is not worth its weight here: the frontend runs as a
++ * child process under the plugin's own watchdog, which is what actually
++ * bounds a wedged scan.
++ *
++ * One more thing to know: after a transfer has timed out, this driver keeps
++ * reporting success while handing back the input structure.  Measured, every
++ * later read returned 0x8E, the wValue that was sent.  Data read after a
++ * timeout cannot be trusted.
++ */
 +static int usbscan_timeout_ms = 30 * 1000;
 +
-+/** wait for one overlapped request, giving up after usbscan_timeout_ms
-+ *
-+ * The driver has an IOCTL_SET_TIMEOUT, and it is not usable: it reports
-+ * success and then changes nothing.  Measured against a real scanner,
-+ * IOCTL_GET_TIMEOUT answers ERROR_NOT_SUPPORTED and a transfer the device
-+ * never answers still takes the driver's own two minutes.  Two minutes per
-+ * dead transfer is not a deadline a backend can work with, so every handle
-+ * is opened for overlapped I/O and the deadline is kept here instead.
-+ */
-+static BOOL
-+usbscan_finish (HANDLE handle, OVERLAPPED * overlapped, BOOL started,
-+		DWORD * transferred)
-+{
-+  if (started)
-+    return GetOverlappedResult (handle, overlapped, transferred, FALSE);
-+
-+  if (GetLastError () != ERROR_IO_PENDING)
-+    return FALSE;
-+
-+  if (WaitForSingleObject (overlapped->hEvent, (DWORD) usbscan_timeout_ms)
-+      == WAIT_OBJECT_0)
-+    return GetOverlappedResult (handle, overlapped, transferred, FALSE);
-+
-+  /* Leave nothing in flight: the buffers are about to go out of scope.  */
-+  CancelIoEx (handle, overlapped);
-+  GetOverlappedResult (handle, overlapped, transferred, TRUE);
-+  SetLastError (WAIT_TIMEOUT);
-+  return FALSE;
-+}
-+
-+/** an ioctl on the still-image device, bounded by usbscan_timeout_ms */
-+static BOOL
-+usbscan_ioctl (HANDLE handle, DWORD code, void *in, DWORD in_size,
-+	       void *out, DWORD out_size, DWORD * transferred)
-+{
-+  OVERLAPPED overlapped;
-+  BOOL started;
-+  BOOL ok;
-+
-+  memset (&overlapped, 0, sizeof (overlapped));
-+  overlapped.hEvent = CreateEventA (NULL, TRUE, FALSE, NULL);
-+  if (!overlapped.hEvent)
-+    return FALSE;
-+
-+  started = DeviceIoControl (handle, code, in, in_size, out, out_size,
-+			     transferred, &overlapped);
-+  ok = usbscan_finish (handle, &overlapped, started, transferred);
-+  CloseHandle (overlapped.hEvent);
-+  return ok;
-+}
-+
-+/** a bulk transfer on the data pipes, bounded by usbscan_timeout_ms
++/** a bulk transfer on the data pipes
 + *
 + * usbscan.sys picks the pipe from the direction: ReadFile is the bulk IN
 + * pipe and WriteFile the bulk OUT one.
@@ -195,21 +169,9 @@
 +usbscan_bulk (HANDLE handle, void *buffer, DWORD size, DWORD * transferred,
 +	      int reading)
 +{
-+  OVERLAPPED overlapped;
-+  BOOL started;
-+  BOOL ok;
-+
-+  memset (&overlapped, 0, sizeof (overlapped));
-+  overlapped.hEvent = CreateEventA (NULL, TRUE, FALSE, NULL);
-+  if (!overlapped.hEvent)
-+    return FALSE;
-+
-+  started = reading
-+    ? ReadFile (handle, buffer, size, transferred, &overlapped)
-+    : WriteFile (handle, buffer, size, transferred, &overlapped);
-+  ok = usbscan_finish (handle, &overlapped, started, transferred);
-+  CloseHandle (overlapped.hEvent);
-+  return ok;
++  return reading
++    ? ReadFile (handle, buffer, size, transferred, NULL)
++    : WriteFile (handle, buffer, size, transferred, NULL);
 +}
 +
 +/** whether the still-image driver already owns this vendor/product
@@ -252,7 +214,7 @@
 +      sprintf (path, "\\\\.\\Usbscan%d", index);
 +      handle = CreateFileA (path, GENERIC_READ | GENERIC_WRITE,
 +			    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-+			    OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
++			    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 +      if (handle == INVALID_HANDLE_VALUE)
 +	continue;
 +
@@ -260,11 +222,13 @@
 +	 four words: vendor, product, bcdDevice and the language id.  */
 +      memset (identity, 0, sizeof (identity));
 +      memset (&pipes, 0, sizeof (pipes));
-+      if (!usbscan_ioctl (handle, USBSCAN_IOCTL_GET_DEVICE_DESCRIPTOR,
-+			  NULL, 0, identity, sizeof (identity), &returned)
++      if (!DeviceIoControl (handle, USBSCAN_IOCTL_GET_DEVICE_DESCRIPTOR,
++			    NULL, 0, identity, sizeof (identity), &returned,
++			    NULL)
 +	  || returned < 3 * sizeof (identity[0])
-+	  || !usbscan_ioctl (handle, USBSCAN_IOCTL_GET_PIPE_CONFIGURATION,
-+			     NULL, 0, &pipes, sizeof (pipes), &returned))
++	  || !DeviceIoControl (handle, USBSCAN_IOCTL_GET_PIPE_CONFIGURATION,
++			       NULL, 0, &pipes, sizeof (pipes), &returned,
++			       NULL))
 +	{
 +	  DBG (3, "%s: %s does not answer as a still-image device, "
 +	       "error %lu\n", __func__, path,
@@ -363,9 +327,10 @@
 +  block.bmRequestType = (unsigned char) rtype;
 +  block.fTransferDirectionIn = (unsigned char) (reading ? 1 : 0);
 +
-+  if (!usbscan_ioctl (devices[dn].usbscan_handle,
-+		      USBSCAN_IOCTL_SEND_USB_REQUEST, &block, sizeof (block),
-+		      bounce, (DWORD) len, &returned))
++  if (!DeviceIoControl (devices[dn].usbscan_handle,
++			USBSCAN_IOCTL_SEND_USB_REQUEST, &block,
++			sizeof (block), bounce, (DWORD) len, &returned,
++			NULL))
 +    {
 +      DBG (1, "%s: request 0x%02x failed, error %lu\n", __func__, req,
 +	   (unsigned long) GetLastError ());
@@ -387,7 +352,7 @@
  void
  sanei_usb_init (void)
  {
-@@ -1524,6 +1881,15 @@
+@@ -1524,6 +1846,15 @@
        DBG (4, "%s: freeing resources\n", __func__);
        for (i = 0; i < device_number; i++)
          {
@@ -403,7 +368,7 @@
            if (devices[i].devname != NULL)
              {
                DBG (5, "%s: freeing device %02d\n", __func__, i);
-@@ -1988,6 +2354,15 @@
+@@ -1988,6 +2319,15 @@
  	  continue;
  	}
  
@@ -419,7 +384,7 @@
        memset (&device, 0, sizeof (device));
        device.lu_device = libusb_ref_device(dev);
        snprintf (devname, sizeof (devname), "libusb:%03d:%03d",
-@@ -2045,6 +2420,12 @@
+@@ -2045,6 +2385,12 @@
  #if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
    kernel_scan_devices();
  #endif
@@ -432,7 +397,7 @@
  
  #if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
    /* Check for devices using libusb (old or new)*/
-@@ -2855,6 +3236,38 @@
+@@ -2855,6 +3201,38 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
      }
@@ -452,7 +417,7 @@
 +      devices[devcount].usbscan_handle =
 +	CreateFileA (path, GENERIC_READ | GENERIC_WRITE,
 +		     FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-+		     OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
++		     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 +      if (!usbscan_is_open (devices[devcount].usbscan_handle))
 +	{
 +	  DWORD error = GetLastError ();
@@ -471,7 +436,7 @@
    else if (devices[devcount].method == sanei_usb_method_scanner_driver)
      {
  #ifdef FD_CLOEXEC
-@@ -3051,6 +3464,14 @@
+@@ -3051,6 +3429,14 @@
      {
        DBG (1, "sanei_usb_close: closing fake USB device\n");
      }
@@ -486,7 +451,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      close (devices[dn].fd);
    else if (devices[dn].method == sanei_usb_method_usbcalls)
-@@ -3107,6 +3528,10 @@
+@@ -3107,6 +3493,10 @@
    if (testing_mode == sanei_usb_testing_mode_replay)
      return;
  
@@ -497,52 +462,52 @@
  #if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
    libusb_timeout = timeout;
  #else
-@@ -3134,6 +3559,28 @@
+@@ -3134,6 +3524,24 @@
        return SANE_STATUS_INVAL;
      }
  
 +#ifdef _WIN32
 +  if (devices[dn].method == sanei_usb_method_usbscan)
 +    {
-+      unsigned int pipe;
-+      DWORD returned = 0;
-+      int i;
++      /* Deliberately nothing.  IOCTL_RESET_PIPE resets the *host* side data
++         toggle and asks the device to clear ENDPOINT_HALT; a device that does
++         not reset its own toggle in response is then out of step with the
++         host, and every later bulk write is silently dropped.  Microsoft
++         documents that failure mode and tells drivers for such devices to
++         leave the host toggle alone.
 +
-+      for (i = 0; i < 2; i++)
-+	{
-+	  pipe = (i == 0) ? USBSCAN_READ_DATA_PIPE : USBSCAN_WRITE_DATA_PIPE;
-+	  if (!usbscan_ioctl (devices[dn].usbscan_handle,
-+			      USBSCAN_IOCTL_RESET_PIPE, &pipe, sizeof (pipe),
-+			      NULL, 0, &returned))
-+	    {
-+	      DBG (1, "sanei_usb_clear_halt: resetting pipe %u failed, "
-+		   "error %lu\n", pipe, (unsigned long) GetLastError ());
-+	      return SANE_STATUS_INVAL;
-+	    }
-+	}
++         Nothing here ever stalls a pipe, so there is no halt to clear, and
++         resetting one has only the downside.  Left as a no-op unless a real
++         stall shows up to justify it.  */
++      DBG (5, "sanei_usb_clear_halt: nothing to clear on a still-image "
++	   "device\n");
 +      return SANE_STATUS_GOOD;
 +    }
 +#endif /* _WIN32 */
    if (testing_mode == sanei_usb_testing_mode_replay)
      return SANE_STATUS_GOOD;
  
-@@ -3194,6 +3641,15 @@
+@@ -3194,6 +3602,19 @@
  SANE_Status
  sanei_usb_reset (SANE_Int __sane_unused__ dn)
  {
 +#ifdef _WIN32
 +  if (devices[dn].method == sanei_usb_method_usbscan)
 +    {
-+      /* Only the owning kernel driver can reset the port.  Clearing the
-+	 data pipes is the part of it that user mode can do.  */
-+      DBG (5, "sanei_usb_reset: resetting the data pipes instead\n");
-+      return sanei_usb_clear_halt (dn);
++      /* There is no device reset to give.  Windows has none in user mode:
++         usbscan.sys has no such ioctl, CM_Query_And_Remove_SubTree needs
++         administrator rights, IOCTL_USB_HUB_CYCLE_PORT is gone from current
++         Windows, and WinUSB — even after rebinding the device — only offers
++         WinUsb_ResetPipe.  Resetting the data pipes is not a substitute and
++         is skipped for the reason in sanei_usb_clear_halt.  */
++      DBG (5, "sanei_usb_reset: not available for a still-image device\n");
++      return SANE_STATUS_GOOD;
 +    }
 +#endif /* _WIN32 */
    if (testing_mode == sanei_usb_testing_mode_replay)
      return SANE_STATUS_GOOD;
  
-@@ -3404,6 +3860,22 @@
+@@ -3404,6 +3825,22 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -565,7 +530,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        read_size = read (devices[dn].fd, buffer, *size);
-@@ -3740,6 +4212,22 @@
+@@ -3740,6 +4177,22 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -588,7 +553,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        write_size = write (devices[dn].fd, buffer, *size);
-@@ -4060,6 +4548,10 @@
+@@ -4060,6 +4513,10 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -599,7 +564,7 @@
    if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
  #if defined(__linux__)
-@@ -4342,6 +4834,17 @@
+@@ -4342,6 +4799,17 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -617,7 +582,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        DBG (1, "sanei_usb_read_int: access method %d not implemented\n",
-@@ -4944,6 +5447,22 @@
+@@ -4944,6 +5412,22 @@
      }
  
    DBG (5, "sanei_usb_get_descriptor\n");
