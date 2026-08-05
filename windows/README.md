@@ -87,13 +87,36 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-`ctest` 는 둘을 돈다.
+포트 버전은 `vcpkg.json` 의 `builtin-baseline` 이 고정한다. **아주 최신
+커밋으로 고정하면 안 된다** — 그 커밋이 없는 vcpkg 체크아웃은 자동으로
+fetch 하지 않고 그냥 실패한다(실측). 러너 이미지가 확실히 지나온 릴리스
+태그를 쓴다.
+
+`ctest` 는 셋을 돈다.
 
 ```text
 sane_logic_tests   단위 테스트
 plugin_smoke       **실행 파일을 실제로 돌린다** — 가상 scanimage 상대로
                    detect → capabilities → scan(단일/IR/다중 노출)
+parity_golden      parity_dump 출력이 골든과 같은가. **WIN32 로 묶여 있지
+                   않다** — macOS 에서도 돌아야 삼각형이 닫힌다(아래)
 ```
+
+### parity_golden 이 무엇을 증명하는가
+
+```text
+Swift  ==  clang C++     tools/parity-check.sh (macOS 에서 실시간 대조)
+clang C++ == MSVC C++    parity_golden (양쪽이 같은 골든과 대조)
+──────────────────────────────────────────────
+Swift  ==  MSVC C++
+```
+
+골든은 MSVC 로 만들었다. macOS 에서 `ctest` 가 통과하면 두 툴체인의 수치가
+같다는 뜻이고, 그것이 `parity-check.sh` 와 합쳐져야 "MSVC 산출물이 Swift 와
+같다"가 된다. **한쪽만 돌면 삼각형이 열려 있다.**
+
+골든을 다시 만들기 전에 macOS 파리티를 먼저 돌린다 — 골든만 고치면 Swift 와의
+차이가 그대로 굳는다.
 
 macOS/Linux에서도 그대로 빌드된다. **순수 계층이 플랫폼 의존이 0이기
 때문이다** — 그것이 이 계층의 계약이다(`<windows.h>`도 libtiff도 링크하지
@@ -535,6 +558,8 @@ windows/
     tests/
         test_main.cpp          단위 테스트 (1,063 checks)
         parity_dump.cpp        Swift 대조용 덤퍼
+        golden/parity_dump.txt MSVC 로 만든 골든 (560줄)
+        parity-golden.cmake    골든 대조. 툴체인이 갈리면 여기서 잡힌다
         virtual_scanimage.cpp  가짜 scanimage. **우리 코드를 링크하지 않는다**
         plugin-smoke.cmake     실행 파일을 실제로 돌리는 ctest 시나리오
     tools/

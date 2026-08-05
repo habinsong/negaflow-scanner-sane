@@ -343,3 +343,18 @@ if(NEGAFLOW_HAVE_RAPIDJSON)
     target_link_libraries(parity_dump PRIVATE wire_parse)
     target_compile_definitions(parity_dump PRIVATE NEGAFLOW_HAVE_RAPIDJSON=1)
 endif()
+
+# --- 파리티 골든 -------------------------------------------------------------
+#
+# **`if(WIN32)` 로 묶지 않는다.** macOS 에서도 돌아야 "clang 과 MSVC 가 같은
+# 수치를 낸다"가 성립하고, 그것이 `tools/parity-check.sh`(Swift ↔ clang)와
+# 합쳐져야 "Swift 와 MSVC 가 같다"가 된다. 한쪽만 돌면 삼각형이 열려 있다.
+#
+# 골든에는 `PARITY_TMP` 가 필요한 TIFF 왕복 구간이 없다. 그래서 libtiff /
+# RapidJSON 유무와 무관하게 같은 출력이 나온다 — 선택 의존이 빠진 환경에서도
+# 이 검사는 의미를 유지한다.
+add_test(NAME parity_golden
+    COMMAND ${CMAKE_COMMAND}
+        -DDUMP=$<TARGET_FILE:parity_dump>
+        -DGOLDEN=${CMAKE_CURRENT_SOURCE_DIR}/tests/golden/parity_dump.txt
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity-golden.cmake)
