@@ -426,7 +426,8 @@ S-2 실패 (2026-08-05, 장비 없이 확정)
 ```
 
 전문과 근거: [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §5.
-남은 조건은 S-1(실기 open)과 E-1/E-2 다.
+S-1(실기 open)·E-1·E-2 는 **모두 닫혔다** (2026-08-06, OpticFilm 8100 실기).
+드라이버를 바꾸지 않고 usbscan.sys 로 연다 — D-09 는 폐기됐다.
 → [building-sane](../01-sane-runtime/building-sane.md),
   [environment-and-paths](../03-process-and-io/environment-and-paths.md) §9
 

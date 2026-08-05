@@ -160,6 +160,13 @@ expect("요청한 해상도를 그대로 보낸다" found_res GREATER -1)
 string(FIND "${args}" "--depth 16" found_depth)
 expect("요청한 비트 깊이를 그대로 보낸다" found_depth GREATER -1)
 
+# 맥과 갈리는 지점이다. 맥은 libusb 주소가 열 때마다 바뀌므로 주소 없는
+# `-d epson2` 선택자를 쓴다. Windows 의 `usbscan:NNN` 은 커널 장치 번호라
+# 열고 닫아도, 전원을 다시 넣어도 바뀌지 않는 것을 실측했다 — 그래서 전체
+# 이름을 그대로 쓴다. 더 정확하고, 같은 백엔드 장치가 둘일 때도 안 헷갈린다.
+string(FIND "${args}" "-d epson2:usbscan:001 -p" found_selector)
+expect("획득에 전체 장치 이름을 쓴다 (주소가 안 바뀌므로)" found_selector GREATER -1)
+
 # 옵션 조회는 두 번이면 충분하다 — 기본 덤프와 소스를 적용한 덤프. 스캔마다
 # 다시 읽으면 Epson 은 그때마다 램프를 다시 켜 느려진다.
 string(REGEX MATCHALL "\n-A |^-A " option_reads "${args}")

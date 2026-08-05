@@ -385,6 +385,24 @@ case "restore-sane":
 
 동작하면 §4.2(a)를 채택한다.
 
+#### 결과 — **닫힘** (2026-08-06, 실측)
+
+Process Monitor 없이 답이 나왔다. MSYS2 SANE 을 그대로 설치하면
+**백엔드가 하나도 로드되지 않는다.** 이유는 두 가지이고 둘 다 소스에서 확인했다.
+
+1. `HAVE_DLOPEN` 이 정의되지 않아 `dll.c` 가 DLL 을 열 방법 자체를 갖지 못했다.
+   `mingw-w64-ucrt-x86_64-dlfcn` 을 설치해야 한다.
+2. `dll.c` 는 Windows 에서 접두사 `cygsane-` 와 접미사 `-%u.dll` 로 찾는다
+   (`runtime-route-decision` §4.4 의 코드 인용). 패키지는 `libsane-*.dll` 로
+   깔리므로 이름이 어긋난다.
+
+그래서 §4.2(a)(`bin\` 한 곳에 모으기)는 채택하지 않는다. **`lib\sane\` 배치를
+유지하고 백엔드를 `cygsane-<backend>-1.dll` 이름으로도 두면 동작한다** —
+OpticFilm 8100 실기에서 `scanimage -L` 부터 전체 스캔까지 확인했다.
+
+배포 시에는 두 이름 중 하나만 두면 되지만, 어느 쪽이 정본인지 헷갈리지 않게
+`cygsane-` 쪽을 정본으로 삼고 `libsane-` 는 두지 않는 편이 낫다.
+
 ### E-2 — `SANE_CONFIG_DIR`의 Windows 경로 처리
 
 ```text
@@ -425,8 +443,8 @@ case "restore-sane":
 - [ ] `scanimage` 탐색 순서 4단계
 - [ ] PE machine type 확인
 - [ ] `LD_LIBRARY_PATH`를 설정하지 않는다
-- [ ] `SANE_CONFIG_DIR`이 설정되고 실제로 동작한다 (E-2)
-- [ ] 백엔드 DLL이 로드된다 (E-1)
+- [x] `SANE_CONFIG_DIR`이 설정되고 실제로 동작한다 (E-2 — 닫힘, 2026-08-06)
+- [x] 백엔드 DLL이 로드된다 (E-1 — 닫힘, `cygsane-` 이름이 필요하다)
 - [ ] 자식 환경 블록만 수정하고 부모를 건드리지 않는다
 - [ ] `PATH`를 쓴다면 앞에 붙인다
 - [ ] 중간 파일이 staging 디렉터리에 만들어진다
