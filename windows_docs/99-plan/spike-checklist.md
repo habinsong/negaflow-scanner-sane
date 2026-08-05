@@ -340,7 +340,7 @@ Windows에서 컴파일한 결과가 아니다. MSVC `/fp:precise`가 clang
 | S-6b | 대기 | | |
 | S-7 | 대기 | | |
 | S-8 | 대기 | | |
-| E-1 | 진행 | 2026-08-05 | 백엔드 DLL 은 `lib/bin`, import lib 은 `lib/sane`. 로드 방식은 미확인 |
+| E-1 | **통과** | 2026-08-05 | 질문이 성립하지 않는다. dll.c 에 `LoadLibrary` 분기가 없고 MSYS2 빌드는 `HAVE_DLOPEN` 도 preload 도 꺼져 있다 — **백엔드를 하나도 못 싣는다.** Windows 는 `--enable-preload` 가 유일한 구성 |
 | E-2 | 대기 | 2026-08-05 | 장치 없이 시도했으나 구분 불가 — runtime-route-decision §4.5 |
 | E-3 | 대기 | | |
 | E-4 | 대기 | | |

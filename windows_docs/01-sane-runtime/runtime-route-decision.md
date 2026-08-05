@@ -190,7 +190,90 @@ scanimage (sane-backends) 1.4.0; backend version 1.4.0    ← macOS와 같은 �
 주요 대상 백엔드(genesys, epson2, epsonds, coolscan2, coolscan3)의 DLL이
 모두 들어 있다.
 
-**② 백엔드 DLL 위치가 §7의 가정과 다르다.**
+**①A 결론부터 — 재고 패키지는 백엔드를 하나도 못 싣고, 원인은 두 가지다.**
+
+```text
+원인 1  HAVE_DLOPEN 이 꺼져 있다        MinGW 에 dlfcn.h 가 없어서
+        + --disable-preload            → 동적·정적 어느 쪽으로도 못 싣는다
+        해결: mingw-w64-ucrt-x86_64-dlfcn 를 넣고 다시 빌드하면 켜진다
+
+원인 2  파일 이름 규칙이 다르다          dll.c 는 Windows 에서 **Cygwin** 이름을 찾는다
+        찾는 것: cygsane-<name>-1.dll
+        있는 것: libsane-<name>-1.dll
+        해결: 배포할 때 cygsane- 이름으로 넣는다. **소스 패치가 필요 없다**
+```
+
+둘 다 고친 뒤 `test` 백엔드가 실제로 열렸다.
+
+```text
+scanimage -f "%d\t%v\t%m\t%t%n"
+  test:0	Noname	frontend-tester	virtual device
+  test:1	Noname	frontend-tester	virtual device
+```
+
+원인 2가 특히 중요하다. `dll.c` 의 해당 블록은 이렇게 생겼다.
+
+```c
+# elif defined (HAVE_WINDOWS_H)
+#   undef PREFIX
+#   define PREFIX "cygsane-"
+#   define POSTFIX "-%u.dll"
+```
+
+**upstream 이 Windows 를 Cygwin 으로만 상정하고 있다.** MinGW 빌드는 이름이
+어긋나서 자기 백엔드를 못 찾는다. 아무도 눈치채지 못한 이유는 증상이
+"스캐너가 없다"와 구별되지 않기 때문이다.
+
+`LD_LIBRARY_PATH` 는 필요 없었다(있으나 없으나 같았다). `DIR_SEP` 는
+`_WIN32` 에서 `;` 이므로 드라이브 문자가 잘리는 문제도 이 경로에는 없다.
+
+**①a 증상은 "장치가 없다"와 구별되지 않는다.**
+
+가장 큰 발견이다. `-L`이 아무것도 못 찾는 것을 "장치가 없어서"로 읽고
+넘어갈 뻔했는데, `test` 백엔드를 넣어 빌드해도 똑같이 안 보여서 파고들었다.
+
+`backend/dll.c`는 백엔드를 싣는 길이 **둘뿐이다.**
+
+```text
+HAVE_DLOPEN + HAVE_DLFCN_H   런타임에 동적 로드
+ENABLE_PRELOAD               libsane 에 정적 링크
+```
+
+**`LoadLibrary` 분기는 없다.** 그리고 MSYS2 빌드는 둘 다 꺼져 있다.
+
+```text
+include/sane/config.h:   /* #undef HAVE_DLOPEN */
+configure 인자:          --disable-preload
+```
+
+즉 이 패키지의 `libsane`은 **백엔드를 하나도 갖고 있지 않다.** 증상은
+장치가 없을 때와 구별되지 않는다.
+
+```text
+scanimage -L                        No scanners were identified.
+scanimage -A -d genesys:libusb:...  open of device ... failed: Operation not supported
+scanimage -A -d test:0              open of device test:0 failed: Operation not supported
+```
+
+**세 줄이 전부 같은 원인이다.** 앞의 §4.4 ⑥에서 "Operation not supported"를
+WinUSB 바인딩이 없어서라고 적었는데 **그것도 틀렸다** — 백엔드가 아예 없어서다.
+그 절의 오류 분류 논의는 근거가 없으니 실기에서 다시 봐야 한다.
+
+이것이 S-1에 주는 의미가 크다. **장비를 붙여도 이 패키지로는 실패한다.**
+S-1을 재고 패키지로 시도하면 "스캐너가 안 열린다"는 결론이 나오는데,
+그것은 스캐너나 드라이버 문제가 아니라 빌드 구성 문제다.
+
+`--enable-preload` 로 다시 빌드하면 `BACKENDS` 목록이 `libsane`에 정적으로
+들어간다. 그쪽이 Windows에서 유일하게 성립하는 구성이다.
+
+**② 백엔드 DLL 위치가 §7의 가정과 다르다 — 그리고 사실 무의미하다.**
+
+`lib/bin`에 있든 `lib/sane`에 있든 **아무도 그것을 열지 않는다**(①a).
+E-1("dll 백엔드가 어느 경로에서 찾는가")은 질문 자체가 성립하지 않는다.
+백엔드 DLL 60개를 `bin/`에 복사해 놓고 다시 돌려도 결과가 같았다.
+
+배치 문제로 보였던 것의 실체는 로딩 방식 문제였다. §7의 디렉터리 그림에서
+`sane\lib\sane\libsane-*.dll` 줄은 preload 구성에서는 **필요 없다.**
 
 ```text
 가정(§7)   sane\lib\sane\libsane-genesys-1.dll
@@ -201,18 +284,25 @@ scanimage (sane-backends) 1.4.0; backend version 1.4.0    ← macOS와 같은 �
 패키징할 때 이 레이아웃을 그대로 옮길지 재배치할지가 E-1의 실질적 내용이다.
 §7의 디렉터리 그림은 실측에 맞춰 다시 써야 한다.
 
-**③ `test` 백엔드가 패키지에 없다.** `libsane-test-1.dll`이 존재하지 않는다.
+**③ `test` 백엔드가 패키지에 없다 — 그리고 빼 둔 이유가 있다.**
 
-이것이 아프다. SANE의 `test` 백엔드는 하드웨어 없이 합성 이미지를 만드는
-표준 수단이고, **그것이 있었다면 S-2(binary stdout)를 장비 없이 지금
-끝낼 수 있었다.** 없으므로 S-2는 실기까지 그대로 막혀 있다.
-
-우회로는 둘이다. 둘 다 비용이 있으므로 실기가 있으면 그쪽이 빠르다.
+`libsane-test-1.dll`이 존재하지 않는다. PKGBUILD의 `BACKENDS` 목록에도
+없다. 처음에는 단순 취사선택으로 보였는데, 목록에 넣고 빌드해 보니
+**애초에 MinGW에서 컴파일되지 않는다.**
 
 ```text
-- SANE를 직접 빌드하며 --enable-... 로 test 백엔드를 포함시킨다
-- MSYS2 PKGBUILD를 고쳐 test 백엔드만 추가로 패키징한다
+backend/test.c:3117: error: 'F_SETFL' undeclared
+backend/test.c:3117: error: 'O_NONBLOCK' undeclared
 ```
+
+`sane_test_set_io_mode`가 `fcntl(F_SETFL, O_NONBLOCK)`을 쓴다. MinGW에는
+그 상수가 없다. 논블로킹 I/O는 이 백엔드의 부가 기능이고 지원하지 않는
+백엔드는 `SANE_STATUS_UNSUPPORTED`를 돌려주는 것이 규약이므로,
+Windows에서 그 경로로 보내는 것이 최소 수정이다.
+
+이것이 중요한 이유: SANE의 `test` 백엔드는 **하드웨어 없이 합성 이미지를
+만드는 표준 수단**이다. 그것을 쓰려면 패치가 하나 더 필요하다는 뜻이고,
+바꿔 말하면 **장비 없는 스캔 검증 자체가 공짜가 아니다.**
 
 **④ `SANE_DEBUG_DLL`을 설정하면 `scanimage.exe`가 세그폴트한다.**
 
@@ -265,6 +355,95 @@ negaflow-scanner-sane.exe capabilities <없는 장치>   → notConnected …   
 `detect`는 장치가 없다는 사실을 계약대로 빈 배열로 보고하고, `capabilities`는
 문서화된 3회 재시도와 주소 재확인을 거친 뒤 정해진 문구로 실패한다.
 **가상 `scanimage`가 아니라 MinGW로 빌드된 진짜 바이너리 상대의 결과다.**
+
+### 4.4a 드라이버를 바꾸지 않는 길 — 되지만 쓸 수 없다 (2026-08-05, 실기)
+
+Plustek OpticFilm 8100(`07b3:130c`, README의 지원 변종)을 실제로 연결해
+확인했다. §8이 전제한 "Zadig로 WinUSB 바인딩"을 피할 수 있는지가 질문이었다.
+
+**① 왜 macOS는 안 바꿔도 되는가 — 이 문서가 답한 적이 없다.**
+
+SANE의 문제가 아니라 OS 드라이버 모델 차이다.
+
+```text
+macOS    USB 장치를 커널이 독점하지 않는다. Image Capture 가 사용자 공간이라
+         libusb 가 IOKit 으로 그냥 연다. 그래서 아무것도 안 바꿔도 된다.
+Windows  장치 하나를 커널 함수 드라이버 **하나**가 소유한다. libusb 는
+         WinUSB / libusbK / libusb0 가 소유한 장치에만 말을 걸 수 있다.
+```
+
+이 스캐너는 Plustek 드라이버(`usbscan` 서비스, `oem113.inf`)가 소유 중이다.
+그래서 **열거는 되는데 열리지 않는다.**
+
+```text
+could not open USB device 0x07b3/0x130c at 001:027:
+    Operation not supported or unimplemented on this platform   (LIBUSB_ERROR_NOT_SUPPORTED)
+```
+
+**② UsbDk 경로 — 기술적으로는 성공했다.**
+
+UsbDk는 벤더 드라이버를 **교체하지 않고 공존하는** 리다이렉터이고, libusb에
+백엔드가 이미 들어 있다(MSYS2 빌드에도 컴파일돼 있다). SANE이 요청만 하지
+않고 있었다. 요청하도록 고치니 **실제로 열렸다.**
+
+```text
+post init -> 0
+post set_option -> 0 (LIBUSB_SUCCESS)
+post: open 07b3:130c -> 0 (LIBUSB_SUCCESS)
+post:   product = Film Scanner        ← Plustek 드라이버를 유지한 채로
+```
+
+**③ 그런데 호출 위치가 libusb 헤더 설명과 반대다.**
+
+`libusb.h`는 이 옵션을 `libusb_init_context()`로 초기화 시점에 주라고 적었다.
+**그렇게 하면 동작하지 않는다.** libusb 1.0.30에서 실측:
+
+```text
+libusb_init_context(&ctx, {USE_USBDK})   set_option 은 성공하는데 열기는
+                                          여전히 winusb_open 으로 가고 -12
+libusb_init(&ctx) → set_option(ctx, …)   열린다
+```
+
+원인으로 보이는 것: 옵션이 컨텍스트별 `priv->backend`를 바꾸는데
+`libusb_init_context`는 **옵션을 먼저 적용하고 백엔드를 나중에 init** 한다.
+게다가 프로세스의 첫 컨텍스트에서는 `usbdk_available`이 아직 서지 않아
+`UsbDk backend not available`로 떨어진다(로그로 확인).
+
+**④ 그리고 UsbDk는 커널을 무너뜨렸다.**
+
+SANE이 그 경로로 스캐너를 여는 순간 시스템이 죽었다.
+
+```text
+BugCheck 0x0000010D  WDF_VIOLATION
+파라미터 0xD, 덤프 C:\Windows\Minidump\080526-9578-01.dmp
+UsbDk = KMDF 1.11 드라이버
+```
+
+UsbDk의 **알려진 결함**이다 — 전원 정책 소유자 충돌
+([daynix/UsbDk#115](https://github.com/daynix/UsbDk/issues/115)). libusb
+upstream이 "UsbDk는 안정성 문제로 권장하지 않는다"고 적은 것이 이것이다.
+
+`libusb_open` + 문자열 서술자 읽기까지는 죽지 않았다. SANE이 그보다 더
+많은 것을 할 때 죽었다. **어느 호출이 방아쇠인지는 특정하지 못했다.**
+
+**⑤ 결론 — 되지만 배포할 수 없다.**
+
+```text
+D-01 보강  UsbDk 경로는 "드라이버를 안 바꾸는 유일한 길"이지만
+           제품 경로가 될 수 없다. 사용자 PC 에 블루스크린을 유발하는
+           커널 드라이버를 배포하는 것이 되기 때문이다.
+
+           sanei_usb 패치는 남기되 **opt-in 으로 둔다**
+           (`SANE_USB_USE_USBDK`). 기본값으로 두면 스캔이 블루스크린이 된다.
+
+           1차 경로는 §8 그대로 WinUSB 바인딩이다.
+```
+
+**⑥ 부수 사실 — UsbDk는 재열거가 필요하다.**
+
+설치 시점에 이미 꽂혀 있던 장치는 UsbDk 목록에 나타나지 않는다. 재부팅 후
+장치 수가 4개에서 15개로 늘고 그제서야 스캐너가 보였다. 설치 프로그램이
+UsbDk를 다룬다면 이 사실을 UX에 반영해야 한다.
 
 ### 4.5 E-2를 닫지 못했다 — 시도한 방법과 실패 이유
 
