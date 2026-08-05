@@ -574,6 +574,31 @@ honor하면 genesys가 목록에 없으니 다른 오류가 나야 한다는 설
 
 **장치가 하나라도 보이는 환경이 필요하다.** E-2는 그대로 대기다.
 
+#### 결과 — **honor 한다** (2026-08-06, OpticFilm 8100 실기)
+
+장치가 보이는 환경이 생겨 같은 디렉터리에서 `dll.conf` 한 줄만 바꿔 가렸다.
+
+```text
+.conf 를 디렉터리에 직접 두고 dll.conf = genesys   →  genesys:usbscan:000
+같은 디렉터리에서 dll.conf = epson2 로만 바꿈       →  (없음)
+SANE_CONFIG_DIR 미설정 대조                        →  genesys:usbscan:000
+```
+
+한 줄 차이로 장치가 나타나고 사라진다. `SANE_CONFIG_DIR` 은 확실히 읽히고,
+`C:\...` 처럼 드라이브 문자가 든 경로도 그대로 먹는다.
+
+**정확한 형태는 하나뿐이다.**
+
+| 형태 | 결과 |
+| --- | --- |
+| `.conf` 를 `$SANE_CONFIG_DIR` 에 **직접** | 동작 |
+| `$SANE_CONFIG_DIR/sane.d/*.conf` | 실패 — 아무 백엔드도 로드되지 않는다 |
+| 존재하지 않는 디렉터리 | 실패 — **내장 경로로 되돌아가지 않는다** |
+
+마지막 줄이 함정이다. 이 변수를 설정하면 설정 디렉터리를 **전부** 우리가
+채워야 한다. 백엔드가 자기 `.conf` 를 못 찾으면 조용히 장치 0개가 된다.
+D-05(`dll.conf` 를 수정하지 않는다)를 지키는 편이 여전히 안전하다.
+
 ## 5. Spike 명세
 
 ### S-1 — MSYS2 `scanimage`가 실제 스캐너를 여는가
@@ -762,6 +787,10 @@ D-01 수정안  A(재배포)를 유지하되 **패치 없는 MSYS2 패키지를 
 
 ### S-3 — WSL2 경로 안정성
 
+> **폐기 (2026-08-06).** WSL2 경로(B)는 A 경로가 실기로 통과해 필요가 없어졌다.
+> A 는 드라이버 교체도, usbipd 도, 관리자 권한도 요구하지 않는다 (§4.4b, S-1).
+> WSL2 를 다시 검토해야 하는 상황이 오면 이 절차가 그대로 남아 있다.
+
 ```text
 1. usbipd bind/attach
 2. WSL 안에서 scanimage -L, -A, 전체 스캔
@@ -813,6 +842,22 @@ macOS 의 `libusb:BBB:DDD` churn 이 여기엔 없다. **그래도 재연결 로
 `LC_ALL=C`로 `scanimage.exe`의 메시지 언어가 고정되는가.
 `rounded value of`, `device busy`, `invalid argument` 감지가 살아 있는가.
 한국어 Windows에서 확인한다.
+
+#### 결과 — **통과** (2026-08-06, 한국어 Windows 11, OpticFilm 8100 실기)
+
+```text
+LC_ALL 미설정  scanimage.exe: rounded value of resolution from 1234 to 1200
+               scanimage.exe: open of device genesys:nosuch:999 failed: Invalid argument
+LC_ALL=C       위와 글자 하나까지 같다
+```
+
+**로케일을 설정하지 않아도 영어로 나온다.** MSYS2 SANE 빌드에 한국어 번역이
+없기 때문이다. `LC_ALL=C` 는 그래도 계속 설정한다 — 번역이 들어간 빌드로
+바뀌어도 감지가 살아 있어야 하고, 설정 비용이 0 이다.
+
+`device busy` 는 이 자리에서 확인하지 못했다. 장치를 두 프로세스가 동시에
+열어야 나오는 메시지이고, 그 실험은 스캐너를 위험하게 만든다(§4.4b 의 먹통
+상태). 감지 문자열은 macOS 와 같은 것을 쓰므로 그대로 둔다.
 
 ## 6. Spike 실행 순서와 gate
 
