@@ -355,8 +355,13 @@ int main() {
     if (plan.exitCode) return *plan.exitCode;
 
     process::ProcessOwnership ownership;
-    // 호스트 취소(A). 콘솔이 없으면 이벤트가 오지 않고, 그때의 안전망은
-    // Job Object 다 — 어댑터가 강제 종료돼도 scanimage 가 남지 않는다.
+    // 콘솔부터 확보한다. 없으면 `scanimage` 에 CTRL_BREAK 를 보낼 방법이
+    // 없어 취소가 강제 종료로만 끝나고, 전송 도중에 죽은 스캐너는 전원을
+    // 다시 넣기 전까지 돌아오지 않는다. 표준 핸들은 그 안에서 되돌린다.
+    (void)process::ensureConsoleForCancellation();
+    // 호스트 취소(A). 제어 핸들러 표는 콘솔을 만들 때 초기화되므로 이 순서를
+    // 지킨다. 그래도 콘솔이 없으면 안전망은 Job Object 다 — 어댑터가 강제
+    // 종료돼도 scanimage 가 남지 않는다.
     process::installConsoleCancellation(&ownership);
 
     app::ScanimageLocation location = app::findScanimage();

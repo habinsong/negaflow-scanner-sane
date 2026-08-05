@@ -123,4 +123,20 @@ private:
 /// 남지 않는다(§6).
 void installConsoleCancellation(ProcessOwnership* owner);
 
+/// 취소를 위한 콘솔을 확보한다. 이미 있으면 아무것도 하지 않는다.
+///
+/// `GenerateConsoleCtrlEvent` 는 **부르는 쪽의 콘솔을 공유하는** 프로세스
+/// 그룹에만 신호를 보낸다(MS 문서). GUI 호스트의 자식으로 뜨면 콘솔이 없어
+/// 그 경로가 통째로 죽고, 취소는 `TerminateProcess` 로만 끝난다 — 전송
+/// 도중에 죽은 스캐너는 전원을 다시 넣기 전까지 돌아오지 않는다.
+///
+/// 그래서 콘솔이 없으면 하나 만들어 창을 숨긴다. `AllocConsole` 은 표준
+/// 핸들을 새 콘솔로 **덮어쓰므로**(MS 문서) 부르기 전에 세 개를 저장했다가
+/// 되돌린다. 그러지 않으면 stdout 이 wire 프로토콜에서 콘솔로 옮겨간다.
+/// 제어 핸들러 표도 초기화되므로 호출자는 그 뒤에
+/// `installConsoleCancellation` 을 부른다.
+///
+/// @return 이 프로세스에 콘솔이 있는가. 없으면 취소는 강제 종료뿐이다.
+bool ensureConsoleForCancellation();
+
 }  // namespace negaflow::process

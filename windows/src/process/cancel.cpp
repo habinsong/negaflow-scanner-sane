@@ -135,6 +135,26 @@ void ProcessOwnership::requestCancellation() {
     }
 }
 
+bool ensureConsoleForCancellation() {
+    if (GetConsoleWindow() != nullptr) return true;
+
+    // AllocConsole 은 표준 핸들 셋을 새 콘솔로 덮어쓴다. 우리 stdout 은 wire
+    // 프로토콜이므로 저장했다가 되돌린다.
+    HANDLE saved[3] = {GetStdHandle(STD_INPUT_HANDLE), GetStdHandle(STD_OUTPUT_HANDLE),
+                       GetStdHandle(STD_ERROR_HANDLE)};
+
+    if (AllocConsole() == FALSE) return GetConsoleWindow() != nullptr;
+
+    SetStdHandle(STD_INPUT_HANDLE, saved[0]);
+    SetStdHandle(STD_OUTPUT_HANDLE, saved[1]);
+    SetStdHandle(STD_ERROR_HANDLE, saved[2]);
+
+    // 창은 보여줄 것이 없다. 취소 신호를 나를 통로로만 쓴다.
+    HWND window = GetConsoleWindow();
+    if (window != nullptr) (void)ShowWindow(window, SW_HIDE);
+    return window != nullptr;
+}
+
 void installConsoleCancellation(ProcessOwnership* owner) {
     g_consoleOwner.store(owner, std::memory_order_release);
     (void)SetConsoleCtrlHandler(consoleHandler, TRUE);
