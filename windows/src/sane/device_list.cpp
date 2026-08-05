@@ -100,7 +100,12 @@ ConnectionType connectionType(std::string_view deviceString) {
     if (contains(v, ":firewire:") || contains(v, ":ieee1394:") || contains(v, ":ieee-1394:")) {
         return ConnectionType::FireWire;
     }
-    if (contains(v, ":usb:") || contains(v, ":libusb:")) return ConnectionType::Usb;
+    // `:usbscan:` 은 Windows 에서 still-image 클래스 드라이버를 통해 열린 USB
+    // 장치다 — `genesys:usbscan:000`. 주소가 아니라 커널 장치 번호라 열고
+    // 닫아도, 전원을 다시 넣어도 바뀌지 않으므로 volatile 이 아니다.
+    if (contains(v, ":usb:") || contains(v, ":libusb:") || contains(v, ":usbscan:")) {
+        return ConnectionType::Usb;
+    }
     return ConnectionType::InternalBus;
 }
 

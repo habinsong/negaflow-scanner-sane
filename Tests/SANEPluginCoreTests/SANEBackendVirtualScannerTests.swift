@@ -330,6 +330,11 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
         XCTAssertEqual(SANEBackend.connectionType(of: "coolscan3:firewire:scanner0"), .fireWire)
         XCTAssertEqual(SANEBackend.connectionType(of: "epson2:net:192.168.0.2"), .network)
         XCTAssertEqual(SANEBackend.connectionType(of: "genesys:libusb:000:010"), .usb)
+        // Windows 는 still-image 클래스 드라이버로 열린 장치를 이렇게 부른다.
+        // 실기 확인: `genesys:usbscan:000` = PLUSTEK OpticFilm 8100.
+        XCTAssertEqual(SANEBackend.connectionType(of: "genesys:usbscan:000"), .usb)
+        XCTAssertEqual(SANEBackend.connectionType(of: "epson2:usbscan:001"), .usb)
+        XCTAssertFalse(SANEBackend.isVolatileUSBSelector("genesys:usbscan:000"))
         XCTAssertEqual(SANEBackend.connectionType(of: "vendor:internal:0"), .internalBus)
     }
 

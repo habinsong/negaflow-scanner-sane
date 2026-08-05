@@ -366,6 +366,11 @@ void testBackendAndConnection() {
     CHECK_EQ(backendName("net:h:genesys:libusb:1:2"), std::string("net"));
 
     CHECK(connectionType("genesys:libusb:001:002") == ConnectionType::Usb);
+    // Windows 는 still-image 클래스 드라이버로 열린 장치를 이렇게 부른다.
+    // 실기 확인: `genesys:usbscan:000` = PLUSTEK OpticFilm 8100.
+    CHECK(connectionType("genesys:usbscan:000") == ConnectionType::Usb);
+    CHECK(connectionType("epson2:usbscan:001") == ConnectionType::Usb);
+    CHECK(!isVolatileUSBSelector("genesys:usbscan:000"));
     CHECK(connectionType("epson2:net:host:1") == ConnectionType::Network);
     CHECK(connectionType("coolscan:scsi:0:1:2") == ConnectionType::Scsi);
     CHECK(connectionType("pie:/dev/sg0") == ConnectionType::Scsi);
