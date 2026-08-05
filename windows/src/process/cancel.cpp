@@ -11,6 +11,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <string>
 
 namespace negaflow::process {
 
@@ -44,15 +45,48 @@ BOOL WINAPI consoleHandler(DWORD type) {
     return WaitForSingleObject(process, 0) == WAIT_TIMEOUT;
 }
 
+/// 장치 키를 뮤텍스 이름으로. 이름에 못 쓰는 글자만 걸러낸다.
+///
+/// `Local\` 범위다. 스캐너는 대화형 세션이 쓰는 물건이고, `Global\` 로 올리면
+/// 다른 로그인 세션까지 막는다.
+std::wstring machineLockName(std::string_view deviceKey) {
+    std::wstring name = L"Local\\negaflow-scanner-sane.device.";
+    for (const char c : deviceKey) {
+        name.push_back(c == '\\' ? L'_' : static_cast<wchar_t>(c));
+    }
+    return name;
+}
+
 }  // namespace
 
-ProcessOwnership::SessionError ProcessOwnership::beginScanSession(std::uint64_t* outSessionID) {
+ProcessOwnership::SessionError ProcessOwnership::beginScanSession(std::uint64_t* outSessionID,
+                                                                  std::string_view deviceKey) {
     std::lock_guard lock(mutex_);
     if (current_.process != nullptr && !stillRunning(current_.process)) {
         current_ = ChildHandles{};
     }
     if (cancellationRequested_) return SessionError::Cancelled;
     if (activeSessionID_ != 0 || current_.process != nullptr) return SessionError::Busy;
+
+    // 다른 어댑터 프로세스가 같은 스캐너를 쓰고 있는가. 위의 검사는 이
+    // 프로세스 안만 본다 — 헤더의 설명 참조.
+    if (!deviceKey.empty()) {
+        const std::wstring name = machineLockName(deviceKey);
+        HANDLE lockHandle = CreateMutexW(nullptr, FALSE, name.c_str());
+        if (lockHandle != nullptr) {
+            // 버려진 뮤텍스(WAIT_ABANDONED)도 우리 것이다 — 잡고 있던
+            // 프로세스가 죽은 것이므로 이어받는다.
+            const DWORD held = WaitForSingleObject(lockHandle, 0);
+            if (held != WAIT_OBJECT_0 && held != WAIT_ABANDONED) {
+                CloseHandle(lockHandle);
+                return SessionError::Busy;
+            }
+            machineLock_ = lockHandle;
+        }
+        // 뮤텍스를 못 만들면 잠금 없이 진행한다. 막을 수 없는 것 때문에
+        // 스캔 자체를 거절하지는 않는다.
+    }
+
     activeSessionID_ = nextSessionID_++;
     if (outSessionID != nullptr) *outSessionID = activeSessionID_;
     return SessionError::None;
@@ -66,6 +100,11 @@ void ProcessOwnership::endScanSession(std::uint64_t sessionID) {
     }
     activeSessionID_ = 0;
     cancellationRequested_ = false;
+    if (machineLock_ != nullptr) {
+        (void)ReleaseMutex(static_cast<HANDLE>(machineLock_));
+        CloseHandle(static_cast<HANDLE>(machineLock_));
+        machineLock_ = nullptr;
+    }
 }
 
 ProcessOwnership::SessionError ProcessOwnership::adoptChild(const ChildHandles& child,

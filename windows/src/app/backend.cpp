@@ -1179,12 +1179,13 @@ sane::ValidationResult Backend::scan(const sane::ScanOptions& options,
     beginCommand(process::Command::Scan);
 
     std::uint64_t sessionID = 0;
-    switch (ownership_.beginScanSession(&sessionID)) {
+    switch (ownership_.beginScanSession(&sessionID, options.scannerID)) {
         case process::ProcessOwnership::SessionError::None:
             break;
         case process::ProcessOwnership::SessionError::Busy:
-            return error(ErrorCode::Busy,
-                         "이 plugin instance에서 scanimage가 이미 실행 중입니다.");
+            // 이 프로세스 안일 수도, 같은 스캐너를 쥔 다른 어댑터일 수도 있다.
+            // `usbscan.sys` 가 배타 접근을 강제하지 않아 우리가 막는다.
+            return error(ErrorCode::Busy, "이 스캐너를 이미 다른 스캔이 쓰고 있습니다.");
         case process::ProcessOwnership::SessionError::Cancelled:
             return error(ErrorCode::Cancelled, "스캔이 취소되었습니다.");
     }

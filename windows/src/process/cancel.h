@@ -39,17 +39,12 @@
 
 #include <cstdint>
 #include <mutex>
+#include <string_view>
 
 #include "process/budget.h"
 
 namespace negaflow::process {
 
-/// 취소 요청 뒤 강제 종료까지 기다리는 시간.
-///
-/// macOS 는 0.5 s 다. cancellation §5.1 이 **2 s 를 권장 초기값**으로 적었다 —
-/// `sane_cancel()` 이 현재 전송 블록이 끝날 때까지 기다리는 백엔드가 있고,
-/// 고해상도 한 스트립이 수백 ms 일 수 있기 때문이다. 호스트의 scan 유예(5 s)
-/// 안에 들어간다.
 /// 취소 신호를 보낸 뒤 강제 종료까지 기다리는 시간.
 ///
 /// **넉넉해야 한다.** 이 시간이 지나 `TerminateProcess` 로 넘어가면 스캐너가
@@ -86,7 +81,18 @@ public:
     enum class SessionError { None, Busy, Cancelled };
 
     /// 스캔 세션을 연다. 성공하면 `*outSessionID` 가 채워진다.
-    [[nodiscard]] SessionError beginScanSession(std::uint64_t* outSessionID);
+    ///
+    /// `deviceKey` 는 이름 붙은 뮤텍스의 키다. **어댑터 프로세스 하나만으로는
+    /// 부족하다** — `usbscan.sys` 는 배타 접근을 강제하지 않는다. 실측:
+    /// 한 프로세스가 `FILE_SHARE` 를 0 으로 주고 잡고 있어도 다른 프로세스가
+    /// 그대로 연다. 그러면 두 스캔이 같은 파이프에 전송을 섞어 넣고, 그렇게
+    /// 망가진 스캐너는 전원을 다시 넣기 전까지 돌아오지 않는다. libusb 가
+    /// `EBUSY` 를 주는 macOS 와 달리 여기서는 아무도 막아주지 않으므로
+    /// 우리가 막는다.
+    ///
+    /// 비어 있으면 기계 범위 잠금을 건너뛴다(장치를 아직 모르는 호출).
+    [[nodiscard]] SessionError beginScanSession(std::uint64_t* outSessionID,
+                                                std::string_view deviceKey = {});
 
     /// 세션을 닫는다. **취소 플래그도 지운다.**
     void endScanSession(std::uint64_t sessionID);
@@ -118,6 +124,8 @@ private:
     ChildHandles current_{};
     std::uint64_t activeSessionID_ = 0;
     std::uint64_t nextSessionID_ = 1;
+    /// 기계 범위 잠금. 세션 동안만 쥔다. 다른 핸들과 같은 이유로 불투명하다.
+    void* machineLock_ = nullptr;  ///< HANDLE (뮤텍스)
     bool cancellationRequested_ = false;
     bool forcedTermination_ = false;
 };
