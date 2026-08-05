@@ -118,6 +118,26 @@ libusb 로도 보이는 같은 하드웨어는 열거에서 뺀다 — 열 수 �
 마지막 줄이 중요하다. **Zadig 로 드라이버를 바꿨어도 같은 벽에 부딪혔을
 것이다.** usbscan.sys 를 고른 것이 이 문제의 원인이 아니다.
 
+### Gray 모드는 upstream 결함이다 — 우리 쪽 문제가 아니다
+
+OpticFilm 8100 을 `--mode Gray` 로 스캔하면 genesys 가 스캔을 시작하고
+`sanei_genesys_is_buffer_empty` 를 무한히 폴링한다. 타임아웃도 나지 않는다.
+실측으로 20분 이상 그 상태였다. 같은 조건의 `--mode Color` 는 17초에 끝난다.
+
+같은 증상이 **Linux 에서 독립적으로 보고돼 있다** — sane-devel, Plustek
+OpticFilm 8200i:
+
+> "scan and preview do not work in grayscale mode" — 스캔이 시작은 되지만
+> 끝에서 멈춰 프론트엔드를 강제 종료해야 한다. 컬러는 정상이고, Windows 와
+> VueScan 에서는 잘 된다.
+
+즉 genesys 의 GL845/GL846 Gray 경로 자체가 미완성이다. Windows 포팅이나
+usbscan.sys 와 무관하다.
+
+**제품에는 영향이 없다.** 플러그인은 필름 네거티브를 Color 로 스캔한다
+(`windows/src/app/backend.h` 의 `colorMode` 기본값). Gray 는 적외선 채널
+파일의 TIFF 검증에만 쓰이고, 8100 에는 적외선 채널이 없다.
+
 이 패치는 upstream 에 제출할 가치가 있다. 제출 전까지는 여기서 유지한다.
 
 ## 다시 만드는 법
