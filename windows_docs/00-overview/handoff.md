@@ -409,11 +409,30 @@ main.cpp          wire/cli 의 판정을 받아 실행만 한다
 3. PATH                            마지막 수단. 검증되지 않은 버전 경고를 붙인다
 ```
 
-2번을 실제로 채우는 것이 남은 일이다 — MinGW/MSYS2 로 SANE 를 빌드해
-백엔드 DLL 과 `etc\sane.d` 를 함께 담아야 하고, spike E-1(dll 백엔드의 DLL
-로드 방식)과 E-2(`SANE_CONFIG_DIR` 의 `C:` 절단)가 그 조건이다.
+2번을 실제로 채우는 것이 남은 일이고, **거기에 차단 항목이 하나 확정됐다.**
+
+```text
+S-2 실패 (2026-08-05, 장비 없이 확정)
+
+  SANE 1.4.0 frontend/scanimage.c 는 Windows 에서 바이너리 모드를
+  설정하지 않는다. MinGW/UCRT 기본이 텍스트 모드라 stdout 으로 나가는
+  이미지의 0x0A 마다 0x0D 가 삽입된다.
+  `--output-file` 도 fopen(path, "w") 라 똑같이 깨진다.
+  배포된 scanimage.exe 의 -L/--help 출력이 전부 CRLF 인 것으로 확인했다.
+
+  → **MSYS2 패키지를 그대로 재배포하면 안 된다.**
+     _setmode(_fileno(ofp), _O_BINARY) 3줄을 얹어 직접 빌드해야 한다.
+     그 수정으로 바이트가 보존되는 것까지 같은 툴체인에서 측정했다.
+```
+
+전문과 근거: [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §5.
+남은 조건은 S-1(실기 open)과 E-1/E-2 다.
 → [building-sane](../01-sane-runtime/building-sane.md),
   [environment-and-paths](../03-process-and-io/environment-and-paths.md) §9
+
+**우리 어댑터 쪽에 고칠 것은 없다.** 텍스트 모드 변환은 자식의 CRT 안에서
+일어나므로 부모가 핸들을 어떻게 만들든 막을 수 없다. 이것은 우리가 배포할
+SANE 런타임의 문제다.
 
 ## 4. 반드시 알아야 할 것
 
@@ -674,12 +693,12 @@ timeouts-and-watchdog §3.5가 승인한 개선이다.
 
 ## 8. 아직 없는 것 — 정직하게
 
-- **실기 검증 장치 0대.** 지금까지의 "돈다"는 전부 가짜 `scanimage` 상대다.
-  실제 스캐너에서 처음 드러날 것들: 옵션 덤프의 실제 형태, `LC_ALL=C` 가
-  MinGW 빌드에서 존중되는가(S-6), USB 주소가 열 때마다 바뀌는 실측이
-  Windows 에서도 같은가
-- **SANE 런타임을 아직 담지 않았다.** `scanimage.exe` 는 찾기만 하고,
-  `<플러그인>\sane\bin\` 을 채우는 일은 spike E-1/E-2 뒤다 (§3.7)
+- **실기 검증 장치 0대.** 어댑터는 진짜 `scanimage.exe`(MSYS2 1.4.0)를
+  몰아 `detect`/`capabilities` 까지 확인했지만 **스캔은 못 해 봤다.**
+  실제 스캐너에서 처음 드러날 것: 옵션 덤프의 실제 형태, 주소 변동(S-5),
+  장치명 형식(S-4), 반올림 경고 문구(S-6 나머지)
+- **SANE 런타임을 아직 담지 않았고, 그냥 담아서도 안 된다.** S-2 가
+  실패했으므로 `_setmode` 수정을 얹어 직접 빌드한 것만 배포할 수 있다 (§3.7)
 - `fixtures/` 디렉터리가 없다(M1 미착수). 파리티 하네스와 `plugin_smoke` 의
   가짜 scanimage 가 그 자리를 임시로 메운다
 - 통과한 spike 5개는 **전부 macOS에서 C++와 Swift를 대조한 것**이다.

@@ -122,6 +122,25 @@ C++    optionNames        == ["mode", "depth"]
 수정은 한 줄이다 — `split(separator: "\n")` 대신 `\r\n`도 함께 다루거나,
 `unicodeScalars` 기준으로 나눈다.
 
+#### CRLF 는 이제 가능성이 아니라 측정된 사실이다 (2026-08-05)
+
+이 절은 "MinGW `scanimage`가 CRLF를 **낼 수 있다**"는 전제 위에 서 있었다.
+그 전제를 실측했다. MSYS2 `mingw-w64-ucrt-x86_64-sane` 1.4.0 으로 확인:
+
+```text
+scanimage.exe -L        stdout 5줄 전부  \r\n
+scanimage.exe --help    출력 38줄 전부   \r\n
+```
+
+원인은 CRT다. MinGW/UCRT의 기본 파일 모드가 텍스트라 `printf`의 `\n`이
+`\r\n`으로 나간다. **`-A` 덤프도 같은 stdout으로 나오므로 CRLF다.**
+
+즉 Swift 구현을 그대로 베꼈다면 **Windows에서 옵션 덤프가 통째로 한 줄로
+뭉개져 능력 판정이 전부 무너졌을 것이다.** §2.2.1의 결정이 옳았다.
+
+같은 텍스트 모드가 이미지 바이트도 망가뜨린다 — 그쪽은 별개의 차단 항목이다.
+→ [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §5
+
 파리티 검사가 이 divergence를 **알려진 예외로 허용**하고 나머지는
 전부 일치를 요구한다: `windows/tools/parity-check.sh`.
 

@@ -176,6 +176,109 @@ Epson Perfection V800/V850은 벤더 드라이버와 Epson Scan 2가 Windows 11�
 
 이것은 UX 문구가 아니라 **제품 계약**이다. 설치 후에 알게 하면 안 된다.
 
+## 4.4 2026-08-05 실측 — 장비 없이 확인한 것
+
+Windows 11 x64에 MSYS2를 설치하고 `mingw-w64-ucrt-x86_64-sane`를 깔아
+실제로 확인했다. **스캐너는 없었다.** 그래서 "장치를 여는" 항목은 전부
+그대로 열려 있고, 아래는 그 앞까지의 사실이다.
+
+```text
+scanimage (sane-backends) 1.4.0; backend version 1.4.0    ← macOS와 같은 버전
+```
+
+**① 패키지는 실재하고 설치된다.** §3.1이 전제한 A 경로의 첫 조건이 참이다.
+주요 대상 백엔드(genesys, epson2, epsonds, coolscan2, coolscan3)의 DLL이
+모두 들어 있다.
+
+**② 백엔드 DLL 위치가 §7의 가정과 다르다.**
+
+```text
+가정(§7)   sane\lib\sane\libsane-genesys-1.dll
+실제       ucrt64\lib\bin\libsane-genesys-1.dll     ← DLL은 lib\bin
+           ucrt64\lib\sane\libsane-genesys.dll.a    ← lib\sane에는 import lib만
+```
+
+패키징할 때 이 레이아웃을 그대로 옮길지 재배치할지가 E-1의 실질적 내용이다.
+§7의 디렉터리 그림은 실측에 맞춰 다시 써야 한다.
+
+**③ `test` 백엔드가 패키지에 없다.** `libsane-test-1.dll`이 존재하지 않는다.
+
+이것이 아프다. SANE의 `test` 백엔드는 하드웨어 없이 합성 이미지를 만드는
+표준 수단이고, **그것이 있었다면 S-2(binary stdout)를 장비 없이 지금
+끝낼 수 있었다.** 없으므로 S-2는 실기까지 그대로 막혀 있다.
+
+우회로는 둘이다. 둘 다 비용이 있으므로 실기가 있으면 그쪽이 빠르다.
+
+```text
+- SANE를 직접 빌드하며 --enable-... 로 test 백엔드를 포함시킨다
+- MSYS2 PKGBUILD를 고쳐 test 백엔드만 추가로 패키징한다
+```
+
+**④ `SANE_DEBUG_DLL`을 설정하면 `scanimage.exe`가 세그폴트한다.**
+
+```text
+SANE_DEBUG_DLL=255 scanimage.exe -L   → Segmentation fault (exit 139)
+SANE_DEBUG_DLL=3   scanimage.exe -L   → 출력 없음
+설정하지 않으면                        → 정상 동작
+```
+
+[diagnostics-and-troubleshooting](../08-operations/diagnostics-and-troubleshooting.md)이
+진단 모드에서 `SANE_DEBUG_*`를 켜라고 적고 있는데, **이 빌드에서는 그것이
+크래시 경로다.** 진단 기능을 붙이기 전에 이 사실을 반영해야 한다.
+
+**⑤ 로케일: 번역 카탈로그가 아예 없다.**
+
+```text
+LC_ALL 미설정 / LC_ALL=C / LC_ALL=ko_KR.UTF-8   → 셋 다 같은 영어 메시지
+ucrt64\share\locale\ko\LC_MESSAGES\             → sane 카탈로그 없음
+```
+
+한국어 Windows에서 메시지가 번역되지 않는 이유는 `LC_ALL=C`가 통해서가
+아니라 **번역본이 배포에 없어서**다. 결론은 같지만 근거가 다르다 —
+카탈로그를 포함하는 빌드로 바뀌면 `LC_ALL=C`가 다시 유일한 방어선이 된다.
+**그래서 `LC_ALL=C`를 계속 보낸다.** S-6은 이 범위까지만 통과다.
+
+**⑥ 실제 오류 문구가 macOS와 다르다.**
+
+```text
+Windows   open of device genesys:libusb:001:002 failed: Operation not supported
+macOS     open of device ... failed: Invalid argument
+```
+
+`isStaleDeviceError`는 `"open of device"` 부분문자열로 잡으므로 **양쪽 다
+재시도 경로를 탄다.** 그러나 `classifyStderr`는 갈린다 —
+`"invalid argument"`는 `notConnected`, `"operation not supported"`는 어느
+키워드에도 걸리지 않아 `ioFailure`가 된다. 같은 상황이 두 OS에서 다른 코드로
+보일 수 있다(I-5).
+
+**고치지 않았다.** 여기서 본 "Operation not supported"는 WinUSB 바인딩이
+없는 상태의 응답이고, 실기에서 주소가 만료됐을 때의 문구는 아직 모른다.
+**실측 없이 분류표를 늘리면 추측을 코드에 박는 것이다.** S-1과 함께 확인한다.
+
+**⑦ 어댑터가 진짜 `scanimage.exe`를 몬다.**
+
+```text
+negaflow-scanner-sane.exe detect                    → {"devices":[]}   exit 0
+negaflow-scanner-sane.exe capabilities <없는 장치>   → notConnected …   exit 1
+```
+
+`detect`는 장치가 없다는 사실을 계약대로 빈 배열로 보고하고, `capabilities`는
+문서화된 3회 재시도와 주소 재확인을 거친 뒤 정해진 문구로 실패한다.
+**가상 `scanimage`가 아니라 MinGW로 빌드된 진짜 바이너리 상대의 결과다.**
+
+### 4.5 E-2를 닫지 못했다 — 시도한 방법과 실패 이유
+
+`SANE_CONFIG_DIR`에 드라이브 문자가 든 경로(`C:\...`)를 주고, dll.conf에
+`epson2`만 남긴 설정 디렉터리로 `-A -d genesys:...`를 요청해 보았다.
+honor하면 genesys가 목록에 없으니 다른 오류가 나야 한다는 설계였다.
+
+**세 경우(미설정 / `C:\` 경로 / MSYS 경로)가 모두 같은 출력을 냈다.**
+즉 이 실험은 아무것도 구분하지 못한다 — `-d <backend>:...`처럼 백엔드를
+명시하면 dll 계층이 dll.conf 목록과 무관하게 그 백엔드를 직접 열려 하기
+때문으로 보인다.
+
+**장치가 하나라도 보이는 환경이 필요하다.** E-2는 그대로 대기다.
+
 ## 5. Spike 명세
 
 ### S-1 — MSYS2 `scanimage`가 실제 스캐너를 여는가
@@ -219,6 +322,102 @@ Epson Perfection V800/V850은 벤더 드라이버와 Epson Scan 2가 Windows 11�
 그것을 쓴다(1.4.0 소스에서 확인 필요). 없으면 MSYS2 패키지를 재빌드하며
 `_setmode` 호출을 추가하는 패치를 유지해야 하고, 그 순간 우리는 SANE의
 다운스트림 패치 유지자가 된다 → [building-sane](building-sane.md).
+
+#### 결과 — **실패** (2026-08-05). 단 3줄로 고쳐진다
+
+**스캐너 없이 끝났다.** 이 spike는 "바이트가 보존되는가"를 묻는 것이고,
+그것은 CRT의 파일 모드 문제라 장치가 필요 없었다.
+
+**① 소스 감사 — SANE 1.4.0은 Windows에서 바이너리 모드를 설정하지 않는다.**
+
+`frontend/scanimage.c`에서 모드를 바꾸는 곳은 OS/2 하나뿐이다.
+
+```c
+#ifdef __EMX__          /* OS2 - write in binary mode. */
+  _fsetmode (ofp, "b");
+#endif
+```
+
+이미지는 `fwrite(..., ofp)`로 나가고 `ofp`는 기본이 `stdout`이다.
+MSYS2가 유지하는 `001-fix-build-on-mingw.patch`는 `frontend/scanimage.c`를
+**건드리지 않는다**(30개 파일을 고치지만 전부 백엔드·빌드 파일이다).
+
+**② `--output-file`은 대체안이 못 된다.**
+
+옵션은 존재한다(`-o`). 그러나 여는 방식이 이렇다.
+
+```c
+ofp = fopen (output_file, "w");     /* "wb" 가 아니다 */
+```
+
+**텍스트 모드다.** stdout과 정확히 같은 문제를 겪는다.
+§5의 "옵션이 있다면 그것을 쓴다"는 **성립하지 않는다.**
+
+**③ 실측 — MinGW/UCRT 런타임은 텍스트 모드가 기본이다.**
+
+`scanimage.c`와 같은 방식(setmode 없이 `fwrite`)으로 쓰는 10바이트짜리
+프로그램을 같은 툴체인(gcc 16.1.0, MSYS2 ucrt64)으로 빌드해 쟀다.
+
+```text
+입력   49 49 2a 00 0a ff 0a 0d 0a 00                 10바이트
+stdout 49 49 2a 00 0d 0a ff 0d 0a 0d 0d 0a 00        13바이트  ← 0x0A → 0x0D 0x0A
+-o 경로 (fopen "w")                                   13바이트  ← 동일하게 깨진다
+```
+
+**④ 배포된 `scanimage.exe` 자체가 텍스트 모드다.**
+
+프로브가 아니라 실제 바이너리로 확인했다. `-L`과 `--help` 출력의 줄 끝이
+전부 CRLF다.
+
+```text
+scanimage.exe -L     stdout 5줄 전부 \r\n
+scanimage.exe --help 출력 38줄 전부 \r\n
+```
+
+즉 이미지가 없어도 **이 빌드의 stdout이 텍스트 모드라는 것은 확정**이다.
+이미지 바이트가 그 경로를 지나면 0x0A마다 0x0D가 삽입된다.
+
+**⑤ 고치는 데는 3줄이면 된다 — 그것도 실측했다.**
+
+```c
+#ifdef _WIN32
+  _setmode (_fileno (ofp), _O_BINARY);
+#endif
+```
+
+`ofp`가 정해진 직후에 넣고 같은 툴체인으로 다시 빌드해 쟀다.
+
+```text
+수정 후 stdout   10바이트, 입력과 바이트 동일
+수정 후 -o 경로  10바이트, 입력과 바이트 동일
+```
+
+**⑥ 그래서 D-01은 폐기가 아니라 조건이 하나 늘어난다.**
+
+§4.2는 "S-2 실패 → A 폐기, B로 전환"이라고 적었다. 그 판단은 "패치 없이는
+안 된다"를 "A가 불가능하다"로 읽은 것인데, **이 저장소는 이미 SANE 패치
+유지자다** — macOS의 `Formula/sane-backends-negaflow.rb`가 Coolscan 수정을
+얹어 SANE를 직접 빌드한다. Windows에서 3줄을 더 얹는 것은 새로운 종류의
+부담이 아니다.
+
+```text
+D-01 수정안  A(재배포)를 유지하되 **패치 없는 MSYS2 패키지를 그대로
+             재배포하지 않는다.** frontend/scanimage.c 의 바이너리 모드
+             수정을 얹어 직접 빌드한 것만 배포한다.
+             (S-1 은 여전히 장비가 필요하며 그것이 A 의 남은 차단 조건이다)
+```
+
+이 결정은 사용자 승인이 필요하다 —
+[decision-register](../00-overview/decision-register.md)가 소유한다.
+
+**⑦ 덤으로 CRLF 가정이 실측으로 확인됐다.**
+
+`-L`/`--help`가 CRLF를 낸다는 것은 옵션 덤프(`-A`)도 CRLF로 온다는 뜻이다.
+파리티 하네스가 유일한 의도적 divergence로 기록해 둔 그 항목이 —
+"MinGW `scanimage`가 CRLF를 **낼 수 있으므로**" — 이제 가능성이 아니라
+**측정된 사실**이다. C++ 파서가 CRLF를 나누고 Swift가 못 나누는 차이를
+그대로 둔 판단이 옳았다.
+→ [option-dump-parser](../02-frontend-contract/option-dump-parser.md) §2.2
 
 ### S-3 — WSL2 경로 안정성
 

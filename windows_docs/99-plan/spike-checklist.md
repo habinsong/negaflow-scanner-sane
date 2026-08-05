@@ -51,6 +51,14 @@
 **실패 시**: `--output-file` 옵션 존재 확인 → 없으면 패치 필요 →
 [building-sane](../01-sane-runtime/building-sane.md) §5
 
+#### 결과 — 실패 (2026-08-05)
+
+**장비 없이 끝났다.** 이 spike는 CRT 파일 모드 문제라 장치가 필요 없었다.
+`--output-file` 은 존재하지만 `fopen(path, "w")` 라 **대체안이 되지 못한다.**
+`_setmode(_fileno(ofp), _O_BINARY)` 3줄로 고쳐지는 것까지 같은 툴체인에서
+측정했다. 전문은
+[runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §5.
+
 ### S-1 상세
 
 ```text
@@ -324,16 +332,16 @@ Windows에서 컴파일한 결과가 아니다. MSVC `/fp:precise`가 clang
 | ID | 상태 | 날짜 | 결과 |
 |---|---|---|---|
 | S-1 | 대기 | | |
-| S-2 | 대기 | | |
+| S-2 | **실패** | 2026-08-05 | MinGW/UCRT 기본이 텍스트 모드. `-o` 도 `fopen("w")` 라 같이 깨진다. `_setmode` 3줄로 고쳐지는 것까지 실측 |
 | S-3 | 대기 | | |
 | S-4 | 대기 | | |
 | S-5 | 대기 | | |
-| S-6 | 대기 | | |
+| S-6 | **조건부** | 2026-08-05 | MSYS2 빌드에 번역 카탈로그가 없어 로케일과 무관하게 영어. `rounded value of` 는 장비 필요 |
 | S-6b | 대기 | | |
 | S-7 | 대기 | | |
 | S-8 | 대기 | | |
-| E-1 | 대기 | | |
-| E-2 | 대기 | | |
+| E-1 | 진행 | 2026-08-05 | 백엔드 DLL 은 `lib/bin`, import lib 은 `lib/sane`. 로드 방식은 미확인 |
+| E-2 | 대기 | 2026-08-05 | 장치 없이 시도했으나 구분 불가 — runtime-route-decision §4.5 |
 | E-3 | 대기 | | |
 | E-4 | 대기 | | |
 | N-1 | **통과** | 2026-08-05 | 9/9 비트 동일. M4 규모 증가 없음 |
