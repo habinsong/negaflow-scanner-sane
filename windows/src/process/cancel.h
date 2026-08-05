@@ -50,7 +50,17 @@ namespace negaflow::process {
 /// `sane_cancel()` 이 현재 전송 블록이 끝날 때까지 기다리는 백엔드가 있고,
 /// 고해상도 한 스트립이 수백 ms 일 수 있기 때문이다. 호스트의 scan 유예(5 s)
 /// 안에 들어간다.
-inline constexpr Duration kCancelGracePeriod = std::chrono::milliseconds{2'000};
+/// 취소 신호를 보낸 뒤 강제 종료까지 기다리는 시간.
+///
+/// **넉넉해야 한다.** 이 시간이 지나 `TerminateProcess` 로 넘어가면 스캐너가
+/// 전송 도중에 죽고, 전원을 다시 넣기 전까지 어떤 요청에도 답하지 않는다.
+/// 취소가 느린 것보다 그쪽이 훨씬 나쁘다.
+///
+/// 실측(OpticFilm 8100): 스캔 6초 지점에서 CTRL_BREAK 를 보내면 `scanimage`
+/// 가 **6,890 ms** 만에 끝난다. 신호를 받은 뒤 진행 중인 `sane_read` 가
+/// 끝나기를 기다리고, `sane_cancel` 이 헤드를 홈으로 돌리는 시간이 그 안에
+/// 있다. 예전 값 2,000 ms 로는 그 한가운데에서 죽였을 것이다.
+inline constexpr Duration kCancelGracePeriod = std::chrono::milliseconds{15'000};
 
 /// 자식 프로세스 하나. 전부 Win32 핸들이지만 여기서는 불투명하다.
 struct ChildHandles {

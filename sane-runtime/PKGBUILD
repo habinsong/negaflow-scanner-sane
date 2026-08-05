@@ -34,9 +34,11 @@ source=("https://gitlab.com/sane-project/backends/-/archive/${pkgver}/backends-$
         "003-test-backend-on-mingw.patch"
         "004-usbdk-on-windows.patch"
         "005-usbscan-backend.patch"
-        "006-debug-output-on-mingw.patch")
+        "006-debug-output-on-mingw.patch"
+        "007-cancel-on-sigbreak.patch")
 sha256sums=('813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d'
             'c7d84a80d4f91000024562500b95de165b8200bae66f48d807e9f07e7e8f4bb2'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -51,6 +53,7 @@ prepare() {
   patch -p1 -i "${srcdir}"/004-usbdk-on-windows.patch
   patch -p1 -i "${srcdir}"/005-usbscan-backend.patch
   patch -p1 -i "${srcdir}"/006-debug-output-on-mingw.patch
+  patch -p1 -i "${srcdir}"/007-cancel-on-sigbreak.patch
 
   # https://gitlab.com/sane-project/backends/-/issues/440
   printf "%s\n" "$pkgver" > .tarball-version

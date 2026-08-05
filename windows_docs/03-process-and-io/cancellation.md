@@ -120,6 +120,53 @@ stdout 이 아직 파이프인가  예          핸들 복원이 동작한다
 
 `plugin_smoke` 가 어댑터를 stdio 로 끝까지 구동하므로 wire 프로토콜이
 멀쩡하다는 증거도 함께 있다.
+
+**여기까지는 신호가 도달한다는 것뿐이다.** 처음에 이것만 보고 문제가
+해결됐다고 적었는데 틀렸다. 신호가 가도 `scanimage` 가 그것으로 무엇을 하는지가
+따로 있고, 거기에 두 겹의 문제가 더 있었다 — §4.1a.
+
+#### 4.1a `scanimage` 쪽 두 겹 (2026-08-06, 실기)
+
+판정 기준은 하나다. **취소 뒤에 다음 스캔이 되는가.** 종료 코드나 신호 전달
+여부로 판정하면 안 된다.
+
+| 단계 | 결과 | 무엇을 배웠나 |
+| --- | --- | --- |
+| `TerminateProcess` | 망가짐 | 전송 도중 종료가 문제다 |
+| 숨긴 콘솔 + `CTRL_BREAK` | `0xC000013A` 로 종료, 망가짐 | `scanimage` 에 **핸들러가 없다** |
+| `SIGBREAK` 핸들러 추가 | `0xC0000005` 크래시, 망가짐 | `sane_cancel` 이 **다른 스레드**에서 불린다 |
+| 플래그 + 읽기 루프가 취소 | **통과** | 백엔드를 한 스레드만 만진다 |
+
+둘째 줄: `scanimage` 는 `SIGINT`/`SIGTERM` 만 등록한다. MS 문서 —
+"CTRL+C or CTRL+BREAK is treated as a signal (SIGINT or **SIGBREAK**)" — 이라
+`CTRL_BREAK` 는 어느 쪽에도 걸리지 않고 기본 동작이 프로세스를 끝낸다.
+
+셋째 줄: `SIGBREAK` 를 등록했더니 핸들러는 돌았는데(`received signal 21` /
+`trying to stop scanner`) 171 ms 뒤 접근 위반으로 터졌다. MS 문서 —
+"The system creates a new thread in each client process to handle the event."
+메인 스레드가 `sane_read` 안에 있는데 다른 스레드가 `sane_cancel` 을 부르니
+자료 경쟁이다. Unix 는 핸들러가 메인 스레드를 가로채므로 upstream 코드가
+그대로 성립한다.
+
+넷째 줄이 답이다. 핸들러는 플래그만 세우고, 읽기 루프가 자기 스레드에서
+`sane_cancel` 을 부른다. 그 뒤 `sane_read` 가 `SANE_STATUS_CANCELLED` 를
+돌려주므로 기존 종료 경로가 그대로 탄다.
+
+```text
+1) 기준선 스캔        21초  3,030,277 바이트  OK
+2) CTRL_BREAK        received signal 21
+                     trying to stop scanner
+                     sane_read: Operation was canceled
+                     종료 코드 2, 6,890 ms
+3) 취소 뒤 스캔       17초  3,030,277 바이트  OK
+```
+
+패치: `sane-runtime/patches/007-cancel-on-sigbreak.patch`.
+
+**그리고 그 6,890 ms 가 유예 시간을 정한다.** 예전 값 2,000 ms 로는 취소가
+끝나기 전에 `TerminateProcess` 로 넘어가 스캐너를 죽였을 것이다. 신호를 받은
+뒤 진행 중인 `sane_read` 가 끝나기를 기다리고 `sane_cancel` 이 헤드를 홈으로
+돌리는 시간이 그 안에 있다. `kCancelGracePeriod` 를 15,000 ms 로 올렸다.
 - **`scanimage`가 `SIGINT`/`SIGBREAK` 핸들러를 실제로 설치하는지 미확인.**
   Unix용 코드는 `SIGINT`/`SIGTERM`/`SIGHUP` 핸들러를 설치하지만
   MinGW 빌드에서 그 코드가 컴파일되는지, `SIGBREAK`가 매핑되는지 확인이 필요하다.

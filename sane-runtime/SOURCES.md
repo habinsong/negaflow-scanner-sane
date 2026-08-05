@@ -29,6 +29,7 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | `004-usbdk-on-windows.patch` | 이 저장소 | `SANE_USB_USE_USBDK` 가 설정됐을 때만 libusb 의 UsbDk 백엔드를 쓴다. **기본값은 끈 채로 둔다** |
 | `005-usbscan-backend.patch` | 이 저장소 | `sanei_usb` 에 `usbscan.sys` 백엔드를 더한다. 아래 참조 |
 | `006-debug-output-on-mingw.patch` | 이 저장소 | `SANE_DEBUG_*` 를 켜면 프론트엔드가 segfault 하던 것을 고친다 |
+| `007-cancel-on-sigbreak.patch` | 이 저장소 | Windows 에서 취소가 스캐너를 죽이지 않게 한다. 아래 참조 |
 
 ### 005 — usbscan.sys 백엔드
 
@@ -137,6 +138,48 @@ usbscan.sys 와 무관하다.
 **제품에는 영향이 없다.** 플러그인은 필름 네거티브를 Color 로 스캔한다
 (`windows/src/app/backend.h` 의 `colorMode` 기본값). Gray 는 적외선 채널
 파일의 TIFF 검증에만 쓰이고, 8100 에는 적외선 채널이 없다.
+
+### 007 — 취소가 스캐너를 죽이던 것
+
+스캔 도중 `scanimage` 를 끝내면 스캐너가 전원을 다시 넣기 전까지 어떤 요청에도
+답하지 않는다. 다음 읽기가 `sane_read: Error during device I/O`, 그 뒤 열기가
+`Invalid argument` 다. 플러그인의 워치독이 바로 그 동작을 하므로 제품 경로다.
+
+`scanimage` 는 이미 옳은 구조를 갖고 있다 — `SIGINT`/`SIGTERM` 핸들러가
+`sane_cancel` 을 부른다. Windows 에서만 그것이 성립하지 않고, 이유가 두 겹이다.
+
+**첫째, 신호가 그 핸들러로 가지 않는다.** `GenerateConsoleCtrlEvent` 로 특정
+자식만 겨냥할 수 있는 신호는 `CTRL_BREAK_EVENT` 뿐인데, MS 문서대로
+"CTRL+C or CTRL+BREAK is treated as a signal (SIGINT or **SIGBREAK**)" 이다.
+`SIGBREAK` 핸들러가 없으니 기본 동작이 전송 도중 프로세스를 끝낸다 —
+실측 종료 코드 `0xC000013A`.
+
+**둘째, 핸들러를 걸어도 `sane_cancel` 이 터진다.** MS 문서 — "The system
+creates a new thread in each client process to handle the event." 메인
+스레드가 `sane_read` 안에 있는데 다른 스레드가 `sane_cancel` 을 부르니 자료
+경쟁이다. 실측: `received signal 21` / `trying to stop scanner` 를 찍고
+171 ms 뒤 `0xC0000005` 접근 위반. Unix 는 핸들러가 메인 스레드를 가로채므로
+이 문제가 없다.
+
+그래서 Windows 에서는 핸들러가 플래그만 세우고 읽기 루프가 자기 스레드에서
+취소한다. 백엔드를 한 스레드만 만지게 되고, 그 뒤 `sane_read` 가
+`SANE_STATUS_CANCELLED` 를 돌려주므로 기존 종료 경로가 그대로 탄다.
+
+**실측 결과** — 판정 기준은 "취소 뒤 다음 스캔이 되는가" 하나다.
+
+```text
+1) 기준선 스캔        21초  3,030,277 바이트  OK
+2) CTRL_BREAK        received signal 21
+                     trying to stop scanner
+                     sane_read: Operation was canceled
+                     종료 코드 2, 6,890 ms
+3) 취소 뒤 스캔       17초  3,030,277 바이트  OK
+```
+
+그 6,890 ms 가 어댑터의 유예 시간도 정한다. 신호를 받은 뒤 진행 중인
+`sane_read` 가 끝나기를 기다리고 `sane_cancel` 이 헤드를 홈으로 돌리는 시간이
+그 안에 있다. `kCancelGracePeriod` 를 2,000 ms 에서 15,000 ms 로 올렸다 —
+그 전에 강제 종료로 넘어가면 애써 고친 것이 도로 무의미해진다.
 
 이 패치는 upstream 에 제출할 가치가 있다. 제출 전까지는 여기서 유지한다.
 
