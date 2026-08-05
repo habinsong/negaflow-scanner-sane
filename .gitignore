@@ -1,6 +1,11 @@
 .build/
 .swiftpm/
 .DS_Store
+
+# CMake 빌드 트리 (windows/ 어댑터)
+build/
+build-*/
+cmake-build-*/
 *.profraw
 *.tiff
 *.tif

@@ -1,0 +1,13 @@
+# 편집기(clangd)가 CMake 없이도 헤더를 찾게 한다.
+# 정식 빌드 설정은 CMakeLists.txt 다.
+CompileFlags:
+  Add:
+    - -std=c++20
+    - -I../src        # tests/ 와 tools/ 에서
+    - -Isrc           # windows/ 루트에서
+    - -I../../src     # src/<모듈>/ 안에서 (src/imaging/align.cpp 등)
+    # 외부 헤더는 -isystem 으로 넣는다. RapidJSON 1.1.0 이 경고를 내는데
+    # 그것이 편집기에 뜨면 우리 코드의 경고가 묻힌다. CMake 도 SYSTEM 을 쓴다.
+    - -isystem/opt/homebrew/include   # macOS(Homebrew): rapidjson, tiffio
+    - -isystem/usr/local/include      # Intel macOS / Linux
+    # Windows 는 vcpkg 툴체인이 경로를 넣으므로 여기 적지 않는다.

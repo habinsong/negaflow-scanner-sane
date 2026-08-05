@@ -1,0 +1,51 @@
+{
+  "$comment": [
+    "negaflow-scanner-sane Windows adapter — 의존성 매니페스트.",
+    "근거: windows_docs/06-build/toolchain-and-layout.md §3.2, language-decision.md §8",
+    "",
+    "sane_logic / process_logic / imaging_logic 은 의존이 0이다.",
+    "libtiff 를 링크하는 것은 imaging_tiff 하나뿐이다.",
+    "",
+    "tiff — imaging/tiff_io (M4). 포트 이름은 'libtiff' 가 아니라 'tiff' 다.",
+    "  default-features 를 끄고 zip 만 켠다. 기본값은 [jpeg, lzma, zip] 인데",
+    "  우리는 무압축으로 쓰고, 읽는 것은 scanimage 산출물(보통 무압축)이다.",
+    "  LZW 는 libtiff 코어에 내장이라 기능이 필요 없다(upstream InternalCodecs.cmake",
+    "  의 lzw/packbits/ccitt 가 전부 기본 ON, 외부 의존 없음).",
+    "  zip 이 Deflate(zlib) 를 켠다. libdeflate 는 대안이 아니라 가속기이며",
+    "  그 자체가 tiff[zip] 을 요구한다.",
+    "  jpeg/lzma 를 빼면 정적 링크 표면과 CVE 추적 대상이 줄어든다.",
+    "  대가: JPEG-in-TIFF 를 만나면 런타임에 읽기가 실패한다. scanimage 는",
+    "  만들지 않지만, 그래서 imaging/tiff_io 가 libtiff 메시지를 삼키지 않고",
+    "  lastTiffMessage() 로 남긴다 — 원인 없이 실패하지 않게.",
+    "",
+    "  주의: 다른 포트가 tiff 를 default-features 로 끌어오면(예: opencv, gdal)",
+    "  jpeg/lzma 가 되돌아온다. 의존을 늘릴 때 확인한다.",
+    "",
+    "rapidjson — wire/parse (M5). 헤더 온리, MIT. 반복 파서라 스택 오버플로를 막는다.",
+    "  **토큰화에만 쓴다. 수 변환은 쓰지 않는다.** 1.1.0 의 수 변환이 macOS 와",
+    "  갈린다 — 1e-324 를 NaN 으로 만들고, 0e999 를 '너무 크다'며 거부한다.",
+    "  원문 리터럴을 받아 std::from_chars 로 직접 변환한다(src/wire/parse.h 실측 표).",
+    "  그래서 버전을 올려도 이 모듈의 판정은 대체로 흔들리지 않는다.",
+    "",
+    "  ⚠ 버전 주의: vcpkg 는 1.1.0 을 주지 않는다. 1.1.0(2016-08-25)이 유일한 태그이고",
+    "  9년간 새 태그가 없어서 포트가 master 커밋을 고정한다(version-date 2025-02-26).",
+    "  macOS 개발 환경의 Homebrew 는 1.1.0 을 준다 — **두 환경이 다른 버전을 쓴다.**",
+    "  실측은 전부 1.1.0 에서 했으므로 Windows 빌드가 서면 재확인한다(parse.h 참조).",
+    "  master 쪽이 MSVC /W4 /WX + C++20 경고를 더 많이 고쳐 뒀으므로 방향은 유리하다.",
+    "",
+    "libsane 은 여기에 없다. 어댑터는 SANE 를 링크하지 않는다(D-17, I-11)."
+  ],
+  "name": "negaflow-scanner-sane-windows",
+  "version-string": "1.0.3",
+  "license": "GPL-2.0-or-later",
+  "dependencies": [
+    {
+      "name": "tiff",
+      "default-features": false,
+      "features": [
+        "zip"
+      ]
+    },
+    "rapidjson"
+  ]
+}
