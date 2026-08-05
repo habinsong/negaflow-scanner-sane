@@ -1290,7 +1290,22 @@ int main() {
     // 같게 읽는다"가 성립한다.
     // =====================================================================
 #ifdef NEGAFLOW_HAVE_LIBTIFF
-    if (const char* tmp = std::getenv("PARITY_TMP")) {
+    // MSVC 는 `/sdl` 아래에서 `getenv` 를 C4996 으로 막는다. 짝인 `_dupenv_s` 를
+    // 쓴다 — `_CRT_SECURE_NO_WARNINGS` 로 파일 전체의 검사를 끄지 않는다.
+    std::string parityTmp;
+#ifdef _MSC_VER
+    {
+        char* raw = nullptr;
+        std::size_t rawLen = 0;
+        if (_dupenv_s(&raw, &rawLen, "PARITY_TMP") == 0 && raw != nullptr) {
+            parityTmp.assign(raw);
+            std::free(raw);
+        }
+    }
+#else
+    if (const char* raw = std::getenv("PARITY_TMP")) parityTmp.assign(raw);
+#endif
+    if (!parityTmp.empty()) {
         namespace fs = std::filesystem;
         using namespace negaflow::imaging;
 
@@ -1312,8 +1327,8 @@ int main() {
             }
         }
 
-        const fs::path cppFile = fs::path(tmp) / "cpp_write.tiff";
-        const fs::path swiftFile = fs::path(tmp) / "swift_write.tiff";
+        const fs::path cppFile = fs::path(parityTmp) / "cpp_write.tiff";
+        const fs::path swiftFile = fs::path(parityTmp) / "swift_write.tiff";
 
         // 우리가 쓰고 우리가 읽는다. Swift 쪽은 이 **같은 파일**을 읽는다.
         const bool wrote = tiffio::writeRGB16TIFF(pixels, w, h, cppFile);
@@ -1656,39 +1671,39 @@ int main() {
 
         // ① 옵셔널이 전부 빈 장치 — 키가 4개만 나와야 한다.
         {
-            PluginDevice d;
-            d.id = "sane-genesys:libusb:001:002";
-            d.displayName = "Plustek OpticFilm 8100";
-            d.vendor = "Plustek";
-            d.model = "OpticFilm 8100";
-            dumpSorted("proto.device[bare]", negaflow::wire::encodeDevice(d));
+            PluginDevice dev;
+            dev.id = "sane-genesys:libusb:001:002";
+            dev.displayName = "Plustek OpticFilm 8100";
+            dev.vendor = "Plustek";
+            dev.model = "OpticFilm 8100";
+            dumpSorted("proto.device[bare]", negaflow::wire::encodeDevice(dev));
         }
         // ② 실측 예시(wire-contract §4.2.1)와 같은 모양 — nil 3개는 **생략**이다.
         {
-            PluginDevice d;
-            d.id = "sane-genesys:libusb:001:002";
-            d.displayName = "Plustek OpticFilm 8100";
-            d.vendor = "Plustek";
-            d.model = "OpticFilm 8100";
-            d.connectionType = std::string("usb");
-            d.verifiedStatus = std::string("compatibleTarget");
-            d.driverVersion = std::string("genesys (SANE)");
-            dumpSorted("proto.device[measured]", negaflow::wire::encodeDevice(d));
+            PluginDevice dev;
+            dev.id = "sane-genesys:libusb:001:002";
+            dev.displayName = "Plustek OpticFilm 8100";
+            dev.vendor = "Plustek";
+            dev.model = "OpticFilm 8100";
+            dev.connectionType = std::string("usb");
+            dev.verifiedStatus = std::string("compatibleTarget");
+            dev.driverVersion = std::string("genesys (SANE)");
+            dumpSorted("proto.device[measured]", negaflow::wire::encodeDevice(dev));
         }
         // ③ 전부 채운 장치.
         {
-            PluginDevice d;
-            d.id = "epson2:libusb:002:003";
-            d.displayName = "Epson Perfection V850";
-            d.vendor = "Epson";
-            d.model = "Perfection V850";
-            d.connectionType = std::string("usb");
-            d.usbVendorID = std::string("0x04b8");
-            d.usbProductID = std::string("0x014a");
-            d.serialNumber = std::string("SN/12345");
-            d.verifiedStatus = std::string("untested");
-            d.driverVersion = std::string("epson2 (SANE)");
-            dumpSorted("proto.device[full]", negaflow::wire::encodeDevice(d));
+            PluginDevice dev;
+            dev.id = "epson2:libusb:002:003";
+            dev.displayName = "Epson Perfection V850";
+            dev.vendor = "Epson";
+            dev.model = "Perfection V850";
+            dev.connectionType = std::string("usb");
+            dev.usbVendorID = std::string("0x04b8");
+            dev.usbProductID = std::string("0x014a");
+            dev.serialNumber = std::string("SN/12345");
+            dev.verifiedStatus = std::string("untested");
+            dev.driverVersion = std::string("epson2 (SANE)");
+            dumpSorted("proto.device[full]", negaflow::wire::encodeDevice(dev));
         }
         // ④ detect 응답 — **배열 순서는 의미다.**
         {

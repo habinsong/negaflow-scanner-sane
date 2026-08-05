@@ -103,7 +103,10 @@ using TiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 [[nodiscard]] bool looksLikeBigTiff(const std::filesystem::path& path) {
     std::FILE* fh = nullptr;
 #ifdef _WIN32
-    fh = _wfopen(path.c_str(), L"rb");
+    // `_wfopen` 은 `/sdl` 아래에서 C4996 이 되고, `/WX` 라 그대로 빌드가 깨진다.
+    // `_CRT_SECURE_NO_WARNINGS` 로 전체를 끄지 않고 짝인 `_wfopen_s` 를 쓴다 —
+    // 경고를 지우는 것이 아니라 경고가 가리키는 것을 고치는 쪽이다.
+    if (_wfopen_s(&fh, path.c_str(), L"rb") != 0) return false;
 #else
     fh = std::fopen(path.c_str(), "rb");
 #endif
