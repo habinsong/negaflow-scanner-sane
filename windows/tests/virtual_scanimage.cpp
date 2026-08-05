@@ -16,6 +16,11 @@
 // silent      아무것도 내지 않고 멈춘다  → 워치독의 FirstProgress 경로
 // fail        exit 1 + stderr 오류
 // stale       exit 1 + "open of device failed: Invalid argument" → 재시도 경로
+// stale-once  **첫 획득만** 위와 같이 실패하고 그 뒤로는 정상.
+//             실기에서 가장 흔한 실패다 — 장치를 열 때마다 libusb 주소가
+//             바뀌므로 첫 open 이 죽은 주소를 태운다.
+//             `NEGAFLOW_VSCAN_MARKER` 가 가리키는 파일로 상태를 남긴다
+//             (프로세스가 매번 새로 뜨므로 메모리로는 셀 수 없다).
 // rounded     exit 0 인데 "rounded value of" 경고 → I-1 로 결과를 버려야 한다
 // bigout      1 MiB 넘는 stdout+stderr → 파이프 교착 재현
 // ```
@@ -251,6 +256,17 @@ int main(int argc, char** argv) {
     if (scenario == "stale") {
         err("scanimage: open of device " + valueOf("-d") + " failed: Invalid argument\n");
         return 1;
+    }
+    if (scenario == "stale-once") {
+        const std::string marker = environmentValue("NEGAFLOW_VSCAN_MARKER");
+        if (!marker.empty() && GetFileAttributesA(marker.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            HANDLE touch = CreateFileA(marker.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                       FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (touch != INVALID_HANDLE_VALUE) CloseHandle(touch);
+            err("scanimage: open of device " + valueOf("-d") +
+                " failed: Invalid argument\n");
+            return 1;
+        }
     }
     if (scenario == "silent") {
         std::this_thread::sleep_for(std::chrono::seconds(600));

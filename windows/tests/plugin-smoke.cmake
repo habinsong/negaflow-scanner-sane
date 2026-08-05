@@ -279,7 +279,35 @@ expect("반올림 경고가 있으면 실패한다" rounded_code EQUAL 1)
 string(FIND "${rounded_out}" "unsupportedOption: SANE가 요청 옵션을" found_rounded)
 expect("반올림 실패 문구가 macOS 와 같다" found_rounded GREATER -1)
 
-# --- ⑦ scanimage 가 없으면 원인을 말한다 --------------------------------------
+# --- ⑦ 주소가 만료된 첫 open 은 재열거 후 다시 시도한다 ----------------------
+#
+# **실기에서 가장 흔한 실패다.** 장치를 열 때마다 libusb 주소가 바뀌므로
+# 토큰에 적힌 주소는 이미 죽어 있을 수 있다. 이 갈래가 없으면 스캔이
+# 첫 시도에서 그냥 실패한다.
+
+file(TO_NATIVE_PATH "${WORKDIR}/stale/frame.tiff" stale_output_path)
+file(MAKE_DIRECTORY "${WORKDIR}/stale")
+string(REPLACE "\\" "\\\\" stale_output_json "${stale_output_path}")
+string(REPLACE "${output_path_json}" "${stale_output_json}" stale_request "${request}")
+file(WRITE "${WORKDIR}/stale-request.json" "${stale_request}")
+
+set(ENV{NEGAFLOW_VSCAN_SCENARIO} "stale-once")
+set(ENV{NEGAFLOW_VSCAN_MARKER} "${WORKDIR}/stale/opened-once")
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/stale-request.json"
+    OUTPUT_VARIABLE stale_out
+    ERROR_VARIABLE stale_err
+    RESULT_VARIABLE stale_code)
+set(ENV{NEGAFLOW_VSCAN_SCENARIO} "")
+set(ENV{NEGAFLOW_VSCAN_MARKER} "")
+
+expect("죽은 주소로 시작해도 스캔이 성공한다" stale_code EQUAL 0)
+string(FIND "${stale_out}" "Re-detecting scanner" found_redetect)
+expect("재열거를 진행률로 알린다" found_redetect GREATER -1)
+expect("재시도한 스캔의 결과 파일이 있다" EXISTS "${WORKDIR}/stale/frame.tiff")
+
+# --- ⑧ scanimage 가 없으면 원인을 말한다 --------------------------------------
 
 set(ENV{NEGAFLOW_SCANIMAGE_PATH} "${WORKDIR}/does-not-exist.exe")
 execute_process(
