@@ -482,37 +482,84 @@ IOCTL_RESET_PIPE, IOCTL_SET_TIMEOUT, IOCTL_CANCEL_IO
 
 #### 무엇이 증명됐고 무엇이 아직 아닌가
 
-```text
-증명됨   장치를 연다 / 파이프를 읽는다 / 장치 신원을 읽는다
-         전부 드라이버 교체·관리자 권한·추가 설치 **없이**
+처음 시도에서 벤더 전송이 데이터를 옮기는지 확인하지 못했는데, **원인은
+드라이버가 아니라 호출 규약을 어긴 이쪽이었다.** MS 문서에 이렇게 적혀 있다.
 
-미확인   벤더 컨트롤 전송이 실제 데이터를 옮기는가
-         (표준 요청으로 시험했더니 입력 구조체가 그대로 돌아왔다.
-          IOCTL_SEND_USB_REQUEST 는 문서상 **벤더 정의 요청 전용**이므로
-          표준 요청을 흘리지 않는 것이 정상일 수 있다)
-   미확인   벌크 파이프로 스캔 데이터가 실제로 흐르는가
+```text
+"The bmRequestType member ... is not used with IOCTL_SEND_USB_REQUEST."
+TransferBuffer = lpOutBuffer (read) or pIoBlockEx->pbyData (write)
+pbyData        = "Same pointer as lpOutBuffer"
+uLength        = "Same value as lpOutBufferSize"
 ```
 
-**미확인 둘이 genesys 백엔드가 실제로 쓰는 것**이므로, 여기서 "된다"고
-단정하면 안 된다. 다만 **막혀 있다고 믿었던 벽이 없다**는 것은 확정이다.
+즉 **읽기 데이터는 `pbyData` 가 아니라 출력 버퍼로 오고**, 두 포인터와 두
+길이가 서로 같아야 한다. 처음 프로브는 둘을 다르게 줬고, 그래서 드라이버가
+입력 구조체를 그대로 되돌려준 것이다. 규약대로 다시 보내니 바로 나왔다.
+
+```text
+GL843 레지스터 0x00..0x5F 를 읽는다 (드라이버 교체 없음, 관리자 아님)
+  00: 05 00 00 8F 00 40 00 00 00 00 00 01 00 00 00 00
+  10: 00 00 00 00 00 00 33 14 10 00 10 00 00 04 80 00
+  ...
+  40: B0 48 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ^^ ^^ REG40/REG41 — GL843 상태 레지스터
+  0xAA 그대로인 칸 0/96,  서로 다른 값 17종,  두 번째 읽기도 전부 동일
+```
+
+**컨트롤 전송이 실제로 스캐너까지 간다.** 그 위에서 `sanei_usb` 백엔드를
+붙이고 나니 나머지도 따라왔다.
+
+```text
+증명됨   scanimage -L    → device `genesys:usbscan:000' is a
+                            PLUSTEK OpticFilm 8100 flatbed scanner
+         scanimage -A    → 63줄 옵션 덤프 전문 (mode/source/resolution/
+                            geometry/gamma/lamp-off …)
+         장치명이 안 바뀐다 — usbscan:000 을 세 번 열어도 그대로.
+                            macOS 의 libusb:BBB:DDD churn 이 여기엔 없다
+```
+
+`sane_open` 이 성공했다는 것은 genesys 의 ASIC init 전체가 돌았다는 뜻이고,
+거기엔 벌크 전송이 들어 있다.
+
+```text
+미확인   실제 필름 스캔 한 장 (진행 중)
+```
 
 #### 이 경로가 의미하는 것
 
 ```text
 필요 없는 것   WinUSB 바인딩 / Zadig / libwdi / UsbDk / 커널 드라이버 서명
                관리자 권한 / 재부팅 / 벤더 소프트웨어 포기
-할 일          sanei_usb 에 usbscan.sys 백엔드를 하나 더 붙인다.
-               **전부 사용자 모드 코드다.**
+한 일          sanei_usb 에 usbscan.sys 백엔드를 하나 더 붙였다.
+               patches/005-usbscan-backend.patch — **전부 사용자 모드 코드다.**
 ```
 
-`sanei_usb`는 이미 libusb-0.1 / libusb-1.0 두 백엔드를 `#ifdef`로 고르고
-있다. 세 번째를 붙이는 자리가 이미 있다는 뜻이다.
+§4.4a의 UsbDk 논의와 §8의 Zadig 절차는 **둘 다 불필요해졌다.**
 
-이것이 성립하면 §4.4a의 UsbDk 논의와 §8의 Zadig 절차가 **둘 다 불필요해진다.**
-D-01/D-09가 다시 열린다.
+#### 도중에 걸린 것 두 가지
 
-→ 다음 단계: [building-sane](building-sane.md)에 `sanei_usb` usbscan 백엔드
-  설계를 적고, 벤더 컨트롤 전송과 벌크 전송을 실기로 확인한다.
+**`IOCTL_SET_TIMEOUT` 은 거짓말을 한다.** 성공을 반환하고 아무것도 바꾸지
+않는다 — `IOCTL_GET_TIMEOUT` 은 `ERROR_NOT_SUPPORTED` 를 돌려주고, 응답 없는
+전송은 드라이버 기본값인 **정확히 120초**를 쓴다. 백엔드가 쓸 수 있는 마감이
+아니라서, 핸들을 겹침 입출력(`FILE_FLAG_OVERLAPPED`)으로 열고 마감 시간을
+`sanei_usb` 쪽에서 직접 지킨다.
+
+**SANE 디버그 출력이 mingw 에서 죽는다.** `SANE_DEBUG_*` 를 어떤 값으로든
+켜면 프론트엔드가 segfault 한다. `sanei_debug_msg` 가 `localtime (&tv.tv_sec)`
+를 호출하는데, mingw-w64 의 `struct timeval::tv_sec` 은 `time_t`(8바이트)가
+아니라 `long`(4바이트)이다. `localtime` 이 이웃 스택 4바이트를 시각의 일부로
+읽고 `NULL` 을 돌려주며, 바로 다음 줄에서 그것을 역참조한다. 실측:
+
+```text
+sizeof(tv.tv_sec)=4  sizeof(time_t)=8
+localtime(&tv.tv_sec) = 0000000000000000
+localtime(&copy)      = 000002B99560FC00
+```
+
+`patches/006-debug-output-on-mingw.patch` 로 고쳤다. 이것 없이는 Windows 에서
+SANE 을 진단할 방법이 없다.
+
+→ 패치 전문과 재현 절차: [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md)
 
 ### 4.5 E-2를 닫지 못했다 — 시도한 방법과 실패 이유
 
@@ -706,10 +753,31 @@ Windows에서 SANE 장치명이 macOS와 같은 형태(`<backend>:libusb:<bus>:<
 
 → [device-identity](../02-frontend-contract/device-identity.md)
 
+#### 결과 — **다르다** (2026-08-05, OpticFilm 8100 실기)
+
+```text
+genesys:usbscan:000|PLUSTEK|OpticFilm 8100|flatbed scanner
+```
+
+`:libusb:` 가 아니라 `:usbscan:` 이다. 위 세 판정이 전부 이 이름을 USB 로도,
+안정 선택자로도 보지 못한다. **`:usbscan:` 를 세 곳 모두에 더해야 한다.**
+
 ### S-5 — open 후 주소 변동
 
 macOS 실측(열 때마다 libusb 주소가 바뀐다)이 Windows에서도 성립하는가.
 성립하지 않아도 재연결 로직은 제거하지 않는다.
+
+#### 결과 — **성립하지 않는다** (2026-08-05, OpticFilm 8100 실기)
+
+```text
+1: genesys:usbscan:000
+2: genesys:usbscan:000
+3: genesys:usbscan:000
+```
+
+`usbscan:NNN` 의 N 은 커널 장치 인스턴스 번호라 열고 닫는다고 바뀌지 않는다.
+macOS 의 `libusb:BBB:DDD` churn 이 여기엔 없다. **그래도 재연결 로직은 그대로
+둔다** — 뽑았다 꽂으면 번호가 달라질 수 있고, 그 경로는 아직 확인하지 않았다.
 
 ### S-6 — 로케일
 

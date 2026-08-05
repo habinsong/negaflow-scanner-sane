@@ -1,0 +1,37 @@
+--- a/frontend/scanimage.c	2026-08-05 14:18:11.393426300 +0900
++++ b/frontend/scanimage.c	2026-08-05 14:18:11.460430800 +0900
+@@ -43,6 +43,10 @@
+ #include <libgen.h>     // for basename()
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#ifdef _WIN32
++#include <fcntl.h>
++#include <io.h>
++#endif
+ 
+ #ifdef HAVE_LIBPNG
+ #include <png.h>
+@@ -2708,6 +2712,12 @@
+                   scanimage_exit(1);
+                 }
+             }
++#ifdef _WIN32
++          /* The Windows CRT opens streams in text mode by default, so every
++             0x0A written becomes 0x0D 0x0A.  That corrupts every image format
++             this program emits.  SANE only handled this for OS/2 above.  */
++          _setmode (_fileno (ofp), _O_BINARY);
++#endif
+ #ifdef HAVE_LIBJPEG
+          if (output_format == OUTPUT_PDF)
+            {
+@@ -2817,6 +2827,10 @@
+ 	      if (ofp == NULL)
+ 	        {
+ 	          ofp = fopen (part_path, "w");
++#ifdef _WIN32
++	          if (ofp != NULL)
++	            _setmode (_fileno (ofp), _O_BINARY);
++#endif
+ #ifdef HAVE_LIBJPEG
+ 	          if (output_format == OUTPUT_PDF && ofp != NULL)
+ 	             init_pdf = SANE_TRUE;

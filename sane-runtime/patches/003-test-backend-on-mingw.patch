@@ -1,0 +1,69 @@
+--- a/backend/test.c
++++ b/backend/test.c
+@@ -56,6 +56,12 @@
+ #include <time.h>
+ #include <unistd.h>
+ #include <fcntl.h>
++#ifdef _WIN32
++#include <io.h>
++/* MinGW has no POSIX pipe().  _pipe() takes a buffer size and a mode; the
++   mode must be binary because image bytes flow through this pipe.  */
++#define pipe(fds) _pipe ((fds), 4096, _O_BINARY)
++#endif
+ 
+ #include "../include/_stdint.h"
+ 
+@@ -230,6 +236,10 @@
+ 
+ static SANE_String_Const source_list[] = {
+   SANE_I18N ("Flatbed"), SANE_I18N ("Automatic Document Feeder"),
++  /* Film-scanner style sources so that frontends which only accept
++     transparency media can be exercised without real hardware.  */
++  SANE_I18N ("Transparency Adapter"),
++  SANE_I18N ("Transparency Adapter Infrared"),
+   0
+ };
+ 
+@@ -1540,7 +1550,9 @@
+ reader_task (void *data)
+ {
+   SANE_Status status;
++#ifndef _WIN32
+   struct SIGACTION act;
++#endif
+   struct Test_Device *test_device = (struct Test_Device *) data;
+ 
+   DBG (2, "reader_task started\n");
+@@ -1556,8 +1568,12 @@
+       DBG (3, "reader_task started (as thread)\n");
+     }
+ 
++#ifndef _WIN32
++  /* Clear the parent's SIGTERM handler in the forked child.  On Windows this
++     task runs as a thread (sanei_thread), so there is nothing to clear.  */
+   memset (&act, 0, sizeof (act));
+   sigaction (SIGTERM, &act, 0);
++#endif
+ 
+   status = reader_process (test_device, test_device->reader_fds);
+   DBG (2, "(child) reader_task: reader_process finished (%s)\n",
+@@ -3113,12 +3129,19 @@
+     }
+   if (test_device->val[opt_non_blocking].w == SANE_TRUE)
+     {
++#ifdef _WIN32
++      /* MinGW has no F_SETFL/O_NONBLOCK.  Report the mode as unsupported
++         rather than pretending it was applied.  */
++      if (non_blocking)
++	return SANE_STATUS_UNSUPPORTED;
++#else
+       if (fcntl (test_device->pipe,
+ 		 F_SETFL, non_blocking ? O_NONBLOCK : 0) < 0)
+ 	{
+ 	  DBG (1, "sane_set_io_mode: can't set io mode");
+ 	  return SANE_STATUS_INVAL;
+ 	}
++#endif
+     }
+   else
+     {

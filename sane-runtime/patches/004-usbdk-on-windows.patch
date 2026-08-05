@@ -1,0 +1,41 @@
+--- a/sanei/sanei_usb.c
++++ b/sanei/sanei_usb.c
+@@ -1440,6 +1440,38 @@
+ 	       ret);
+           return;
+ 	}
++#if defined(_WIN32) && defined(LIBUSB_API_VERSION) \
++    && LIBUSB_API_VERSION >= 0x01000106
++      /* On Windows a USB device is owned by one kernel function driver and
++         libusb can only talk to devices owned by WinUSB, libusbK or libusb0.
++         A vendor scanner driver (usbscan.sys) is none of those, so the device
++         enumerates but never opens.
++
++         UsbDk is a redirector that coexists with the vendor driver instead of
++         replacing it, which keeps the manufacturer's software working.
++
++         **This is opt-in and must stay opt-in.**  UsbDk bug-checked the
++         machine (0x10D WDF_VIOLATION) the first time a scanner was opened
++         through it; that is a known UsbDk defect around power policy owners,
++         and libusb upstream discourages the backend for exactly this reason.
++         Requesting it by default would turn a scan into a blue screen.
++
++         It also has to be requested *after* libusb_init, even though libusb.h
++         recommends libusb_init_context.  Passing the option at initialization
++         leaves the open going through winusb_open and failing: the option sets
++         a per-context backend that the backend's own init then overwrites, and
++         on the process' first context UsbDk has not been detected yet.  */
++      if (getenv ("SANE_USB_USE_USBDK") != NULL)
++	{
++	  if (libusb_set_option (sanei_usb_ctx, LIBUSB_OPTION_USE_USBDK)
++	      == LIBUSB_SUCCESS)
++	    DBG (3, "%s: using the UsbDk backend (SANE_USB_USE_USBDK)\n",
++		 __func__);
++	  else
++	    DBG (1, "%s: SANE_USB_USE_USBDK set but UsbDk is unavailable\n",
++		 __func__);
++	}
++#endif
+ #ifdef DBG_LEVEL
+       if (DBG_LEVEL > 4)
+ #if LIBUSB_API_VERSION >= 0x01000106

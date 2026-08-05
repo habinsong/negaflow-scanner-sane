@@ -80,7 +80,10 @@ def main():
         for m in re.finditer(r"\]\(([^)#]+\.md)(#[^)]*)?\)", t):
             target = normalized(base, m.group(1))
             linked.add(target)
-            if target not in text:
+            # windows_docs 밖(예: sane-runtime/SOURCES.md)을 가리키는 링크는
+            # text 에 없다. 그건 깨진 링크가 아니라 이 스크립트의 범위 밖일
+            # 뿐이므로, 파일이 실재하는지만 확인한다.
+            if target not in text and not os.path.isfile(os.path.join(ROOT, target)):
                 problems.append(f"{f}: 링크가 없는 파일을 가리킨다 -> {m.group(1)}")
         for m in re.finditer(r"\]\(([^)#]+\.md)\)[^\n]{0,14}?§\s*(\d+(?:\.\d+)*)", t):
             target = normalized(base, m.group(1))
