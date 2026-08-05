@@ -5,6 +5,7 @@
 // 근거: windows_docs/05-protocol/conformance-fixtures.md
 
 #include <charconv>
+#include <chrono>
 #include <clocale>
 #include <cmath>
 #include <cstdio>
@@ -13,6 +14,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "imaging/align.h"
@@ -27,6 +29,12 @@
 #include "wire/cli.h"
 #ifdef NEGAFLOW_HAVE_RAPIDJSON
 #include "wire/parse.h"
+#include "wire/snapshot.h"
+#endif
+#ifdef _WIN32
+#include "process/cancel.h"
+#include "process/child.h"
+#include "process/watchdog.h"
 #endif
 #ifdef NEGAFLOW_HAVE_LIBTIFF
 #include "imaging/tiff_io.h"
@@ -3219,7 +3227,281 @@ void testParseEnvelopeFallback() {
     CHECK(!parseScanRequestEnvelope("{oops", limits));
 }
 
+// ===========================================================================
+// wire/snapshot — capabilityToken. base64(JSON).
+//
+// 구현이 `wire_parse` 타깃에 있으므로(RapidJSON 을 아는 타깃이 하나라는 계약)
+// 이 블록도 같은 조건으로 묶인다.
+// ===========================================================================
+
+void testBase64RoundTrip() {
+    using namespace negaflow::wire;
+
+    // 세 잔여 길이를 전부 지난다. 패딩이 붙는 두 경우가 실수가 나는 곳이다.
+    const char* inputs[] = {"", "f", "fo", "foo", "foob", "fooba", "foobar"};
+    const char* expected[] = {"", "Zg==", "Zm8=", "Zm9v", "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"};
+    for (int i = 0; i < 7; ++i) {
+        CHECK_EQ(base64Encode(inputs[i]), std::string(expected[i]));
+        const auto decoded = base64Decode(expected[i]);
+        CHECK(decoded.has_value());
+        if (decoded) CHECK_EQ(*decoded, std::string(inputs[i]));
+    }
+
+    // 0 바이트를 포함한 임의 바이트도 왕복한다.
+    std::string binary;
+    for (int i = 0; i < 256; ++i) binary.push_back(static_cast<char>(i));
+    const auto roundTrip = base64Decode(base64Encode(binary));
+    CHECK(roundTrip.has_value());
+    if (roundTrip) CHECK_EQ(*roundTrip, binary);
+
+    // **표준 알파벳과 패딩만 받는다.** 공백·개행·URL-safe 변형은 거부한다.
+    CHECK(!base64Decode("Zm9v YmFy"));
+    CHECK(!base64Decode("Zm9v\nYmFy"));
+    CHECK(!base64Decode("Zg="));      // 길이가 4의 배수가 아니다
+    CHECK(!base64Decode("Z==="));     // 패딩이 셋
+    CHECK(!base64Decode("Zm9-"));     // URL-safe
+    CHECK(!base64Decode("Zg==Zg=="));  // 패딩이 마지막 블록에만 와야 한다
+}
+
+void testCapabilitySnapshotRoundTrip() {
+    using namespace negaflow::wire;
+
+    CapabilitySnapshot snapshot;
+    snapshot.deviceID = "sane-genesys:libusb:001:002";
+    snapshot.backend = "genesys";
+    snapshot.acquisitionDevice = "genesys:libusb:001:002";
+    snapshot.deviceIdentity = DeviceIdentity{"Plustek", "OpticFilm 8100"};
+    snapshot.deviceType = std::string("film scanner");
+    snapshot.optionDump = "  --mode Color|Gray [Color]\n  -x 0..36.33mm [36.33]\n";
+    snapshot.validatedMode = std::string("color");
+
+    const auto token = encodeCapabilityToken(snapshot);
+    CHECK(token.has_value());
+    if (!token) return;
+
+    const auto decoded = decodeCapabilityToken(*token);
+    CHECK(decoded.has_value());
+    if (!decoded) return;
+    CHECK_EQ(decoded->deviceID, snapshot.deviceID);
+    CHECK_EQ(decoded->backend, snapshot.backend);
+    CHECK_EQ(decoded->acquisitionDevice, snapshot.acquisitionDevice);
+    CHECK(decoded->deviceIdentity.has_value());
+    if (decoded->deviceIdentity) {
+        CHECK_EQ(decoded->deviceIdentity->vendor, std::string("Plustek"));
+        CHECK_EQ(decoded->deviceIdentity->model, std::string("OpticFilm 8100"));
+    }
+    CHECK(decoded->deviceType.has_value());
+    // **옵션 덤프가 바이트 그대로 살아 나와야 한다** — 개행과 공백이 파서의 입력이다.
+    CHECK_EQ(decoded->optionDump, snapshot.optionDump);
+    CHECK(decoded->validatedMode.has_value());
+    if (decoded->validatedMode) CHECK_EQ(*decoded->validatedMode, std::string("color"));
+
+    // 옵셔널이 비면 키가 없고, 없어도 해석된다.
+    CapabilitySnapshot bare;
+    bare.deviceID = "sane-epson2:libusb:002:003";
+    bare.backend = "epson2";
+    bare.acquisitionDevice = "epson2:libusb:002:003";
+    bare.optionDump = "  --mode Color [Color]\n";
+    const auto bareToken = encodeCapabilityToken(bare);
+    CHECK(bareToken.has_value());
+    if (bareToken) {
+        const auto bareDecoded = decodeCapabilityToken(*bareToken);
+        CHECK(bareDecoded.has_value());
+        if (bareDecoded) {
+            CHECK(!bareDecoded->deviceIdentity.has_value());
+            CHECK(!bareDecoded->deviceType.has_value());
+            CHECK(!bareDecoded->validatedMode.has_value());
+        }
+    }
+
+    // 토큰은 **신뢰할 수 없는 입력이다.** 형태가 어긋나면 조용히 통과시키지 않는다.
+    CHECK(!decodeCapabilityToken(""));
+    CHECK(!decodeCapabilityToken("not base64!"));
+    CHECK(!decodeCapabilityToken(base64Encode("{}")));                 // schemaVersion 없음
+    CHECK(!decodeCapabilityToken(base64Encode("{\"schemaVersion\":2}")));  // 낡은 스키마
+    CHECK(!decodeCapabilityToken(base64Encode("[1,2,3]")));            // 객체가 아니다
+    CHECK(!decodeCapabilityToken(base64Encode("{\"schemaVersion\":3}x")));  // 뒤에 쓰레기
+}
+
 #endif  // NEGAFLOW_HAVE_RAPIDJSON
+
+// ===========================================================================
+// sane/media — 덤프가 어느 모드에서 읽혔는가.
+// ===========================================================================
+
+void testValidatedColorMode() {
+    using namespace negaflow::sane;
+
+    const OptionDump color{"  --mode Color|Gray [Color]\n"};
+    const auto colorMode = validatedColorMode(color, "genesys", "film scanner");
+    CHECK(colorMode.has_value());
+    if (colorMode) CHECK(*colorMode == ColorMode::Color);
+
+    const OptionDump gray{"  --mode Color|Gray [Gray]\n"};
+    const auto grayMode = validatedColorMode(gray, "genesys", "film scanner");
+    CHECK(grayMode.has_value());
+    if (grayMode) CHECK(*grayMode == ColorMode::Gray);
+
+    // Lineart 는 우리가 쓰지 않는 모드다. **추정하지 않고 nullopt 다.**
+    const OptionDump lineart{"  --mode Lineart|Color [Lineart]\n"};
+    CHECK(!validatedColorMode(lineart, "epson2", "flatbed scanner"));
+
+    // `--mode` 가 없는 전용 필름 스캐너는 Color 로 고정이다.
+    const OptionDump noMode{"  --depth 8|14 [14]\n"};
+    const auto film = validatedColorMode(noMode, "coolscan3", "film scanner");
+    CHECK(film.has_value());
+    if (film) CHECK(*film == ColorMode::Color);
+
+    // 같은 덤프라도 필름 장치가 아니면 단정하지 않는다.
+    CHECK(!validatedColorMode(noMode, "epson2", "flatbed scanner"));
+}
+
+// ===========================================================================
+// process/watchdog + process/child — Win32 계층. 판정 부분만 여기서 본다.
+// ===========================================================================
+
+#ifdef _WIN32
+
+void testProgressTrackerArithmetic() {
+    using negaflow::process::ProgressTracker;
+
+    ProgressTracker tracker;
+
+    // 레코드가 **새로 나타났는가**가 기준이다. 값의 증가가 아니다.
+    auto first = tracker.append("scanimage: scanning\nProgress: 0.0%\r");
+    CHECK(first.madeProgress);
+    CHECK(first.fraction.has_value());
+    if (first.fraction) CHECK_EQ(*first.fraction, 0.0);
+
+    auto second = tracker.append("Progress: 42.5%\r");
+    CHECK(second.madeProgress);
+    CHECK(second.fraction.has_value());
+    if (second.fraction) CHECK(std::abs(*second.fraction - 0.425) < 1e-12);
+
+    // 진행률이 없는 chunk 는 진행이 아니다.
+    auto idle = tracker.append("warming up\n");
+    CHECK(!idle.madeProgress);
+
+    // 레코드가 chunk 경계에서 잘려도 다음 chunk 와 합쳐 인식한다.
+    ProgressTracker split;
+    auto half = split.append("Progr");
+    CHECK(!half.madeProgress);
+    auto rest = split.append("ess: 77%\r");
+    CHECK(rest.madeProgress);
+    if (rest.fraction) CHECK(std::abs(*rest.fraction - 0.77) < 1e-12);
+
+    // stderr 는 전부 모이고, 꺼내면 앞뒤 공백이 잘린 채 비워진다.
+    ProgressTracker collector;
+    (void)collector.append("  scanimage: boom\n  ");
+    CHECK_EQ(collector.takeStderr(), std::string("scanimage: boom"));
+    CHECK_EQ(collector.takeStderr(), std::string(""));
+
+    // 꼬리를 160바이트로 자르므로 오래된 레코드는 다시 매치되지 않는다.
+    ProgressTracker tail;
+    (void)tail.append("Progress: 10%\r");
+    (void)tail.append(std::string(400, 'x'));
+    auto afterFlush = tail.append("nothing here\n");
+    CHECK(!afterFlush.madeProgress);
+    CHECK(!afterFlush.fraction.has_value());
+}
+
+void testWatchdogClassifiesTimeouts() {
+    using negaflow::process::AcquisitionWatchdog;
+    using negaflow::process::TimeoutKind;
+
+    // 진행률이 하나도 없으면 FirstProgress 다.
+    {
+        AcquisitionWatchdog watchdog;
+        bool fired = false;
+        watchdog.start(std::chrono::milliseconds{30}, std::chrono::milliseconds{5'000},
+                       [&] { fired = true; });
+        std::this_thread::sleep_for(std::chrono::milliseconds{250});
+        const auto result = watchdog.finish();
+        CHECK(fired);
+        CHECK(result.kind == TimeoutKind::FirstProgress);
+        CHECK(!result.observedProgress);
+    }
+
+    // 진행률을 본 뒤 멈추면 Stalled 다.
+    {
+        AcquisitionWatchdog watchdog;
+        bool fired = false;
+        watchdog.start(std::chrono::milliseconds{5'000}, std::chrono::milliseconds{30},
+                       [&] { fired = true; });
+        watchdog.markProgress();
+        std::this_thread::sleep_for(std::chrono::milliseconds{250});
+        const auto result = watchdog.finish();
+        CHECK(fired);
+        CHECK(result.kind == TimeoutKind::Stalled);
+        CHECK(result.observedProgress);
+    }
+
+    // 제때 끝나면 아무 일도 없다. **총 스캔 시간은 제한하지 않는다**(I-7).
+    {
+        AcquisitionWatchdog watchdog;
+        bool fired = false;
+        watchdog.start(std::chrono::milliseconds{5'000}, std::chrono::milliseconds{5'000},
+                       [&] { fired = true; });
+        watchdog.markProgress();
+        const auto result = watchdog.finish();
+        CHECK(!fired);
+        CHECK(result.kind == TimeoutKind::None);
+        CHECK(result.observedProgress);
+    }
+}
+
+void testSanitizeUtf8() {
+    using negaflow::process::sanitizeUtf8;
+
+    // 유효한 것은 바이트 그대로 남는다 — 오류 메시지가 한국어일 수 있다.
+    CHECK_EQ(sanitizeUtf8("scanimage: 실패"), std::string("scanimage: 실패"));
+    CHECK_EQ(sanitizeUtf8(""), std::string(""));
+
+    // 잘못된 바이트는 U+FFFD 로 바뀐다. **버리지 않는다** — 길이가 줄면
+    // 어디가 깨졌는지 알 수 없다.
+    CHECK_EQ(sanitizeUtf8("a\xFF" "b"), std::string("a\xEF\xBF\xBD" "b"));
+    // 잘린 다중바이트 시퀀스.
+    CHECK_EQ(sanitizeUtf8("\xED\x95"), std::string("\xEF\xBF\xBD\xEF\xBF\xBD"));
+    // 과장 인코딩과 서로게이트는 유효한 것처럼 보이지만 거른다.
+    CHECK_EQ(sanitizeUtf8("\xC0\xAF"), std::string("\xEF\xBF\xBD\xEF\xBF\xBD"));
+    CHECK_EQ(sanitizeUtf8("\xED\xA0\x80"), std::string("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD"));
+}
+
+void testCancellationOwnership() {
+    using negaflow::process::ProcessOwnership;
+    using SessionError = ProcessOwnership::SessionError;
+
+    ProcessOwnership ownership;
+    std::uint64_t first = 0;
+    CHECK(ownership.beginScanSession(&first) == SessionError::None);
+
+    // **한 백엔드 인스턴스에 세션은 하나다.**
+    std::uint64_t second = 0;
+    CHECK(ownership.beginScanSession(&second) == SessionError::Busy);
+
+    // 세션 중에는 유틸리티 실행(세션 밖 프로세스)을 띄울 수 없다.
+    negaflow::process::ChildHandles child;
+    CHECK(ownership.adoptChild(child, /*requiresScanSession=*/false) == SessionError::Busy);
+    CHECK(ownership.adoptChild(child, /*requiresScanSession=*/true) == SessionError::None);
+
+    ownership.endScanSession(first);
+
+    // 취소가 걸려 있으면 새 세션을 시작하지 않는다.
+    ownership.requestCancellation();
+    CHECK(ownership.cancellationRequested());
+    std::uint64_t third = 0;
+    CHECK(ownership.beginScanSession(&third) == SessionError::Cancelled);
+
+    // 세션이 끝나면 플래그가 지워진다 — 남으면 이후 스캔이 전부 실패한다.
+    std::uint64_t fourth = 0;
+    CHECK(ownership.beginScanSession(&fourth) == SessionError::Cancelled);
+    ownership.clearUtilityCancellation();
+    CHECK(!ownership.cancellationRequested());
+    CHECK(ownership.beginScanSession(&fourth) == SessionError::None);
+    ownership.endScanSession(fourth);
+}
+
+#endif  // _WIN32
 
 }  // namespace
 
@@ -3357,6 +3639,19 @@ int main() {
     testTiffValidatedScannedTIFF();
     testTiffMissingAndBrokenFiles();
     testTiffWriteRejectsBadInput();
+#endif
+
+    testValidatedColorMode();
+#ifdef NEGAFLOW_HAVE_RAPIDJSON
+    testBase64RoundTrip();
+    testCapabilitySnapshotRoundTrip();
+#endif
+
+#ifdef _WIN32
+    testProgressTrackerArithmetic();
+    testWatchdogClassifiesTimeouts();
+    testSanitizeUtf8();
+    testCancellationOwnership();
 #endif
 
     if (g_failures == 0) {

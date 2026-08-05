@@ -1,30 +1,43 @@
 # 인수인계 — 여기까지 왔고, 다음은 이것이다
 
-기준일: 2026-08-05 (10차 갱신 — wire 순수 부분 완료 + MSVC 조사 반영)
-기준 커밋: c554aaf (`windows/`, `windows_docs/` 는 아직 **커밋되지 않음**)
+기준일: 2026-08-05 (11차 갱신 — **실행 파일이 돈다.** Win32 계층 + main 완료)
+기준 커밋: 6b3b347 (`windows/`, `windows_docs/` 커밋됨)
 상태: 사실 기록 — 이어받는 사람이 가장 먼저 읽는 문서
 목적: 다른 사람이 이 작업을 중단 없이 이어가게 한다
 
 ## 0. 5분 안에 상태 확인하기
 
+Windows(정식 대상):
+
 ```bash
-python3 windows_docs/check-docs.py          # 문서 정합성
-./windows/tools/parity-check.sh             # C++ ↔ Swift 동등성
-cmake -S windows -B build && cmake --build build && ctest --test-dir build
-./build/sane_logic_tests                    # 체크 수를 보려면 직접 돌린다
+python windows_docs/check-docs.py           # 문서 정합성
+cmake -S windows -B build -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-셋 다 개발 도구를 요구한다. **없으면 그 블록을 조용히 건너뛴다** — 그러면
-검증이 줄어든 채로 통과한다. 스크립트가 무엇을 감지했는지 stderr 를 읽는다.
+macOS(파리티 전용):
 
 ```bash
-brew install libtiff rapidjson pkgconf
+./windows/tools/parity-check.sh             # C++ ↔ Swift 동등성
+```
+
+**개발 도구가 없으면 그 블록을 조용히 건너뛴다** — 그러면 검증이 줄어든
+채로 통과한다. 스크립트가 무엇을 감지했는지 stderr 를 읽는다.
+
+```bash
+brew install libtiff rapidjson pkgconf      # macOS 개발 환경
 ```
 
 `pkgconf` 가 빠지면 `pkg-config` 가 사라져 libtiff 대조가 통째로 빠진다.
 (2026-08-05 에 `brew install` 의 자동 정리가 실제로 그것을 지웠다.)
 
-셋 다 통과하면 이 문서가 기술한 상태 그대로다. **하나라도 실패하면
+`VCPKG_TARGET_TRIPLET` 을 빼면 vcpkg 기본이 동적 CRT 라 LNK2038 로 링크가
+깨진다. **가장 자주 틀리는 한 줄이다.**
+
+전부 통과하면 이 문서가 기술한 상태 그대로다. **하나라도 실패하면
 그 원인을 먼저 파악한다.** 특히 파리티 실패는 "누군가 Swift 원본을
 고쳤다"는 신호일 수 있다.
 
@@ -66,12 +79,18 @@ sane_logic (순수 로직, 의존 0)              ✅ 완성
     sane/validate         validateExactOptions (거부 24종)
     sane/args             makeScanimageArgs
 
-process_logic (순수 부분만)                 🔨 4/7
+process_logic (순수 로직)                   ✅ 완성
     process/progress      진행률 파싱, stderr 분류
     process/budget        D-32 명령별 예산 (신규 설계)
     process/command_line  CreateProcessW 인용, 인자 주입 방어
     process/acquisition   재시도 정책
-    ⬜ child / watchdog / cancel            ← Win32. macOS에서 컴파일 불가
+
+process_win32                               ✅ 완성 (Windows 에서만 빌드)
+    process/child         CreateProcessW, 파이프 동시 drain, Job Object,
+                          PROC_THREAD_ATTRIBUTE_HANDLE_LIST, stdin=NUL,
+                          출력 파일 핸들 검증(GetFinalPathNameByHandleW)
+    process/watchdog      첫 진행률/유휴 상한 + 진행률 누적. **Win32 없음**
+    process/cancel        소유권 상태 기계, 콘솔 제어 핸들러, 3단계 종료
 
 imaging_logic (순수 로직, 의존 0)           ✅ 완성
     imaging/align         estimateIntegerOffset, boxBlur3, 신뢰 가중치,
@@ -83,7 +102,7 @@ imaging_tiff (libtiff)                      ✅ 순수 부분 외 완성
     imaging/tiff_io       읽기/쓰기/크기조회/검증. **libtiff 를 아는 유일한 타깃**
     ⬜ 파일 계층 §3.4     핸들 기반 검증, reparse point 거부 (Win32)
 
-wire_logic (순수 로직)                      🔨 8/10
+wire_logic (순수 로직)                      ✅ 완성
     wire/request          ✅ 1단계 검증. 가드 11개, 경로 정책 주입식
     wire/json             ✅ 방출. 이스케이프·수 표기·키 순서
     wire/event            ✅ 이벤트/적용옵션. 생략 vs null 경계
@@ -91,27 +110,57 @@ wire_logic (순수 로직)                      🔨 8/10
     wire/emitter          ✅ sequence 규율 + 줄 프레이밍 (**파리티 없음**)
     wire/writer           ✅ 부분 쓰기 루프 (**파리티 원리상 불가**)
     wire/cli              ✅ 서브커맨드 디스패치 판정 (**파리티 없음**)
-    ⬜ main.cpp / 응답 조립(비순수) / WriteFile 어댑터(Win32)
+
+wire_win32                                  ✅ 완성
+    wire/win_sink         WriteFile ByteSink + stdout 바이너리 고정.
+                          **루프는 없다** — 재개는 wire/writer 가 갖는다
 
 wire_parse (RapidJSON)                      ✅ 완성
     wire/parse            요청 디코딩. **RapidJSON 을 아는 유일한 타깃**
                           토큰화만 쓰고 수 변환은 std::from_chars 로 직접 한다
+    wire/snapshot         capabilityToken. base64 + JSON. SAX 만 쓴다
+
+app (조율 계층)                             ✅ 완성
+    app/environment       scanimage 탐색(PE machine 확인), 자식 환경 블록,
+                          IR/중간 파일 경로 규칙
+    app/backend           detect / capabilities / scan 의 순서와 재시도.
+                          **판정은 하지 않는다** — 전부 아래 계층이 갖는다
+    main.cpp              wire/cli 의 판정을 받아 실행만 한다
 ```
 
-**실행 파일은 아직 없다.** 정적 라이브러리 다섯과 테스트뿐이다.
+**실행 파일이 있다: `negaflow-scanner-sane.exe`.** libtiff 와 RapidJSON 이
+둘 다 있을 때만 만든다.
 
 ### 검증 상태
 
 | 항목 | 상태 |
 |---|---|
-| 단위 테스트 | 965 checks 통과 |
+| MSVC 빌드 | Debug/Release 둘 다 통과 (`/W4 /WX`, 경고 0) |
+| 단위 테스트 | 1,063 checks 통과 (Debug/Release 동일) |
+| 실행 파일 스모크 | `plugin_smoke` 통과 — 가상 scanimage 상대 end-to-end |
 | 파리티 (C++ ↔ Swift) | 574줄 중 573줄 일치 (1건은 문서화된 CRLF) |
 | 문서 정합성 | 44개 통과 |
 | 백엔드 분기 (순수) | **13/13 이식 완료** |
 | spike | **5개 통과** (N-1, N-2, N-3, N-4, I-2) |
+| 실기 검증 | **0대.** 아래 §8 |
 
-**§0의 세 명령이 이 표를 재생성한다.** 숫자가 다르면 표가 낡았거나
+**§0의 명령이 이 표를 재생성한다.** 숫자가 다르면 표가 낡았거나
 누군가 코드를 고쳤다는 뜻이다.
+
+`plugin_smoke` 가 무엇을 지나는지는 `windows/tests/plugin-smoke.cmake` 가
+소유한다. 요약하면:
+
+```text
+detect → capabilities → scan(단일 / IR 별도 패스 / 다중 노출 3패스 병합)
+깨진 요청·봉투만 있는 요청의 오류 경로
+stderr 1 MiB 폭주에도 교착하지 않는가
+반올림 경고가 있으면 결과를 버리는가 (I-1)
+scanimage 가 없을 때 원인을 말하는가
+```
+
+**가상 scanimage 는 우리 코드를 링크하지 않는다.** TIFF 를 손으로 쓴다 —
+우리 writer 로 만들면 "우리가 쓴 것을 우리가 읽는다"가 되어 검증이 자기
+자신을 확인하는 꼴이 된다.
 
 ### 닫힌 결정
 
@@ -122,43 +171,48 @@ wire_parse (RapidJSON)                      ✅ 완성
 
 ## 3. 다음에 할 일
 
-**macOS 에서 검증할 수 있는 것은 다 했다.** 남은 것은 **전부** Windows 환경이나
-M5 조율 계층을 요구한다.
+**소프트웨어로 검증할 수 있는 것은 다 했다.** 남은 것은 **전부 실기와
+협의**를 요구한다.
 
 ```text
-A. 병합 입력 스트리밍       M5 조율 계층과 함께 설계해야 한다   §3.3
-B. imaging/tiff 파일 계층   Win32 필요                        §3.4
-C. process/ 의 Win32 3개    Win32 필요                        §3.5
-D. wire/ 의 나머지 3개      Win32 + 프로세스 실행 필요         §3.6
+A. 병합 입력 스트리밍       7200 dpi 12 패스면 입력만 13.2 GB   §3.3
+B. imaging/tiff 읽기 경로   핸들 기반 검증 (쓰기 경로는 되어 있다)  §3.4
+C. 실기 검증                장치 0대. spike S-1/S-2/D-1/C-1~C-4    §8
+D. SANE 런타임 배포          scanimage.exe 를 어떻게 담을 것인가    §3.6
 ```
 
-### 3.0 가장 먼저 — **Windows 에서 한 번 빌드한다**
+### 3.0 이미 지난 관문 — **Windows 에서 빌드되고 돈다**
 
-**장비는 없어도 된다.** `.github/workflows/windows.yml` 을 넣어 두었다.
-`windows/` 를 커밋하면 GitHub Actions 의 `windows-latest` 에서 MSVC 빌드와
-ctest 가 Debug/Release 양쪽으로 돈다(`paths:` 필터가 있어 커밋 전에는 안 돈다).
+2026-08-05 에 로컬 Windows(VS 2026, MSVC 19.51, CMake 4.3, vcpkg)에서
+설정·빌드·테스트를 전부 통과시켰다. `.github/workflows/windows.yml` 이
+같은 것을 `windows-latest` 에서 Debug/Release 양쪽으로 돈다.
 
 Debug 를 같이 도는 이유가 있다. `_ITERATOR_DEBUG_LEVEL` 불일치는 Debug 에서만
 드러나고, `CMAKE_MSVC_RUNTIME_LIBRARY` 의 제네레이터 식이 정확히 그 경우를
 다룬다 — 안 돌리면 그 식이 검증되지 않는다.
 
-순서:
+첫 빌드에서 실제로 걸린 것은 셋이었고, 셋 다 **우리 코드의 문제**였다.
 
 ```text
-1. 설정이 통과하는가        vcpkg 매니페스트가 tiff/rapidjson 을 끌어온다
-2. 단위 테스트가 다 통과하는가   여기가 첫 관문이다
-3. imaging 파리티 수치       갈리면 D-11 과 §3.1 의 fp_contract 를 다시 본다
-4. §3.2 의 열린 항목 셋을 닫는다
-5. C(process Win32) → B(tiff 파일 계층) → D(WriteFile 어댑터·응답 조립·main)
+C4996  _wfopen / getenv     `/sdl` 이 막는다. 짝인 _wfopen_s / _dupenv_s 로 고쳤다
+C4456  parity_dump 의 `d`   같은 함수 안 바깥 선언을 가린다. clang 은 침묵했다
+LNK4075 /INCREMENTAL        Debug 에 /OPT:ICF 를 걸어 증분 링크가 버려졌다
 ```
 
-**2번이 갈리면 그 뒤가 전부 흔들린다.** 특히 아래 둘을 먼저 본다.
+**셋 다 macOS 에서는 보이지 않았다.** `/W4 /WX` 가 clang `-Wall -Wextra`
+보다 넓은 것이 아니라 **다른 것을 본다**.
 
-```text
-testFromCharsOutOfRangeContract   **우리 코드가 아니라 툴체인을 잰다**
-                                  빨간불이면 파서 버그가 아니라 stdlib 이 다른 것이다
-imaging/merge 파리티 6 케이스      1 ULP 차이면 FMA 축약을 의심한다
-```
+### 3.0a 첫 빌드가 실제로 닫은 것
+
+| 항목 | 결과 |
+|---|---|
+| `testFromCharsOutOfRangeContract` | 통과. MSVC STL 이 libc++ 과 같다 |
+| 단위 테스트 수 | macOS 965 = Windows 965 (당시). **블록이 조용히 빠지지 않았다** |
+| RapidJSON master 의 `0e999` 거부 | 그대로다. §3.2 ① 종결 |
+| `/sdl` 의 `/we4996` 가 외부 헤더를 뚫는가 | **뚫지 않았다.** §3.2 ③ 종결 |
+
+`wire_parse` 의 `/wd4996` 은 켜지 않았다. **켤 필요가 없었으므로 켜지
+않는다** — 이유 없이 켜 두면 다음 사람이 지웠다가 같은 곳에서 막힌다.
 
 ### 3.1 조사로 **닫힌** 것 (2026-08-05) — 다시 조사하지 말 것
 
@@ -223,36 +277,40 @@ x64-windows-static      CRT 정적 + 라이브러리 정적   ← 이것
 x64-windows-static-md   CRT **동적** + 라이브러리 정적   ← 이름이 함정이다
 ```
 
-### 3.2 아직 **열려 있는** 것 셋
+### 3.2 열려 있던 셋 중 둘은 첫 빌드가 닫았다
 
-**① RapidJSON 버전이 개발 환경과 Windows 에서 다르다.**
+**① RapidJSON 버전 차이 — 닫혔다 (2026-08-05).**
 
 ```text
 macOS 개발   Homebrew 1.1.0       (2016-08-25. 유일한 태그다)
 Windows      vcpkg master 스냅샷   (version-date 2025-02-26)
 ```
 
-`wire/parse` 의 실측은 전부 1.1.0 에서 했다. 우리가 쓰는 것이 토큰화뿐이라
-표면은 작지만, **`0e999` 거부가 바로 그 토큰화의 지수 검사에서 나왔다.**
-Windows 빌드가 서면 `testParseZeroMantissaHugeExponentDivergence` 부터 본다.
+`wire/parse` 의 실측은 전부 1.1.0 에서 했다. 걱정한 것은 **`0e999` 거부가
+그 토큰화의 지수 검사에서 나왔다**는 점이었다.
 
-방향은 유리하다. master 는 1.1.0 이 MSVC `/W4 /WX` + C++20 에서 내는 경고
-넷(C4996/STL4015, C5054, C5232, C4127)을 전부 고쳐 뒀다. 그리고 `wire/parse`
-는 그 넷이 사는 `document.h` / `schema.h` / `pointer.h` 를 **애초에 끌어오지
-않는다**(`c++ -H` 로 전이 포함까지 확인). SAX 만 쓴 것이 수 변환 때문이었는데
-경고 표면까지 같이 비껴갔다.
+**master 에서도 같았다.** `testParseZeroMantissaHugeExponentDivergence` 를
+포함해 파서 테스트 전부가 MSVC 빌드에서 통과했다. 경고 넷(C4996/STL4015,
+C5054, C5232, C4127)도 나오지 않았다 — 그 넷이 사는 `document.h` /
+`schema.h` / `pointer.h` 를 애초에 끌어오지 않기 때문이다.
 
-**② `vcpkg.json` 에 `builtin-baseline` 이 없다.**
+**② `vcpkg.json` 에 `builtin-baseline` 이 없다 — 여전히 열려 있다.**
 
-포트 버전이 러너 이미지에 따라 떠다닌다. ①을 걱정하면서 버전을 고정하지 않는
-것은 앞뒤가 안 맞는다. **여기서 SHA 를 지어내지 않았다** — 실제 vcpkg 커밋을
-골라야 하고, 틀린 SHA 는 빌드를 깬다.
+포트 버전이 러너 이미지에 따라 떠다닌다. **여기서 SHA 를 지어내지 않았다** —
+실제 vcpkg 커밋을 골라야 하고, 틀린 SHA 는 빌드를 깬다. 고정하려면
+`vcpkg x-update-baseline --add-initial-baseline` 을 실제 클론에서 돌리고,
+그 뒤 **CI 가 그 커밋을 fetch 할 수 있는지**까지 확인한다.
 
-**③ `/sdl` 이 주입하는 `/we4996` 이 `/external:W0` 을 뚫을 수 있다.**
+지금 실측된 것은 tiff 4.7.2 + zlib 1.3.2 + rapidjson master 다.
 
-`/we` 는 경고 레벨과 무관하므로 외부 헤더에서도 오류가 될 수 있다. 문서로는
-확인되지 않았고 **첫 Windows 빌드에서 판명된다.** 터지면 CMakeLists 의
-`wire_parse` 블록에 준비해 둔 `/wd4996` 한 줄을 켜고 **이유를 그 자리에 적는다.**
+**③ `/sdl` 의 `/we4996` 이 외부 헤더를 뚫는가 — 닫혔다. 뚫지 않았다.**
+
+`/we` 는 경고 레벨과 무관하지만, RapidJSON 헤더에서 4996 이 나오지 않아
+문제가 되지 않았다. `wire_parse` 의 `/wd4996` 은 **켜지 않은 채로 둔다.**
+
+대신 **우리 코드에서** 두 번 터졌다 — `_wfopen` 과 `getenv` 다. 둘 다
+`_CRT_SECURE_NO_WARNINGS` 로 덮지 않고 짝인 `_wfopen_s` / `_dupenv_s` 로
+고쳤다. 경고를 지우는 것과 경고가 가리키는 것을 고치는 것은 다르다.
 
 ### 3.3 A — 병합 메모리: 절반 했다
 
@@ -298,40 +356,60 @@ symlink / 크기만 본다. 빠진 것 둘:
 뒤처진 것이 아니라 아직 강화하지 않은 것이다.
 → [tiff-validation](../04-imaging/tiff-validation.md) §9.1
 
-### 3.5 C — `process/` 의 Win32 3개
+### 3.5 C — `process/` 의 Win32 3개: **끝났다**
 
 ```text
-process/child      CreateProcessW, 익명 파이프, Job Object
-process/watchdog   타이머. **process/progress 위에 서 있다**(이미 이식됨)
-process/cancel     콘솔 제어 이벤트
+process/child      CreateProcessW, 익명 파이프 동시 drain, Job Object,
+                   PROC_THREAD_ATTRIBUTE_HANDLE_LIST, stdin=NUL,
+                   출력 파일을 열자마자 핸들로 검증
+process/watchdog   첫 진행률/유휴 상한. **Win32 를 포함하지 않는다** —
+                   타이머는 condition_variable 시한 대기이고 죽이는 행위는
+                   콜백으로 밀어냈다. 그래서 판정이 단위 테스트로 고정된다
+process/cancel     소유권 상태 기계 + SetConsoleCtrlHandler + 3단계 종료
 ```
 
-순수 부분 넷(`progress`·`budget`·`command_line`·`acquisition`)은 이미 있다.
-남은 셋은 전부 시스템 호출이라 macOS 에서 컴파일조차 되지 않는다.
-`SANEBackend+Process.swift`(489행)는 **이식하지 않고 다시 쓴다** —
-Foundation `Process`/`Pipe`/`DispatchSource`/POSIX 신호에 완전히 묶여 있다.
-→ [porting-map](../06-build/porting-map.md) §2.3
+`SANEBackend+Process.swift`(489행)는 예고대로 **이식하지 않고 다시 썼다.**
+Foundation `Process`/`Pipe`/`DispatchSource`/POSIX 신호에 묶여 있어 옮길
+것이 없었다.
 
-**stderr drain 에서 교착이 나기 쉽다.** 전용 스레드나 겹친 I/O 가 필요하다.
+**교착은 실제로 재현해서 막았다.** `plugin_smoke` 의 `bigout` 시나리오가
+가짜 scanimage 로 stderr 에 1 MiB 를 쏟아붓는다 — stdout·stderr 를 동시에
+읽지 않거나 자식용 파이프 끝을 안 닫으면 거기서 멈춘다.
 
-### 3.6 D — `wire/` 의 나머지 3개
+**남은 것**: 강제 종료 뒤 복구 절차(cancellation §5.2)는 구현하지 않았다.
+`lastCancellationWasForced()` 가 그 사실을 들고 있지만 아직 호출부가 없다 —
+유예 시간과 복구 절차를 정하려면 실기 측정(C-2, C-3)이 필요하다.
 
-wire 계층은 순수한 부분을 전부 옮겼다. 무엇이 언제 갔는지는 이 파일의 §2
-표가 소유한다. 남은 것만 적는다.
+### 3.6 D — `wire/` 의 나머지 3개: **끝났다**
 
 ```text
-WriteFile 어댑터  _setmode(_O_BINARY) + WriteFile. **ByteSink 구현 하나**다 —
-                  부분 쓰기 재개 루프는 wire/writer 에 이미 있고 테스트도 있다
-응답 조립         장치 열거 → DTO. **프로세스 실행이 필요하다**(비순수).
-                  DTO 인코딩 자체는 wire/protocol 이 이미 파리티로 대조한다
-main.cpp          wire/cli 의 판정을 받아 실행만 한다. 위 둘이 있어야 의미가 있다
+WriteFile 어댑터  wire/win_sink. **ByteSink 구현 하나**다 — 재개 루프는
+                  wire/writer 에 그대로 있고 여기서 루프를 돌지 않는다
+응답 조립         app/backend + main.cpp. DTO 인코딩은 wire/protocol 그대로다
+main.cpp          wire/cli 의 판정을 받아 실행만 한다
 ```
 
-**결정이 하나 걸려 있다.** 알 수 없는 서브커맨드의 exit 코드가 macOS 는 0 이고
-[wire-contract](../05-protocol/wire-contract.md) §6 은 2 를 권한다. 사용자에게
-보이는 동작 변경이라 D 번호가 필요하다. 그래서 `wire/cli` 가 **정책을
-주입받고 기본값은 macOS 쪽**이다 — 결정이 나면 호출부에서 한 줄 바꾼다.
-(`wire/request` 의 `PathPolicy`, `wire/parse` 의 `ParseLimits` 와 같은 방식이다.)
+**결정은 아직 그대로 걸려 있다.** 알 수 없는 서브커맨드의 exit 코드가 macOS 는
+0 이고 [wire-contract](../05-protocol/wire-contract.md) §6 은 2 를 권한다.
+`main.cpp` 는 **기본값(macOS 쪽)을 쓴다** — 바꾸는 것은 사용자에게 보이는
+동작 변경이라 D 번호가 필요하고, 결정이 나면 `planCli` 호출에 정책 하나를
+더 넘기면 된다.
+
+### 3.7 D — SANE 런타임을 어떻게 담을 것인가
+
+어댑터는 `scanimage.exe` 를 **찾기만 한다**. 탐색 순서는 셋이다.
+
+```text
+1. NEGAFLOW_SCANIMAGE_PATH        환경 변수. **여기서도 검증한다**
+2. <플러그인 디렉터리>\sane\bin\scanimage.exe
+3. PATH                            마지막 수단. 검증되지 않은 버전 경고를 붙인다
+```
+
+2번을 실제로 채우는 것이 남은 일이다 — MinGW/MSYS2 로 SANE 를 빌드해
+백엔드 DLL 과 `etc\sane.d` 를 함께 담아야 하고, spike E-1(dll 백엔드의 DLL
+로드 방식)과 E-2(`SANE_CONFIG_DIR` 의 `C:` 절단)가 그 조건이다.
+→ [building-sane](../01-sane-runtime/building-sane.md),
+  [environment-and-paths](../03-process-and-io/environment-and-paths.md) §9
 
 ## 4. 반드시 알아야 할 것
 
@@ -592,20 +670,26 @@ timeouts-and-watchdog §3.5가 승인한 개선이다.
 
 ## 8. 아직 없는 것 — 정직하게
 
-- Windows에서 **한 번도 빌드해본 적이 없다.** 다만 MSVC 플래그는 이제
-  문서 기반 추정이 아니다 — 2026-08-05 조사로 `/fp:precise` 만으로는 FMA
-  축약이 안 꺼진다는 것이 확인돼 `#pragma fp_contract(off)` 를 강제 포함으로
-  넣었다(§4.3, [field-lessons](../10-lessons/field-lessons.md) §9b.6)
-- 실행 파일이 없다. `main.cpp`도 없다
-- `fixtures/` 디렉터리가 없다(M1 미착수). 파리티 하네스가 그 자리를 임시로 메운다
-- spike 대부분이 미실행. **차단 항목 S-1/S-2/D-1은 장비와 협의가 필요하다**
+- **실기 검증 장치 0대.** 지금까지의 "돈다"는 전부 가짜 `scanimage` 상대다.
+  실제 스캐너에서 처음 드러날 것들: 옵션 덤프의 실제 형태, `LC_ALL=C` 가
+  MinGW 빌드에서 존중되는가(S-6), USB 주소가 열 때마다 바뀌는 실측이
+  Windows 에서도 같은가
+- **SANE 런타임을 아직 담지 않았다.** `scanimage.exe` 는 찾기만 하고,
+  `<플러그인>\sane\bin\` 을 채우는 일은 spike E-1/E-2 뒤다 (§3.7)
+- `fixtures/` 디렉터리가 없다(M1 미착수). 파리티 하네스와 `plugin_smoke` 의
+  가짜 scanimage 가 그 자리를 임시로 메운다
 - 통과한 spike 5개는 **전부 macOS에서 C++와 Swift를 대조한 것**이다.
-  MSVC 가 같은 수치를 내는지는 **실제로 컴파일해 보기 전까지 미확인**이다
-  (플래그 자체는 §3.1 에서 확인해 고쳤지만, 그것과 결과가 같다는 것은 다른 말이다)
+  MSVC 에서 단위 테스트는 전부 통과했지만, **imaging 파리티 자체는 macOS 에서만
+  돈다** — MSVC 산출물이 Swift 와 비트 동일인지는 여전히 직접 대조되지 않았다.
+  하려면 파리티 덤퍼를 MSVC 로 빌드해 그 출력을 macOS 쪽 골든과 비교해야 한다
 - `imaging/merge`의 메모리는 절반만 해결됐다 — 병합 오버헤드는 5.6배 줄였지만
   입력 N장 상주가 남았다. 7200 dpi 12패스면 그것만 13.2 GB다 (§3.3)
-- 실기 검증 장치 0대
+- 취소의 **강제 종료 후 복구 절차**가 없다(§3.5). 유예 2초도 문서 권장값이지
+  측정값이 아니다 — C-2/C-3 이 정해야 한다
 - IR 경로는 **macOS에서도 실기 검증되지 않았다**(이 개발 환경의 genesys
   빌드가 IR을 노출하지 않는다)
+- `imaging/tiff_io` 의 **읽기** 경로는 아직 경로 기반이다. 쓰기 경로는
+  `process/child` 가 핸들로 검증한다 (§3.4)
 
-**이 문서들과 코드는 계획과 기반이지 완성품이 아니다.**
+**소프트웨어는 돈다. 스캐너에 닿아 본 적은 없다.** 그 둘을 같은 것으로
+읽으면 안 된다.

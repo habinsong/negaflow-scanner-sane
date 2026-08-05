@@ -140,6 +140,23 @@ std::optional<std::string> capabilityDumpMode(const OptionDump& opts) {
     return pickModeValue(modeValues, ColorMode::Gray);
 }
 
+std::optional<ColorMode> validatedColorMode(const OptionDump& opts,
+                                            std::string_view backend,
+                                            std::string_view deviceTypeHint) {
+    if (const auto selected = opts.selectedEnumValue("mode")) {
+        const std::string lowered = toLower(*selected);
+        if (contains(lowered, "color")) return ColorMode::Color;
+        if (contains(lowered, "gray") || contains(lowered, "grey")) return ColorMode::Gray;
+        return std::nullopt;
+    }
+    const std::string type = toLower(deviceTypeHint);
+    if (!opts.isActive("mode") && (contains(type, "film") || contains(type, "slide") ||
+                                   isDedicatedFilmBackend(backend))) {
+        return ColorMode::Color;
+    }
+    return std::nullopt;
+}
+
 std::optional<std::vector<std::string>> capabilityRedumpArguments(const OptionDump& baseDump,
                                                                   std::string_view devname) {
     const std::string backend = backendName(devname);

@@ -509,6 +509,37 @@ std::optional<ScanRequestV2> parseScanRequest(std::string_view json,
     return request;
 }
 
+std::optional<CapabilityRequest> parseCapabilityRequest(std::string_view json,
+                                                        const ParseLimits& limits,
+                                                        ParseError* error) {
+    ParseError local = ParseError::None;
+    const auto root = tokenize(json, limits, local);
+    if (!root) {
+        if (error != nullptr) *error = local;
+        return std::nullopt;
+    }
+    if (root->kind != Node::Kind::Object) {
+        if (error != nullptr) *error = ParseError::NotAnObject;
+        return std::nullopt;
+    }
+
+    CapabilityRequest request;
+    const std::pair<const char*, std::string*> fields[] = {
+        {"deviceID", &request.deviceID},
+        {"vendor", &request.vendor},
+        {"model", &request.model},
+    };
+    for (const auto& [key, target] : fields) {
+        const Node* n = requiredMember(*root, key, local);
+        if (n == nullptr || !requireString(*n, local, *target)) {
+            if (error != nullptr) *error = local;
+            return std::nullopt;
+        }
+    }
+    if (error != nullptr) *error = ParseError::None;
+    return request;
+}
+
 std::optional<ScanRequestEnvelope> parseScanRequestEnvelope(std::string_view json,
                                                             const ParseLimits& limits,
                                                             ParseError* error) {

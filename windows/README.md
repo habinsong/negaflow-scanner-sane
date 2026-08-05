@@ -1,8 +1,9 @@
 # negaflow-scanner-sane — Windows 어댑터
 
 기준일: 2026-08-05
-상태: M2 완료 — M4 순수 부분 완료, M5(wire) 순수 부분 완료
-      **남은 것은 전부 Windows 환경을 요구한다**
+상태: **실행 파일이 돈다.** MSVC(Debug/Release)에서 빌드되고,
+      detect / capabilities / scan 이 가상 `scanimage` 상대로 끝까지 통과한다.
+      실기 검증 장치는 아직 0대다.
 언어: C++20 / MSVC (D-13)
 
 **이 작업을 이어받는다면 [handoff](../windows_docs/00-overview/handoff.md)를
@@ -26,34 +27,41 @@ sane_logic (순수 로직, 의존 0) — **완성**
   sane/validate       ✅ validateExactOptions 전체 (거부 조건 24종)
   sane/args           ✅ makeScanimageArgs (인자 순서 계약)
 
-process/*             🔨 순수 부분 완료, Win32 부분 미착수 (M3)
+process/*             ✅ 순수 + Win32 완료
   process/progress    ✅ 진행률 파싱, stderr 분류
   process/budget      ✅ D-32 명령별 예산 (신규 설계)
   process/command_line ✅ CreateProcessW 인용, 인자 주입 방어
   process/acquisition ✅ 재시도 정책 (백엔드 분기 2곳)
-  process/child       ⬜ CreateProcessW, 파이프, Job Object
-  process/watchdog    ⬜ 타이머
-  process/cancel      ⬜ 콘솔 제어 이벤트
+  process/child       ✅ CreateProcessW, 파이프 동시 drain, Job Object,
+                         PROC_THREAD_ATTRIBUTE_HANDLE_LIST, 출력 파일 핸들 검증
+  process/watchdog    ✅ 첫 진행률 / 유휴 상한. 진행률 누적도 여기
+  process/cancel      ✅ 소유권 상태 기계 + 콘솔 제어 이벤트 + 3단계 종료
 imaging_logic         ✅ 순수 부분 완료
   imaging/align       ✅ estimateIntegerOffset, boxBlur3, 신뢰 가중치,
                          mix/smoothstep, accumulateAligned
   imaging/merge       ✅ 병합 코어 전량 + 평균 경로(테스트 전용)
                          정규화 배열을 만들지 않는다 — 아래 참조
   imaging/tiff_contract ✅ 태그 → 통과/거부 판정. D-10 추가 검사 포함
-imaging_tiff          🔨 libtiff 부분 완료, 파일 계층 미착수
+imaging_tiff          🔨 libtiff 부분 완료
   imaging/tiff_io     ✅ 읽기/쓰기/크기조회/검증
-  파일 계층 §3.1      ⬜ 핸들 기반 검증, reparse point 거부 (Win32)
-wire_logic            🔨 8/10
+  파일 계층 §3.1      ⬜ 읽기 경로의 핸들 기반 검증 (**쓰기 경로는 되어 있다** —
+                         process/child 가 GetFinalPathNameByHandleW 로 확인한다)
+wire_logic            ✅ 완성
   wire/request        ✅ 1단계 검증(가드 11개). 경로 정책 주입식
   wire/json           ✅ 방출. 이스케이프·수 표기·키 순서
   wire/event          ✅ 이벤트/적용옵션. 생략 vs null 경계
-  wire/protocol       ✅ detect/capabilities 응답 DTO / ⬜ 조립(비순수)
+  wire/protocol       ✅ detect/capabilities 응답 DTO
   wire/emitter        ✅ 줄 생성(sequence·프레이밍)
-  wire/writer         ✅ 부분 쓰기 루프 / ⬜ WriteFile 어댑터(Win32)
+  wire/writer         ✅ 부분 쓰기 루프 (Win32 짝은 wire/win_sink)
   wire/cli            ✅ 서브커맨드 디스패치 판정
-  main.cpp            ⬜ 위 판정을 받아 실행만 한다
+  wire/win_sink       ✅ WriteFile ByteSink + stdout 바이너리 고정
 wire_parse            ✅ 완성
   wire/parse          ✅ 요청 JSON 디코딩. **이 타깃만 RapidJSON 을 안다**
+  wire/snapshot       ✅ capabilityToken (base64 + JSON)
+app                   ✅ 조율 계층
+  app/environment     ✅ scanimage 탐색(PE machine 확인), 자식 환경 블록
+  app/backend         ✅ detect / capabilities / scan 순서와 재시도
+  main.cpp            ✅ wire/cli 의 판정을 받아 실행만 한다
 ```
 
 **`imaging_logic`은 libtiff를 링크하지 않는다.** 정렬·병합·태그 판정은
@@ -61,17 +69,30 @@ wire_parse            ✅ 완성
 원본과 직접 대조된다. libtiff를 아는 것은 `imaging_tiff` 하나뿐이다 —
 `process/`가 순수/Win32로 갈린 것과 같은 이유다.
 
-**실행 파일은 아직 없다.** 지금 있는 것은 정적 라이브러리 다섯과 테스트다.
-착수 순서는 [porting-map](../windows_docs/06-build/porting-map.md) §5를 따른다.
+**실행 파일은 `negaflow-scanner-sane.exe` 하나다.** libtiff 와 RapidJSON 이
+둘 다 있을 때만 만든다 — 없이 만들면 결과 TIFF 를 검증하지 못하거나 요청을
+파싱하지 못하는 실행 파일이 나오고, 그것은 빌드가 통과했다는 신호를 주면서
+제품으로는 쓸 수 없다.
 
 ## 빌드와 테스트
 
-Windows(정식 대상):
+Windows(정식 대상). vcpkg 툴체인을 주고, **정적 CRT 트리플릿을 명시한다** —
+빼면 vcpkg 기본이 동적 CRT 라 LNK2038 로 링크가 깨진다.
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-ctest --test-dir build --output-on-failure
+cmake -S windows -B build -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+```
+
+`ctest` 는 둘을 돈다.
+
+```text
+sane_logic_tests   단위 테스트
+plugin_smoke       **실행 파일을 실제로 돌린다** — 가상 scanimage 상대로
+                   detect → capabilities → scan(단일/IR/다중 노출)
 ```
 
 macOS/Linux에서도 그대로 빌드된다. **순수 계층이 플랫폼 의존이 0이기
@@ -101,9 +122,9 @@ libtiff 를 못 찾고 TIFF 대조를 **조용히 건너뛴 채 통과한다.**
 빌드·검증된다.
 
 ```text
-전부 있음              951 checks
-libtiff 없음           imaging_tiff 만 빠진다
-rapidjson 없음         wire_parse 만 빠진다
+전부 있음              1,063 checks + plugin_smoke
+libtiff 없음           imaging_tiff 만 빠진다. **실행 파일도 안 만든다**
+rapidjson 없음         wire_parse 만 빠진다.   **실행 파일도 안 만든다**
 ```
 
 확인하려면:
@@ -399,20 +420,42 @@ TransferFunction(301)  없음
 `process/` 전체가 Win32 라고 생각하기 쉽지만 **판정 로직은 그렇지 않다.**
 
 ```text
-순수 (macOS 에서 테스트·파리티 가능)
+process_logic (macOS 에서 테스트·파리티 가능)
     progress      진행률 레코드 개수, 마지막 값, stderr 분류
     budget        명령별 예산 산술 (시간을 주입받는다)
     command_line  따옴표 규칙, 장치명 안전성
+    acquisition   재시도 판정
 
-Win32 (실기·가상 scanimage.exe 필요)
+process_win32
     child         CreateProcessW, 파이프 drain, Job Object
-    watchdog      타이머
-    cancel        콘솔 제어 이벤트
+    watchdog      타이머 + 진행률 누적. **Win32 를 포함하지 않는다**
+    cancel        소유권 상태 기계 + 콘솔 제어 이벤트
 ```
 
 순수 쪽을 먼저 끝내면 **watchdog 전체가 서 있는 바닥**이 골든으로 검증된다.
 `progress` 는 Swift 짝이 있어 파리티 대상이고, `budget`/`command_line` 은
 Windows 전용이라 단위 테스트만 있다.
+
+`watchdog` 이 `process_win32` 에 있는 것은 편의다 — `child` 와 함께 쓰이고
+따로 두면 타깃만 늘어난다. 타이머는 `std::condition_variable` 의 시한
+대기이고 죽이는 행위는 콜백으로 밀어냈으므로, **판정은 실기 없이
+단위 테스트로 고정된다**(`testWatchdogClassifiesTimeouts`).
+
+### 취소가 3단계인 이유
+
+Windows 에는 `SIGTERM` 을 남에게 보낼 방법이 없다. `TerminateProcess` 는
+`sane_cancel()` 을 부르지 않으므로 스캐너가 전송 중간 상태로 남는다.
+
+```text
+1. CTRL_BREAK_EVENT      자기 프로세스 그룹으로 띄운 자식에게만 간다
+2. 유예 2초               sane_cancel() 이 현재 전송 블록을 끝낼 시간
+3. Job 전체 종료          손자까지 남기지 않는다
+```
+
+1번은 **콘솔이 있을 때만** 쓸 수 있다. GUI 호스트의 자식으로 뜨면 콘솔이
+없고, 그때는 `CREATE_NO_WINDOW` 로 검은 창을 막는 대신 취소가 강제 종료
+경로가 된다. 그 경우의 안전망이 Job Object 다 — 어댑터가 죽어도
+`scanimage` 가 남지 않는다.
 
 ### acquisition 이 문자열 대신 구조를 쓰는 이유
 
@@ -457,6 +500,10 @@ windows/
     vcpkg.json          tiff[zip] + rapidjson
     .clangd             편집기용 include 경로
     src/
+        main.cpp               서브커맨드 실행. 판정은 wire/cli 가 한다
+        app/environment.*      scanimage 탐색, 자식 환경 블록, 경로 규칙
+        app/backend.*          detect / capabilities / scan 의 순서와 재시도
+        app/long_path.manifest 260자 초과 staging 대응
         util/numeric.*
         sane/option_dump.*
         sane/device_list.*
@@ -468,6 +515,9 @@ windows/
         process/budget.*
         process/command_line.*
         process/acquisition.*
+        process/child.*        ← <windows.h> 를 아는 파일
+        process/watchdog.*
+        process/cancel.*       ← <windows.h> 를 아는 파일
         imaging/align.*
         imaging/merge.*
         imaging/tiff_contract.*
@@ -477,9 +527,16 @@ windows/
         wire/event.*
         wire/protocol.*
         wire/emitter.*
+        wire/writer.*
+        wire/cli.*
+        wire/parse.*           ← RapidJSON 을 아는 파일
+        wire/snapshot.*        ← RapidJSON 을 아는 파일
+        wire/win_sink.*        ← <windows.h> 를 아는 파일
     tests/
-        test_main.cpp   단위 테스트 (669 checks)
-        parity_dump.cpp Swift 대조용 덤퍼
+        test_main.cpp          단위 테스트 (1,063 checks)
+        parity_dump.cpp        Swift 대조용 덤퍼
+        virtual_scanimage.cpp  가짜 scanimage. **우리 코드를 링크하지 않는다**
+        plugin-smoke.cmake     실행 파일을 실제로 돌리는 ctest 시나리오
     tools/
         parity-check.sh
         parity_reference.swift

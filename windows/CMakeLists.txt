@@ -76,9 +76,15 @@ if(MSVC)
     # 근거: windows/src/util/msvc_fp_contract.h (전체 설명)
     #       windows_docs/04-imaging/numerical-parity.md §5
     add_compile_options(/FI"${CMAKE_CURRENT_SOURCE_DIR}/src/util/msvc_fp_contract.h")
+    # /OPT:REF 와 /OPT:ICF 는 **Debug 에서 제외한다.** Debug 의 기본
+    # /INCREMENTAL 과 양립하지 않아 링커가 LNK4075 로 증분 링크를 조용히
+    # 버리고, ICF 는 같은 코드의 함수를 합쳐 스택 추적을 흐린다.
+    # 릴리스에서만 켜면 둘 다 없다.
     add_link_options(
         /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA
-        /DEBUG /OPT:REF /OPT:ICF
+        /DEBUG
+        $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>
+        $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>
     )
 else()
     # macOS/Linux 에서의 개발·검증용. 정식 대상은 MSVC 다.
@@ -183,6 +189,10 @@ if(RapidJSON_FOUND OR RAPIDJSON_INCLUDE_DIRS)
     # **RapidJSON 포트는 imported target 을 내보내지 않고 변수만 준다** —
     # 그래서 여기만 SYSTEM 을 손으로 적는다.
     # (TIFF::TIFF 는 imported target 이라 CMake 3.25+ 가 자동으로 SYSTEM 처리한다.)
+    # wire/snapshot 도 여기 둔다. `capabilityToken` 은 wire 필드이고 디코딩에
+    # 파서가 필요하다 — **RapidJSON 을 아는 타깃이 하나라는 계약**을 지키려면
+    # 별도 타깃을 만드는 것보다 이쪽이 맞다. `document.h` 는 쓰지 않는다.
+    target_sources(wire_parse PRIVATE src/wire/snapshot.cpp)
     target_include_directories(wire_parse SYSTEM PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
     #
     # ⚠ /sdl 이 /we4996 등을 **주입한다**(/we 는 경고 레벨과 무관하다).
@@ -226,6 +236,80 @@ else()
         "  macOS: brew install libtiff   Windows: vcpkg 매니페스트가 처리한다")
 endif()
 
+# --- process_win32: process/ 계층의 Win32 부분 ------------------------------
+#
+# `watchdog` 은 Win32 를 포함하지 않지만(std::thread + condition_variable)
+# `child` 와 함께 쓰이므로 같은 타깃에 둔다. 순수 판정(progress/budget/
+# command_line/acquisition)은 그대로 process_logic 에 남는다 — 그쪽이
+# macOS 에서 파리티로 대조되는 부분이다.
+
+if(WIN32)
+    add_library(process_win32 STATIC
+        src/process/watchdog.cpp
+        src/process/cancel.cpp
+        src/process/child.cpp
+    )
+    target_include_directories(process_win32 PUBLIC src)
+    target_link_libraries(process_win32 PUBLIC process_logic)
+
+    # --- wire_win32: ByteSink 의 Win32 구현 --------------------------------
+    #
+    # **부분 쓰기 재개 루프는 여기 없다.** wire/writer 가 갖고 있고 테스트도
+    # 그쪽에 있다. 이 타깃은 WriteFile 한 번에 대응하는 얇은 층이다.
+    add_library(wire_win32 STATIC
+        src/wire/win_sink.cpp
+    )
+    target_include_directories(wire_win32 PUBLIC src)
+    target_link_libraries(wire_win32 PUBLIC wire_logic)
+endif()
+
+# --- 실행 파일 ---------------------------------------------------------------
+#
+# **libtiff 와 RapidJSON 이 둘 다 있어야 만든다.** 없이 만들면 스캔 결과를
+# 검증하지 못하거나 요청을 파싱하지 못하는 실행 파일이 나오는데, 그것은
+# "빌드가 통과했다"는 신호를 주면서 제품으로는 쓸 수 없다.
+
+if(WIN32 AND TIFF_FOUND AND NEGAFLOW_HAVE_RAPIDJSON)
+    add_executable(negaflow-scanner-sane
+        src/main.cpp
+        src/app/environment.cpp
+        src/app/backend.cpp
+    )
+    target_include_directories(negaflow-scanner-sane PRIVATE src)
+    target_link_libraries(negaflow-scanner-sane PRIVATE
+        sane_logic
+        process_logic
+        process_win32
+        imaging_logic
+        imaging_tiff
+        wire_logic
+        wire_parse
+        wire_win32
+    )
+    # 긴 경로(260자 초과) staging 을 호스트가 줄 수 있다. 매니페스트의
+    # long-path 인식이 없으면 CreateFileW 가 그 경로를 열지 못한다.
+    # 근거: windows_docs/03-process-and-io/child-process.md §14
+    target_sources(negaflow-scanner-sane PRIVATE src/app/long_path.manifest)
+
+    # --- 실행 파일을 실제로 돌리는 스모크 -----------------------------------
+    #
+    # 단위 테스트는 순수 판정을 고정한다. 여기서 보는 것은 그 밖의 것이다 —
+    # 프로세스 생성, 파이프 교착, stdout 오염, detect → capabilities → scan 의
+    # 토큰 연결. **가짜 scanimage 는 우리 코드를 링크하지 않는다**(§13.1).
+    add_executable(virtual_scanimage tests/virtual_scanimage.cpp)
+
+    add_test(NAME plugin_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DPLUGIN=$<TARGET_FILE:negaflow-scanner-sane>
+            -DVSCAN=$<TARGET_FILE:virtual_scanimage>
+            -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}/smoke-$<CONFIG>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/plugin-smoke.cmake)
+elseif(WIN32)
+    message(WARNING
+        "실행 파일을 만들지 않는다 — libtiff 또는 RapidJSON 이 없다.\n"
+        "  vcpkg 툴체인 파일을 주고 다시 설정한다.")
+endif()
+
 # --- 테스트 -----------------------------------------------------------------
 
 enable_testing()
@@ -239,6 +323,11 @@ endif()
 if(NEGAFLOW_HAVE_RAPIDJSON)
     target_link_libraries(sane_logic_tests PRIVATE wire_parse)
     target_compile_definitions(sane_logic_tests PRIVATE NEGAFLOW_HAVE_RAPIDJSON=1)
+endif()
+if(WIN32)
+    # 워치독·진행률 누적·취소 상태 기계는 Win32 타깃에 있지만 판정 자체는
+    # 순수하다. 단위 테스트가 닿는 유일한 그물이므로 여기서 링크한다.
+    target_link_libraries(sane_logic_tests PRIVATE process_win32)
 endif()
 add_test(NAME sane_logic_tests COMMAND sane_logic_tests)
 

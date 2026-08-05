@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  negaflow-scanner-sane — Windows adapter
+  SPDX-License-Identifier: GPL-2.0-or-later
+
+  호스트 staging 경로가 260자를 넘을 수 있다. long-path 인식이 없으면
+  CreateFileW 가 그 경로를 열지 못하고, 실패는 "출력 파일을 만들 수 없습니다"
+  라는 원인 없는 오류로만 보인다.
+  근거: windows_docs/03-process-and-io/child-process.md §14
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+      <ws2:longPathAware>true</ws2:longPathAware>
+    </windowsSettings>
+  </application>
+</assembly>

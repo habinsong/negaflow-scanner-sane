@@ -210,4 +210,19 @@ struct ScanRequestEnvelope {
 [[nodiscard]] std::optional<ScanRequestEnvelope> parseScanRequestEnvelope(
     std::string_view json, const ParseLimits& limits, ParseError* error = nullptr);
 
+/// `capabilities` 서브커맨드가 stdin 으로 받는 선택적 요청.
+///
+/// 이식 원본: `WireProtocol.swift` 의 `PluginCapabilityRequest`.
+/// **셋 다 필수다.** macOS 는 `try?` 로 감싸 실패를 nil 로 만들고, 그때는
+/// 기대 식별자 없이 진행한다 — 그 동작을 유지하려고 호출자가 nullopt 를
+/// "힌트 없음"으로 다룬다.
+struct CapabilityRequest {
+    std::string deviceID;
+    std::string vendor;
+    std::string model;
+};
+
+[[nodiscard]] std::optional<CapabilityRequest> parseCapabilityRequest(
+    std::string_view json, const ParseLimits& limits, ParseError* error = nullptr);
+
 }  // namespace negaflow::wire

@@ -164,6 +164,18 @@ struct MediaSelection {
 /// Lineart 는 쓰지 않으므로 그 상태의 옵션을 capability 로 보고하지 않는다.
 [[nodiscard]] std::optional<std::string> capabilityDumpMode(const OptionDump& opts);
 
+/// 이 덤프가 **실제로 어느 모드에서 읽힌 것인가.**
+///
+/// capability 스냅샷에 실려서, 다른 모드로 스캔을 요청하면 그 덤프를
+/// 재사용하지 않게 한다. Color 에서 읽은 depth/geometry 활성 상태를 Gray
+/// 요청에 그대로 쓰면 적용할 수 없는 옵션을 적용 가능한 것으로 오판한다.
+///
+/// `--mode` 가 아예 없는 전용 필름 스캐너는 Color 로 본다 — 그 장치들은
+/// 출력 프레임 형식으로 Color 를 고정한다.
+[[nodiscard]] std::optional<ColorMode> validatedColorMode(const OptionDump& opts,
+                                                          std::string_view backend,
+                                                          std::string_view deviceTypeHint);
+
 /// 요청 + 덤프 → MediaSelection.
 [[nodiscard]] MediaSelection resolveMedia(const OptionDump& opts,
                                           const ScanOptions& options,
