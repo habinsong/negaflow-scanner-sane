@@ -196,6 +196,69 @@ constexpr const char* kDeviceName = "genesys:libusb:001:002";
     return dump;
 }
 
+// --- Epson 평판 (V700/V750/V800/V850) -------------------------------------
+//
+// Windows 에서 이 계열의 SANE 이름은 `epson2:usbscan:NNN` 이다 — still-image
+// 클래스 드라이버를 통해 열리기 때문이다. genesys 와 달리 소스마다 지오메트리
+// 한계가 다르고(`Flatbed` 와 `TPU8x10`), 필름 종류·색 보정·감마를 인자로
+// 받는다. 그 인자들이 정확한 순서로 나가는지가 이 픽스처의 목적이다.
+constexpr const char* kEpsonDeviceName = "epson2:usbscan:001";
+
+[[nodiscard]] std::string epsonOptionDump(bool transparencyUnit) {
+    std::string dump;
+    dump += "Options specific to device `";
+    dump += kEpsonDeviceName;
+    dump += "':\n";
+    dump += "  Scan Mode:\n";
+    dump += "    --mode Lineart|Gray|Color|Infrared [Color]\n";
+    dump += "    --source Flatbed|TPU8x10 [Flatbed]\n";
+    dump += "    --film-type Positive Film|Negative Film [Positive Film]\n";
+    dump += "    --depth 8|16 [8]\n";
+    dump += "    --resolution 300|600|800|1200|2400|3200|4800|6400dpi [800]\n";
+    dump += "    --preview[=(yes|no)] [no]\n";
+    dump += "  Enhancement:\n";
+    dump += "    --color-correction None|User defined [None]\n";
+    dump += "    --gamma-correction Default|User defined [Default]\n";
+    dump += "    --brightness -100..100 (in steps of 1) [0]\n";
+    dump += "  Geometry:\n";
+    // TPU8x10 은 8x10 인치 = 203.2 x 254 mm. 평판은 A4 크기다. 소스에 따라
+    // 한계가 달라지므로 어댑터는 소스를 적용한 덤프를 따로 읽어야 한다.
+    if (transparencyUnit) {
+        dump += "    -l 0..203.2mm [0]\n";
+        dump += "    -t 0..254mm [0]\n";
+        dump += "    -x 0..203.2mm [203.2]\n";
+        dump += "    -y 0..254mm [254]\n";
+    } else {
+        dump += "    -l 0..215.9mm [0]\n";
+        dump += "    -t 0..297.18mm [0]\n";
+        dump += "    -x 0..215.9mm [215.9]\n";
+        dump += "    -y 0..297.18mm [297.18]\n";
+    }
+    return dump;
+}
+
+/// 호출된 인자를 한 줄로 남긴다. **인자 순서가 계약이다** — 맥에서 Epson 의
+/// `--source` / `--film-type` / `--color-correction` 순서 때문에 고생했으므로,
+/// Windows 에서는 그것을 로그로 고정해 회귀를 잡는다.
+void logInvocation(const std::vector<std::string>& args) {
+    const std::string path = environmentValue("NEGAFLOW_VSCAN_ARGLOG");
+    if (path.empty()) return;
+
+    std::string line;
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        if (i != 0) line += ' ';
+        line += args[i];
+    }
+    line += '\n';
+
+    HANDLE file = CreateFileA(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    (void)WriteFile(file, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+    CloseHandle(file);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -206,6 +269,8 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) args.emplace_back(argv[i]);
 
     const std::string scenario = environmentValue("NEGAFLOW_VSCAN_SCENARIO");
+    logInvocation(args);
+    const bool epson = scenario.rfind("epson", 0) == 0;
     const auto has = [&](const std::string& flag) {
         for (const auto& a : args) {
             if (a == flag) return true;
@@ -228,10 +293,19 @@ int main(int argc, char** argv) {
             err("scanimage: unsupported format\n");
             return 1;
         }
+        if (epson) {
+            out(std::string(kEpsonDeviceName) + "\tEpson\tPerfection V800 Photo\tflatbed scanner\n");
+            return 0;
+        }
         out(std::string(kDeviceName) + "\tPlustek\tOpticFilm 8100\tfilm scanner\n");
         return 0;
     }
     if (has("-L") || has("--list-devices")) {
+        if (epson) {
+            out(std::string("device `") + kEpsonDeviceName +
+                "' is a Epson Perfection V800 Photo flatbed scanner\n");
+            return 0;
+        }
         out(std::string("device `") + kDeviceName + "' is a Plustek OpticFilm 8100 film scanner\n");
         return 0;
     }
@@ -244,6 +318,12 @@ int main(int argc, char** argv) {
             return 1;
         }
         const std::string mode = valueOf("--mode");
+        if (epson) {
+            // 소스를 준 덤프와 안 준 덤프가 달라야 한다. 어댑터가 소스를
+            // 적용해 다시 읽지 않으면 TPU 한계를 평판 한계로 착각한다.
+            out(epsonOptionDump(valueOf("--source") == "TPU8x10"));
+            return 0;
+        }
         out(optionDump(mode == "Gray"));
         return 0;
     }

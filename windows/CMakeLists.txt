@@ -304,6 +304,15 @@ if(WIN32 AND TIFF_FOUND AND NEGAFLOW_HAVE_RAPIDJSON)
             -DVSCAN=$<TARGET_FILE:virtual_scanimage>
             -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}/smoke-$<CONFIG>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/plugin-smoke.cmake)
+
+    # Epson 평판은 인자 계약이 따로 있다. 소스마다 지오메트리가 다르고
+    # 필름 종류·색 보정·감마가 인자로 나간다 — 실기 없이 고정한다.
+    add_test(NAME epson_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DPLUGIN=$<TARGET_FILE:negaflow-scanner-sane>
+            -DVSCAN=$<TARGET_FILE:virtual_scanimage>
+            -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}/epson-smoke-$<CONFIG>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/epson-smoke.cmake)
 elseif(WIN32)
     message(WARNING
         "실행 파일을 만들지 않는다 — libtiff 또는 RapidJSON 이 없다.\n"
