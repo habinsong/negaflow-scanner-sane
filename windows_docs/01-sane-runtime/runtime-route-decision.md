@@ -445,6 +445,75 @@ D-01 보강  UsbDk 경로는 "드라이버를 안 바꾸는 유일한 길"이지
 장치 수가 4개에서 15개로 늘고 그제서야 스캐너가 보였다. 설치 프로그램이
 UsbDk를 다룬다면 이 사실을 UX에 반영해야 한다.
 
+### 4.4b 드라이버를 **정말로** 안 바꾸는 길이 있다 — `usbscan.sys` (2026-08-05, 실기)
+
+§4.4a의 전제가 틀렸다. "Windows에서는 커널 드라이버가 장치를 독점하므로
+libusb가 소유하지 않으면 못 연다"까지는 맞다. 그런데 **그 소유자가 raw USB를
+사용자 모드에 열어준다**는 사실을 빠뜨렸다.
+
+`usbscan.sys`는 Windows의 still-image USB 클래스 드라이버이고, 벤더 스캐너
+드라이버가 그 위에 얹힌다. 이 드라이버는 **문서화된 IOCTL 인터페이스**를
+제공한다 — 원래 사용자 모드 스캐너 드라이버(WIA 마이크로드라이버)가 쓰라고
+만든 것이다.
+
+```text
+IOCTL_GET_PIPE_CONFIGURATION   엔드포인트/파이프 목록
+IOCTL_GET_DEVICE_DESCRIPTOR    VID / PID / bcdDevice
+IOCTL_SEND_USB_REQUEST         벤더 정의 컨트롤 전송 (IO_BLOCK_EX)
+IOCTL_READ_REGISTERS / WRITE_REGISTERS
+ReadFile / WriteFile           **raw 벌크 파이프 읽기·쓰기**
+IOCTL_RESET_PIPE, IOCTL_SET_TIMEOUT, IOCTL_CANCEL_IO
+```
+
+**실측 (OpticFilm 8100, Plustek 드라이버 그대로, 관리자 아님, 설치한 것 없음):**
+
+```text
+\\.\Usbscan0 열림
+  파이프 3개
+    [0] endpoint 0x81  bulk        maxPacket 512
+    [1] endpoint 0x02  bulk        maxPacket 512
+    [2] endpoint 0x83  interrupt   maxPacket 1
+  IOCTL_GET_DEVICE_DESCRIPTOR -> VID=07B3 PID=130C bcdDevice=0605
+```
+
+**이것이 macOS와 같은 위치다.** macOS가 아무것도 안 바꿔도 되는 이유는 커널이
+장치를 독점하지 않아서인데, Windows는 독점하되 **그 소유자가 통로를 낸다.**
+도달 방법이 다를 뿐 결과는 같다.
+
+#### 무엇이 증명됐고 무엇이 아직 아닌가
+
+```text
+증명됨   장치를 연다 / 파이프를 읽는다 / 장치 신원을 읽는다
+         전부 드라이버 교체·관리자 권한·추가 설치 **없이**
+
+미확인   벤더 컨트롤 전송이 실제 데이터를 옮기는가
+         (표준 요청으로 시험했더니 입력 구조체가 그대로 돌아왔다.
+          IOCTL_SEND_USB_REQUEST 는 문서상 **벤더 정의 요청 전용**이므로
+          표준 요청을 흘리지 않는 것이 정상일 수 있다)
+   미확인   벌크 파이프로 스캔 데이터가 실제로 흐르는가
+```
+
+**미확인 둘이 genesys 백엔드가 실제로 쓰는 것**이므로, 여기서 "된다"고
+단정하면 안 된다. 다만 **막혀 있다고 믿었던 벽이 없다**는 것은 확정이다.
+
+#### 이 경로가 의미하는 것
+
+```text
+필요 없는 것   WinUSB 바인딩 / Zadig / libwdi / UsbDk / 커널 드라이버 서명
+               관리자 권한 / 재부팅 / 벤더 소프트웨어 포기
+할 일          sanei_usb 에 usbscan.sys 백엔드를 하나 더 붙인다.
+               **전부 사용자 모드 코드다.**
+```
+
+`sanei_usb`는 이미 libusb-0.1 / libusb-1.0 두 백엔드를 `#ifdef`로 고르고
+있다. 세 번째를 붙이는 자리가 이미 있다는 뜻이다.
+
+이것이 성립하면 §4.4a의 UsbDk 논의와 §8의 Zadig 절차가 **둘 다 불필요해진다.**
+D-01/D-09가 다시 열린다.
+
+→ 다음 단계: [building-sane](building-sane.md)에 `sanei_usb` usbscan 백엔드
+  설계를 적고, 벤더 컨트롤 전송과 벌크 전송을 실기로 확인한다.
+
 ### 4.5 E-2를 닫지 못했다 — 시도한 방법과 실패 이유
 
 `SANE_CONFIG_DIR`에 드라이브 문자가 든 경로(`C:\...`)를 주고, dll.conf에
