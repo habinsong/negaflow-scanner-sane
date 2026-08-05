@@ -309,6 +309,25 @@ S-1의 부산물이지만 별도로 기록한다. 다음을 수집:
 걸리지 않으면 Windows 전용 문자열을 매핑 표에 추가한다
 ([scanimage-invocation](../02-frontend-contract/scanimage-invocation.md) §7).
 
+#### 결과 — **문구가 없다. 실패하지 않기 때문이다** (2026-08-06, 실기)
+
+`usbscan.sys` 는 배타 접근을 강제하지 않는다. `FILE_SHARE` 를 0 으로 줘도
+두 번째 열기가 성공한다 — 같은 프로세스에서도, 교차 프로세스에서도.
+
+```text
+지금 코드의 공유 플래그      두 번째 열기: 성공
+공유 없음 (FILE_SHARE = 0)   두 번째 열기: 성공
+다른 프로세스가 잡은 동안     두 번째 열기: 성공
+```
+
+그래서 SANE 은 "device busy" 를 낼 기회조차 없고, 매핑 표에 더할 문자열도
+없다. `libusb` 가 `LIBUSB_ERROR_BUSY` 를 주는 macOS 와 다르다.
+
+**대신 두 스캔이 같은 파이프에 전송을 섞어 넣는다.** 그렇게 망가진 스캐너는
+전원을 다시 넣기 전까지 돌아오지 않는다(cancellation §10 의 C-2). 아무도
+막아주지 않으므로 어댑터가 막는다 — `ProcessOwnership::beginScanSession` 이
+장치별 이름 붙은 뮤텍스를 쥐고, 이미 쥐고 있으면 `busy` 로 거절한다.
+
 ## 9. 열린 질문
 
 - WinUSB 바인딩 후 VueScan/SilverFast가 동작하는가 (U-1)
