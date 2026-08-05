@@ -261,6 +261,32 @@ upstream에 제출할 것인가?
 
 **닫는 방법**: M6에서 패치 세트가 확정된 뒤 판단한다.
 
+### 패치 세트가 확정됐다 (2026-08-06)
+
+전문: [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md).
+성격이 셋으로 갈린다.
+
+| 패치 | 성격 | 제출 가치 |
+| --- | --- | --- |
+| 001 | MSYS2 것을 그대로 씀 | 이미 upstream 밖에서 유지된다 |
+| 002 binary stdout | Windows 이식 결함 | **높다.** 3줄, `_setmode` 하나 |
+| 003 test 백엔드 빌드 | Windows 이식 결함 | 보통. `_pipe`/`fcntl` 가드 |
+| 004 UsbDk opt-in | 우리 사정 | 낮다. UsbDk 는 upstream 이 권하지 않는다 |
+| 005 usbscan 백엔드 | **새 기능** | **가장 높다.** Windows 에서 드라이버 교체 없이 스캐너를 쓰게 한다 |
+| 006 디버그 출력 segfault | Windows 이식 결함 | **높다.** `localtime(&tv.tv_sec)` 한 줄 |
+| 007 취소 | Windows 이식 결함 | **높다.** `SIGBREAK` + 스레드 안전성 |
+
+002·006·007 은 "Windows 에서 명백히 깨진 것"이라 리뷰가 짧을 것이다. 006 은
+`SANE_DEBUG_*` 를 켜면 어떤 백엔드든 죽는 것이고, 007 은 취소가 스캐너를
+망가뜨리는 것이다 — 둘 다 재현 절차가 한 줄이다.
+
+005 는 규모가 다르다. `sanei_usb` 에 세 번째 백엔드를 더하는 일이고, 유지
+약속이 따라온다. 다만 **Windows 에서 SANE 을 쓰는 모든 사람에게 의미가 있다** —
+지금은 Zadig 로 드라이버를 바꿔야 하고, 바꾸면 제조사 소프트웨어를 잃는다.
+
+**아직 판단하지 않았다.** 리뷰 대응과 후속 유지를 감당할 수 있는지가 여전히
+질문이고, 그것은 기술 판단이 아니다.
+
 **관련**: [building-sane](../01-sane-runtime/building-sane.md) §11,
 [gpl-compliance](../07-distribution/gpl-compliance.md) §5
 
@@ -384,6 +410,28 @@ Windows는 **x64와 ARM64가 별도 산출물**이고, 세 층(어댑터·SANE·
 
 **닫는 방법**: M6 재빌드에서 시험. `sanei/sanei_config.c` 확인.
 
+### E-2 의 함정은 없었다. 다른 함정이 있다 (2026-08-06, 실기)
+
+`SANE_CONFIG_DIR` 는 잘리지 않는다. `C:\sane-build\cfg2` 처럼 드라이브 문자가
+든 경로를 그대로 읽는다. 같은 디렉터리에서 `dll.conf` 한 줄만 바꿔 장치가
+나타나고 사라지는 것으로 확인했다.
+
+**대신 두 가지를 지켜야 한다.**
+
+```text
+.conf 를 $SANE_CONFIG_DIR 에 **직접** 둔다     — sane.d 하위에 두면 안 읽는다
+없는 디렉터리를 가리키면 내장 경로로 되돌아가지 않는다 — 조용히 장치 0개가 된다
+```
+
+그리고 백엔드 DLL 쪽에 별도의 함정이 있다(E-1). `dll.c` 는 Windows 에서
+접두사 `cygsane-` 와 접미사 `-%u.dll` 로 찾고, `HAVE_DLOPEN` 이 없으면 DLL 을
+열 방법 자체를 갖지 못한다. 둘 다 만족시켜야 백엔드가 로드된다.
+
+**그래서 답은 "환경 변수로 충분하다"이다.** `--libdir` 을 상대 경로로 만드는
+작업은 하지 않는다. 빌드 시점 절대 경로가 배포물에 남는 문제는
+`SANE_CONFIG_DIR` 로 덮어써서 피하고, 백엔드는 `cygsane-` 이름으로 실행 파일
+옆에 둔다. 실기에서 그 구성으로 스캔까지 확인했다.
+
 **관련**: [environment-and-paths](../03-process-and-io/environment-and-paths.md) §9,
 [building-sane](../01-sane-runtime/building-sane.md) §11
 
@@ -404,6 +452,26 @@ I-17("Mock이나 fallback 장치가 없다")과 정면으로 충돌한다.
 대체 가능한 부분이 많으므로 **차단 항목은 아니다.**
 
 **닫는 방법**: M6 빌드 구성 시 결정.
+
+### 가상 `scanimage` 로 충분하다 (2026-08-06)
+
+`test` 백엔드를 릴리스에 넣을 이유가 없어졌다. 하드웨어 없이 확인해야 할 것을
+전부 `windows/tests/virtual_scanimage.cpp` 가 해냈다.
+
+```text
+plugin_smoke   detect → capabilities → scan, 진행률, IR, 교착, stdout 분리
+epson_smoke    Epson 인자 계약 17검사 — 소스별 지오메트리, TPU8x10,
+               --film-type / --color-correction / --gamma-correction 순서,
+               -A 캐싱, 획득 선택자
+```
+
+가상 프로그램은 우리가 만든 것이라 시나리오를 원하는 대로 만들 수 있고
+(`stall`, `fail`, `stale-once`, `bigout`, `epson`), 무엇보다 **`detect` 에 가짜
+장치가 나타나지 않는다** — I-17 과 충돌하지 않는다.
+
+`test` 백엔드는 개발 빌드에서만 쓴다. `003-test-backend-on-mingw.patch` 는
+그 백엔드가 mingw 에서 **빌드되게** 하는 것이고, 배포 여부와는 별개다.
+배포 패키지의 `dll.conf` 에서 빼면 된다.
 
 **관련**: [building-sane](../01-sane-runtime/building-sane.md) §11,
 [test-plan](test-plan.md) §4
