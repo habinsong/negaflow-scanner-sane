@@ -24,10 +24,20 @@ the complete reported device identifier and builds arguments only from options
 reported by that device. Device behavior is not inferred by copying a SANE
 backend implementation.
 
-The source tree contains no C, C++, Objective-C, third-party package dependency,
-vendored SANE tree, or prebuilt SANE binary. Release verification rejects
-those additions. The small patch embedded in the Homebrew formula is
-GPL-2.0-or-later and is distributed with the plug-in's complete source.
+The `windows/` directory holds the Windows adapter, written for this project in
+C++ by the same author and distributed under the same GPL-2.0-or-later terms.
+It is a port of the Swift adapter's own logic, checked against the Swift
+implementation by the parity harness in `windows/tools/`. Like the Swift
+package it compiles and links no SANE headers or libraries; it launches
+`scanimage` and parses its documented command output. Its only third-party
+build dependencies are libtiff and RapidJSON, resolved from vcpkg at build
+time and not vendored into this tree.
+
+Outside `windows/`, the source tree contains no C, C++, or Objective-C. Nowhere
+in the tree is there a vendored native dependency, a vendored SANE tree, or a
+prebuilt SANE binary. Release verification rejects those additions. The small
+patch embedded in the Homebrew formula is GPL-2.0-or-later and is distributed
+with the plug-in's complete source.
 
 ## SANE and negaflow boundary
 

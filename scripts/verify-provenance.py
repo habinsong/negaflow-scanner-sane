@@ -9,6 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The Windows adapter is first-party C++ written for this project. Native source
+# is rejected everywhere else so that a vendored SANE tree still fails the check.
+FIRST_PARTY_NATIVE_ROOT = "windows"
+
 
 def fail(message: str) -> None:
     print(f"[provenance] ERROR: {message}", file=sys.stderr)
@@ -41,7 +45,8 @@ def verify_tree(files: list[Path]) -> tuple[int, int]:
     for path in files:
         relative = path.relative_to(ROOT)
         if path.suffix.lower() in native_suffixes:
-            fail(f"vendored native source is not allowed: {relative}")
+            if relative.parts[0] != FIRST_PARTY_NATIVE_ROOT:
+                fail(f"vendored native source is not allowed: {relative}")
         if any(part.lower() in vendor_names for part in relative.parts):
             fail(f"vendored directory is not allowed: {relative}")
         if path.suffix.lower() in archive_suffixes:
@@ -75,11 +80,41 @@ def verify_source_authorship_markers(files: list[Path]) -> None:
         "rawtherapee",
         "negadoctor",
     )
+    # The adapter's own module directory is `windows/src/sane/`, so a quoted
+    # `sane/` include there is first-party and says nothing about SANE linkage.
+    # Calls into the SANE C API do, so they are named directly instead.
+    windows_forbidden = (
+        "sanei_",
+        "#include <sane/",
+        "sane_init(",
+        "sane_open(",
+        "sane_start(",
+        "sane_control_option(",
+        "sane_handle",
+        "dlopen(",
+        "dlsym(",
+        "darktable",
+        "rawtherapee",
+        "negadoctor",
+    )
+    own_license = "spdx-license-identifier: gpl-2.0-or-later"
     for path in files:
         relative = path.relative_to(ROOT)
-        if relative.parts[0] not in {"Sources", "Tests"}:
+        root = relative.parts[0]
+        if root not in {"Sources", "Tests", FIRST_PARTY_NATIVE_ROOT}:
             continue
         text = path.read_text(encoding="utf-8").lower()
+        if root == FIRST_PARTY_NATIVE_ROOT:
+            for marker in windows_forbidden:
+                if marker in text:
+                    fail(f"foreign implementation marker {marker!r} found in {relative}")
+            # The adapter carries the project's own GPL tag. Any other license
+            # tag, or a copyright line, means source arrived from elsewhere.
+            if text.replace(own_license, "").find("spdx-license-identifier") != -1:
+                fail(f"unexpected third-party license tag in {relative}")
+            if "copyright (c)" in text:
+                fail(f"unexpected third-party source header in {relative}")
+            continue
         for marker in forbidden:
             if marker in text:
                 fail(f"foreign implementation marker {marker!r} found in {relative}")

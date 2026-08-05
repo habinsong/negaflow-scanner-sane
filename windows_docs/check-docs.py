@@ -37,7 +37,21 @@ def md_files():
     for dirpath, _, names in os.walk(ROOT):
         for n in sorted(names):
             if n.endswith(".md"):
-                yield os.path.relpath(os.path.join(dirpath, n), ROOT)
+                # 문서 안의 링크는 언제나 `/` 를 쓴다. Windows 의 `\` 를 그대로
+                # 흘리면 이 스크립트의 모든 경로 비교가 어긋나고, 결과는
+                # "파일이 없다"라는 엉뚱한 실패가 된다.
+                relative = os.path.relpath(os.path.join(dirpath, n), ROOT)
+                yield relative.replace(os.sep, "/")
+
+
+def normalized(base, link):
+    """문서 링크를 저장소 상대 경로로. **구분자는 언제나 슬래시다.**
+
+    os.path.normpath 는 Windows 에서 역슬래시를 내므로 md_files() 의 키와
+    어긋난다. 그러면 링크가 전부 "없는 파일"로 보이고, 실제 원인과 아무
+    관계 없는 실패가 44건 쏟아진다.
+    """
+    return os.path.normpath(os.path.join(base, link)).replace(os.sep, "/")
 
 
 def read(rel):
@@ -64,12 +78,12 @@ def main():
     for f, t in text.items():
         base = os.path.dirname(f)
         for m in re.finditer(r"\]\(([^)#]+\.md)(#[^)]*)?\)", t):
-            target = os.path.normpath(os.path.join(base, m.group(1)))
+            target = normalized(base, m.group(1))
             linked.add(target)
             if target not in text:
                 problems.append(f"{f}: 링크가 없는 파일을 가리킨다 -> {m.group(1)}")
         for m in re.finditer(r"\]\(([^)#]+\.md)\)[^\n]{0,14}?§\s*(\d+(?:\.\d+)*)", t):
-            target = os.path.normpath(os.path.join(base, m.group(1)))
+            target = normalized(base, m.group(1))
             if target in sections and not has_section(sections[target], m.group(2)):
                 problems.append(
                     f"{f}: {m.group(1)} 에 §{m.group(2)} 가 없다"
