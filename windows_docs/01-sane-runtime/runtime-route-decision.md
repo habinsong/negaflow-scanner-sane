@@ -598,6 +598,35 @@ honor하면 genesys가 목록에 없으니 다른 오류가 나야 한다는 설
 **기록할 것**: 각 단계 소요 시간, stderr 전문, `scanimage --version`,
 덤프 전문(픽스처로 보존), 장치명 형식(`genesys:libusb:001:002`인지 다른지).
 
+#### 결과 — **통과** (2026-08-06, OpticFilm 8100 실기)
+
+2단계는 필요 없었다. **Zadig 도 WinUSB 도 쓰지 않는다** — §4.4b 참조.
+
+```text
+장치 목록   genesys:usbscan:000|PLUSTEK|OpticFilm 8100|flatbed scanner
+옵션 덤프   63줄. mode/source/resolution/depth/geometry/gamma/lamp-off
+```
+
+컬러 해상도 전 범위를 실기로 돌렸다. `-x`/`-y` 는 고해상도에서 시간을
+아끼려고 줄인 것이지 스캐너 한계가 아니다.
+
+```text
+ 600 dpi 36.33×25   24초  3,030,277 bytes  856×590
+1200 dpi    20×15   16초  4,010,149 bytes  944×708
+2400 dpi      8×6   21초  2,553,829 bytes  752×566
+3600 dpi      4×3   22초  1,428,037 bytes  560×425
+7200 dpi    2×1.5   28초  1,428,037 bytes  560×425
+ 600 dpi 36.33×25   17초  3,030,277 bytes  856×590   ← 전 범위 뒤 재현
+```
+
+3600/4mm 와 7200/2mm 가 같은 560×425 인 것은 산술이 맞아떨어지는 것이다.
+다섯 장 모두 값 종류가 249~256 으로 실제 광학 데이터였고, 7200 dpi 에서는
+필름 그레인이 분해된다. 마지막 600 dpi 재현이 성공했으므로 해상도를 오가도
+장치 상태가 오염되지 않는다.
+
+**Gray 는 제외했다.** upstream genesys 결함으로 무한 정지한다 —
+[sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md) 참조.
+
 ### S-2 — binary stdout 정확성
 
 **가장 먼저 실행한다.** 실패하면 A 경로 전체가 무너진다.

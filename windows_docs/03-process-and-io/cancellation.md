@@ -91,11 +91,35 @@ CRT는 `CTRL_BREAK_EVENT`를 `SIGBREAK`로, `CTRL_C_EVENT`를 `SIGINT`로 매핑
 - `CTRL_C_EVENT`는 프로세스 그룹 ID 0(자기 그룹 전체)에만 보낼 수 있다는
   제약이 있다. 특정 프로세스에만 보내려면 `CTRL_BREAK_EVENT`와
   `CREATE_NEW_PROCESS_GROUP`을 써야 한다.
-- **콘솔이 필요하다.** GUI 서브시스템 프로세스나 콘솔이 없는 서비스
-  컨텍스트에서는 동작하지 않는다. 플러그인이 negaflow(GUI)의 자식이므로
-  콘솔이 없을 가능성이 높다.
-- 콘솔을 붙이면(`AllocConsole`) 사용자에게 콘솔 창이 보일 수 있다.
-  `CREATE_NO_WINDOW`와의 상호작용을 확인해야 한다.
+- **콘솔이 필요하다.** MS 문서: "Only those processes in the group that
+  **share the same console as the calling process** receive the signal."
+  플러그인이 negaflow(GUI)의 자식이면 콘솔이 없다.
+
+#### 해결됨 (2026-08-06, 실측)
+
+콘솔이 없으면 어댑터가 직접 하나를 만들고 창을 숨긴다
+(`process::ensureConsoleForCancellation`). 이 경로 없이는 취소가
+`TerminateProcess` 로만 끝나고, **전송 도중에 죽은 OpticFilm 8100 은 전원을
+다시 넣기 전까지 돌아오지 않는다** — 강제 종료 직후 다음 읽기가
+`sane_read: Error during device I/O`, 그 뒤 열기가 `Invalid argument` 였다.
+워치독이 바로 그 동작을 하므로 제품 경로다.
+
+`AllocConsole` 은 표준 핸들 셋을 새 콘솔로 **덮어쓴다**(MS 문서). 그대로
+두면 stdout 이 wire 프로토콜에서 콘솔로 옮겨간다. 그래서 부르기 전에 세 개를
+저장했다가 `SetStdHandle` 로 되돌린다. 제어 핸들러 표도 초기화되므로
+`installConsoleCancellation` 을 그 뒤에 부른다.
+
+실측 결과:
+
+```text
+콘솔 없이 CTRL_BREAK      실패        MS 문서대로
+AllocConsole + 창 숨김    성공
+stdout 이 아직 파이프인가  예          핸들 복원이 동작한다
+숨긴 콘솔로 CTRL_BREAK    성공        자식이 Control-Break 를 받아 출력했다
+```
+
+`plugin_smoke` 가 어댑터를 stdio 로 끝까지 구동하므로 wire 프로토콜이
+멀쩡하다는 증거도 함께 있다.
 - **`scanimage`가 `SIGINT`/`SIGBREAK` 핸들러를 실제로 설치하는지 미확인.**
   Unix용 코드는 `SIGINT`/`SIGTERM`/`SIGHUP` 핸들러를 설치하지만
   MinGW 빌드에서 그 코드가 컴파일되는지, `SIGBREAK`가 매핑되는지 확인이 필요하다.
