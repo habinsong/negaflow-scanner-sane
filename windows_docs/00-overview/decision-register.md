@@ -42,7 +42,7 @@
 | D-06 | 자체 재빌드한 SANE 런타임을 포함한다 | 확정 | [building-sane](../01-sane-runtime/building-sane.md) §10 |
 | D-07 | 빌드는 CI에서, tarball SHA-256과 툴체인 고정 | 확정 | [building-sane](../01-sane-runtime/building-sane.md) §10 |
 | D-08 | `NEGAFLOW_SCANIMAGE_PATH` 재정의를 유지한다 | 확정 | [building-sane](../01-sane-runtime/building-sane.md) §10 |
-| D-09 | 드라이버 바인딩 도구 — Zadig 안내로 시작, libwdi로 전환 | 조건부 (U-1, DC-2) | 이 문서 §2 |
+| D-09 | 드라이버 바인딩 도구 — Zadig 안내로 시작, libwdi로 전환 | **폐기** (드라이버를 바꾸지 않는다) | 이 문서 §2 |
 | D-10 | Windows TIFF 검사는 macOS보다 엄격하다 | 확정 | [tiff-validation](../04-imaging/tiff-validation.md) §3.4 |
 | D-11 | 1차 구현은 스칼라. SIMD는 동등성 증명 이후 | 확정 | [exposure-merge](../04-imaging/exposure-merge.md) §7 |
 | D-12 | `requestID`는 파싱 후 재직렬화하지 않고 원문 반사 | 확정 | [wire-contract](../05-protocol/wire-contract.md) §5.4 |
@@ -68,6 +68,26 @@
 | D-32 | 명령별 총 예산을 호스트 ceiling에서 역산 | 조건부 (T-1~T-3) | [host-requirements](../05-protocol/host-requirements.md) §2.5 |
 
 ## 2. D-09 — 드라이버 바인딩 도구 (이 문서가 소유)
+
+> **폐기됨 (2026-08-06, 실기 검증).** 드라이버를 바꾸지 않는다. 이 절의 나머지는
+> 왜 그 길을 걸었는지 남겨두는 기록이다.
+>
+> 스캐너 제조사 패키지가 붙이는 마이크로소프트 still-image 클래스
+> 드라이버(`usbscan.sys`)가 사용자 모드에 raw USB 를 열어준다. `sanei_usb` 에
+> 백엔드를 하나 더 붙여 그것을 쓰면 **드라이버 교체·관리자 권한·재부팅이
+> 전부 필요 없고**, SilverFast 와 VueScan 도 계속 동작한다. OpticFilm 8100
+> 실기로 확인했다 — 장치 열거, 옵션 덤프, 캘리브레이션, 600~7200 dpi 스캔.
+>
+> 그래서 이 결정이 다루던 위험(사용자가 Zadig 에서 잘못된 장치를 고르는 사고,
+> libwdi 의 서명·권한·롤백)이 통째로 사라졌다. D-29(드라이버 정보 기록)의
+> 실질 비용도 함께 사라졌다 — 바인딩하는 시점이 없다.
+>
+> **덤으로 확인된 것**: WinUSB 로 바꿨어도 이 길이 더 나았을 것이다. libusb 의
+> Windows 백엔드는 `WinUsb_ResetPipe` 뿐이라 장치 리셋이 없고, genesys 가
+> `sane_close` 에서 기대는 USB 리셋을 제공하지 못한다.
+>
+> 근거와 실측: [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md)
+> §4.4b, [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md)
 
 다른 결정과 달리 D-09는 소유 문서가 없어 여기서 정의한다.
 [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §8이
