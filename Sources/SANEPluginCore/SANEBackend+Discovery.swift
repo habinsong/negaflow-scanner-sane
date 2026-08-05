@@ -38,13 +38,7 @@ extension SANEBackend {
             || value.contains(":ieee-1394:") {
             return .fireWire
         }
-        // `:usbscan:` 은 Windows 에서 still-image 클래스 드라이버를 통해 열린
-        // USB 장치다 — `genesys:usbscan:000`. 주소가 아니라 커널 장치 번호라
-        // 열고 닫아도, 전원을 다시 넣어도 바뀌지 않으므로 volatile 이 아니다.
-        if value.contains(":usb:") || value.contains(":libusb:")
-            || value.contains(":usbscan:") {
-            return .usb
-        }
+        if value.contains(":usb:") || value.contains(":libusb:") { return .usb }
         return .internalBus
     }
 
