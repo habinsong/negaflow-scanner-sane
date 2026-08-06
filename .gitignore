@@ -27,3 +27,6 @@ CODEX.md
 *.tar
 *.tar.gz
 *.tmp
+
+# Windows 배포물은 빌드 산출물이다 (15 MB). make-payload.sh 가 만든다.
+Installer/windows/payload/
