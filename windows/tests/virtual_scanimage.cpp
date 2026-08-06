@@ -228,7 +228,10 @@ constexpr const char* kDeviceName = "genesys:libusb:001:002";
 //
 // 심도는 전 모델이 **16 하나뿐이다**(`bpp_color_values = { 16 }`). 실기 8100
 // 도 `--depth 16 [16]` 을 낸다. 8-bit 요청은 거절해야 한다.
-constexpr const char* kOpticFilmDeviceName = "genesys:usbscan:000";
+/// 장치 번호를 크게 잡는다. `usbscan:NNN` 은 커널 장치 번호이고 실제 스캐너는
+/// 0 부터 받는다. 픽스처가 `000` 을 쓰면 **진짜 스캐너와 같은 장치 잠금**을
+/// 잡는다 — 실기 스캔 중에 시험을 돌리면 `busy` 로 죽는다(실측).
+constexpr const char* kOpticFilmDeviceName = "genesys:usbscan:009";
 
 struct OpticFilmModel {
     const char* scenario;
@@ -323,7 +326,9 @@ constexpr OpticFilmModel kOpticFilmModels[] = {
 //    모두 흉내낸다 — 어댑터는 8x10 이 있으면 그쪽(더 큰 영역)을 골라야 한다.
 // ② 밝기 범위가 -4..3 이다. genesys 의 -100..100 로 만든 요청을 그대로
 //    보내면 실기에서 거절당한다. 어댑터가 기기 범위로 검사해야 한다.
-constexpr const char* kEpsonDeviceName = "epson2:usbscan:001";
+/// 번호를 크게 잡는 이유는 `kOpticFilmDeviceName` 과 같다 — 진짜 스캐너의
+/// 장치 잠금을 뺏지 않기 위해서다.
+constexpr const char* kEpsonDeviceName = "epson2:usbscan:091";
 
 /// 이 기기가 TPU8x10 까지 내는가.
 [[nodiscard]] bool epsonHasEightByTen(const std::string& scenario) {

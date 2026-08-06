@@ -48,7 +48,7 @@ if(NOT detect_code EQUAL 0)
     message(FATAL_ERROR "detect 가 ${detect_code} 로 끝났다.\nstderr: ${detect_err}")
 endif()
 
-string(FIND "${detect_out}" "\"id\":\"sane-epson2:usbscan:001\"" found_id)
+string(FIND "${detect_out}" "\"id\":\"sane-epson2:usbscan:091\"" found_id)
 expect("Windows 장치 이름 epson2:usbscan:NNN 을 그대로 낸다" found_id GREATER -1)
 
 # still-image 클래스 드라이버로 열린 장치도 USB 다. `:libusb:` 만 보면
@@ -73,7 +73,7 @@ expect("기기가 말하는 이름을 그대로 낸다 (판매명이 아니다)"
 # --- ② capabilities ---------------------------------------------------------
 
 execute_process(
-    COMMAND "${PLUGIN}" capabilities "sane-epson2:usbscan:001"
+    COMMAND "${PLUGIN}" capabilities "sane-epson2:usbscan:091"
     OUTPUT_VARIABLE caps_out
     ERROR_VARIABLE caps_err
     RESULT_VARIABLE caps_code)
@@ -122,7 +122,7 @@ string(REPLACE "\\" "\\\\" output_path_json "${output_path}")
 
 set(request "{\"protocolVersion\":2,\
 \"requestID\":\"6f9619ff-8b86-d011-b42d-00cf4fc964ff\",\
-\"deviceID\":\"sane-epson2:usbscan:001\",\
+\"deviceID\":\"sane-epson2:usbscan:091\",\
 \"resolutionDPI\":2400,\
 \"bitDepth\":16,\
 \"colorMode\":\"color\",\
@@ -163,7 +163,7 @@ if(NOT EXISTS "${WORKDIR}/args.log")
 endif()
 file(READ "${WORKDIR}/args.log" args)
 
-string(FIND "${args}" "-A -d epson2:usbscan:001 --source TPU8x10 --mode Color" found_a_source)
+string(FIND "${args}" "-A -d epson2:usbscan:091 --source TPU8x10 --mode Color" found_a_source)
 expect("옵션 조회를 소스와 모드를 적용해 다시 한다" found_a_source GREATER -1)
 
 string(FIND "${args}" "--film-type Negative Film" found_film)
@@ -185,7 +185,7 @@ expect("요청한 비트 깊이를 그대로 보낸다" found_depth GREATER -1)
 # `-d epson2` 선택자를 쓴다. Windows 의 `usbscan:NNN` 은 커널 장치 번호라
 # 열고 닫아도, 전원을 다시 넣어도 바뀌지 않는 것을 실측했다 — 그래서 전체
 # 이름을 그대로 쓴다. 더 정확하고, 같은 백엔드 장치가 둘일 때도 안 헷갈린다.
-string(FIND "${args}" "-d epson2:usbscan:001 -p" found_selector)
+string(FIND "${args}" "-d epson2:usbscan:091 -p" found_selector)
 expect("획득에 전체 장치 이름을 쓴다 (주소가 안 바뀌므로)" found_selector GREATER -1)
 
 # 옵션 조회는 두 번이면 충분하다 — 기본 덤프와 소스를 적용한 덤프. 스캔마다
@@ -224,7 +224,7 @@ file(TO_NATIVE_PATH "${WORKDIR}/preview.tiff" preview_path)
 string(REPLACE "\\" "\\\\" preview_path_json "${preview_path}")
 set(preview_request "{\"protocolVersion\":2,\
 \"requestID\":\"6f9619ff-8b86-d011-b42d-00cf4fc964ff\",\
-\"deviceID\":\"sane-epson2:usbscan:001\",\
+\"deviceID\":\"sane-epson2:usbscan:091\",\
 \"resolutionDPI\":0,\
 \"bitDepth\":16,\
 \"colorMode\":\"color\",\
@@ -375,7 +375,7 @@ set(ENV{NEGAFLOW_VSCAN_SCENARIO} "epson-tpu")
 set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_TPU}")
 
 execute_process(
-    COMMAND "${PLUGIN}" capabilities "sane-epson2:usbscan:001"
+    COMMAND "${PLUGIN}" capabilities "sane-epson2:usbscan:091"
     OUTPUT_VARIABLE tpu_caps_out
     ERROR_VARIABLE tpu_caps_err
     RESULT_VARIABLE tpu_caps_code)
@@ -412,5 +412,64 @@ string(FIND "${tpu_args}" "--source Transparency Unit" found_tpu_source)
 expect("8x10 이 없으면 Transparency Unit 을 쓴다" found_tpu_source GREATER -1)
 string(FIND "${tpu_args}" "TPU8x10" found_tpu_8x10)
 expect("없는 소스를 만들어 보내지 않는다" found_tpu_8x10 EQUAL -1)
+
+# --- ⑧ 해상도 전 범위 ---------------------------------------------------------
+#
+# 이 계열은 목록이 50 dpi 부터 6400 까지 열다섯 단계다. 하나만 돌려보고 되는
+# 줄 알면 안 된다 — 낮은 쪽은 프리뷰가 쓰고, 높은 쪽은 필름 스캔이 쓴다.
+#
+# 목록에 없는 값(9600, 12800 같은 보간 해상도)은 거절해야 한다. 스냅하지
+# 않는다(I-1).
+
+if(NOT caps_out MATCHES "\"resolutionsDPI\":\\[([^]]*)\\]")
+    message(FATAL_ERROR "해상도 목록을 못 읽었다.")
+endif()
+string(REPLACE "," ";" epson_resolutions "${CMAKE_MATCH_1}")
+list(LENGTH epson_resolutions epson_res_count)
+expect("해상도를 열다섯 단계 모두 낸다" epson_res_count EQUAL 15)
+
+file(TO_NATIVE_PATH "${WORKDIR}/args-dpi.log" ARGLOG_DPI)
+
+foreach(dpi IN LISTS epson_resolutions)
+    file(REMOVE "${ARGLOG_DPI}")
+    set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_DPI}")
+
+    string(REPLACE "\"resolutionDPI\":2400" "\"resolutionDPI\":${dpi}" dpi_request "${request}")
+    string(REPLACE "out.tiff" "dpi-${dpi}.tiff" dpi_request "${dpi_request}")
+    file(WRITE "${WORKDIR}/dpi-${dpi}.json" "${dpi_request}")
+
+    execute_process(
+        COMMAND "${PLUGIN}" scan
+        INPUT_FILE "${WORKDIR}/dpi-${dpi}.json"
+        OUTPUT_VARIABLE dpi_out
+        ERROR_VARIABLE dpi_err
+        RESULT_VARIABLE dpi_code)
+
+    if(NOT dpi_code EQUAL 0)
+        message(SEND_ERROR "FAIL  ${dpi} dpi 스캔이 ${dpi_code} 로 끝났다.\n${dpi_out}")
+    else()
+        file(READ "${ARGLOG_DPI}" dpi_args)
+        string(FIND "${dpi_args}" "--resolution ${dpi} " found_dpi_arg)
+        if(found_dpi_arg GREATER -1)
+            message(STATUS "PASS  ${dpi} dpi 를 그대로 보낸다")
+        else()
+            message(SEND_ERROR "FAIL  ${dpi} dpi 가 인자에 그대로 안 나갔다.\n${dpi_args}")
+        endif()
+    endif()
+endforeach()
+
+# 보간 해상도. epson2 의 word list 에 없으므로 거절해야 한다.
+foreach(dpi 9600 12800 5000)
+    string(REPLACE "\"resolutionDPI\":2400" "\"resolutionDPI\":${dpi}" bad_request "${request}")
+    file(WRITE "${WORKDIR}/dpi-bad-${dpi}.json" "${bad_request}")
+    execute_process(
+        COMMAND "${PLUGIN}" scan
+        INPUT_FILE "${WORKDIR}/dpi-bad-${dpi}.json"
+        OUTPUT_VARIABLE bad_dpi_out
+        RESULT_VARIABLE bad_dpi_code)
+    expect("목록에 없는 ${dpi} dpi 는 거절한다" bad_dpi_code EQUAL 1)
+endforeach()
+
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG}")
 
 message(STATUS "epson-smoke 통과")

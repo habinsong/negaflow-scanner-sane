@@ -56,7 +56,7 @@ function(run_scan tag token dpi infrared out_code out_stdout)
     endif()
     set(request "{\"protocolVersion\":2,\
 \"requestID\":\"6f9619ff-8b86-d011-b42d-00cf4fc964ff\",\
-\"deviceID\":\"sane-genesys:usbscan:000\",\
+\"deviceID\":\"sane-genesys:usbscan:009\",\
 \"resolutionDPI\":${dpi},\
 \"bitDepth\":16,\
 \"colorMode\":\"color\",\
@@ -118,7 +118,7 @@ foreach(row IN LISTS models)
 
     # ② capabilities
     execute_process(
-        COMMAND "${PLUGIN}" capabilities "sane-genesys:usbscan:000"
+        COMMAND "${PLUGIN}" capabilities "sane-genesys:usbscan:009"
         OUTPUT_VARIABLE caps_out
         ERROR_VARIABLE caps_err
         RESULT_VARIABLE caps_code)
@@ -198,6 +198,32 @@ foreach(row IN LISTS models)
     expect("${model}: 요청한 ${dpi_ok} dpi 를 그대로 보낸다" found_main_res GREATER -1)
     string(FIND "${main_args}" "--preview=yes" found_main_pv)
     expect("${model}: 본스캔에 --preview 를 보내지 않는다" found_main_pv EQUAL -1)
+
+    # ④a 본스캔 — 이 기기가 내는 **모든** 해상도
+    #
+    # 하나만 되는 것을 보고 다 된다고 하지 않는다. 낮은 쪽은 프리뷰가 쓰고
+    # 높은 쪽(7200)은 실제 필름 스캔이 쓴다.
+    file(TO_NATIVE_PATH "${WORKDIR}/${scenario}-sweep.log" ARGLOG_SWEEP)
+    foreach(each_dpi IN LISTS res_list)
+        if(each_dpi STREQUAL "")
+            continue()
+        endif()
+        file(REMOVE "${ARGLOG_SWEEP}")
+        set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_SWEEP}")
+        run_scan("${scenario}-dpi-${each_dpi}" "${token}" "${each_dpi}" "false"
+                 sweep_code sweep_out)
+        if(NOT sweep_code EQUAL 0)
+            message(SEND_ERROR "FAIL  ${model}: ${each_dpi} dpi 가 ${sweep_code} 로 끝났다.")
+        else()
+            file(READ "${ARGLOG_SWEEP}" sweep_args)
+            string(FIND "${sweep_args}" "--resolution ${each_dpi} " found_sweep)
+            if(found_sweep GREATER -1)
+                message(STATUS "PASS  ${model}: ${each_dpi} dpi 를 그대로 보낸다")
+            else()
+                message(SEND_ERROR "FAIL  ${model}: ${each_dpi} dpi 가 인자에 안 나갔다.")
+            endif()
+        endif()
+    endforeach()
 
     # ⑤ 본스캔 — 이 기기에 **없는** 해상도
     #
