@@ -271,6 +271,32 @@ s->params.pixels_per_line = s->params.pixels_per_line & ~7;
 
 `--depth` 옵션 자체가 없으면 8-bit 고정으로 판정한다(구형 기기).
 
+### 2.5b 적외선은 소스가 아니라 **모드**다
+
+genesys 와 갈리는 지점이다.
+
+```text
+genesys   별도 소스   --source Transparency Adapter Infrared   (SeparateSource)
+epson2    모드        --mode Infrared                          (SeparateMode)
+```
+
+epson2 의 `mode_list` 에 `Infrared` 가 들어 있고(`SANE_FRAME_IR` 이 정의돼
+있으므로 항상), 별도 IR 소스는 없다. 그래서 IR 패스는 **소스를 그대로 두고
+모드만 바꾼다.** 소스를 바꾸려 들면 그런 소스가 없어 실패한다.
+
+IR 패스에는 `--film-type` / `--color-correction` / `--gamma-correction` 을
+보내지 않는다. 색 처리 옵션이라 적외선 채널에 의미가 없다.
+
+실측한 인자(`epson-smoke` ⑤a):
+
+```text
+-d epson2:usbscan:001 -p --source TPU8x10 --mode Color --color-correction None
+   --gamma-correction User defined --film-type Negative Film --brightness=0
+   --resolution 2400 --depth 16 -l 10 -t 20 -x 36 -y 24 --format=tiff
+-d epson2:usbscan:001 -p --source TPU8x10 --mode Infrared
+   --resolution 2400 --depth 16 -l 10 -t 20 -x 36 -y 24 --format=tiff
+```
+
 ### 2.6 소스
 
 `Flatbed` / `Transparency Unit` / `TPU8x10`. 8x10을 우선한다.

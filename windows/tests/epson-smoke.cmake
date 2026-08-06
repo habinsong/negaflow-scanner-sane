@@ -295,6 +295,43 @@ expect("소수 mm 아래를 정수로 키워 보낸다 (23.5 -> 24)" found_align
 string(FIND "${align_out}" "\"heightMM\":24" found_applied_height)
 expect("실제로 적용한 높이를 appliedOptions 로 알린다" found_applied_height GREATER -1)
 
+# --- ⑤a 적외선 ---------------------------------------------------------------
+#
+# 이 계열의 적외선은 genesys 와 방식이 다르다. genesys 는 **별도 소스**
+# (`Transparency Adapter Infrared`)를 내지만 epson2 는 **모드**로 낸다
+# (`--mode Infrared`, epson2.c 의 `mode_list`). 그래서 IR 패스가 소스가 아니라
+# 모드를 바꿔야 한다 — `IRStrategy::SeparateMode`.
+
+file(TO_NATIVE_PATH "${WORKDIR}/args-ir.log" ARGLOG_IR)
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_IR}")
+
+string(REPLACE "\"infrared\":false" "\"infrared\":true" ir_request "${request}")
+string(REPLACE "out.tiff" "ir-out.tiff" ir_request "${ir_request}")
+file(WRITE "${WORKDIR}/ir.json" "${ir_request}")
+
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/ir.json"
+    OUTPUT_VARIABLE ir_out
+    ERROR_VARIABLE ir_err
+    RESULT_VARIABLE ir_code)
+
+expect("적외선 스캔이 성공한다" ir_code EQUAL 0)
+string(FIND "${ir_out}" "\"hasInfrared\":true" found_ir_flag)
+expect("IR 채널을 보고한다" found_ir_flag GREATER -1)
+
+file(READ "${ARGLOG_IR}" ir_args)
+# 두 패스가 나가야 한다. IR 패스는 모드만 Infrared 로 바꾸고 나머지는 같다.
+string(FIND "${ir_args}" "--mode Infrared" found_ir_mode)
+expect("IR 패스를 --mode Infrared 로 돈다 (소스가 아니라 모드다)" found_ir_mode GREATER -1)
+# 소스는 그대로여야 한다. epson2 에는 IR 소스가 없다.
+string(FIND "${ir_args}" "--source TPU8x10 --mode Infrared" found_ir_keeps_source)
+expect("IR 패스도 같은 투과 소스를 쓴다" found_ir_keeps_source GREATER -1)
+string(FIND "${ir_args}" "--resolution 2400" found_ir_res)
+expect("IR 패스가 본스캔과 같은 해상도로 돈다" found_ir_res GREATER -1)
+
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG}")
+
 # --- ⑥ 기기 범위 밖 밝기 -----------------------------------------------------
 #
 # epson2 의 밝기는 B7/B8 명령 레벨에서 -4..3 이다. genesys 는 -100..100 이라
