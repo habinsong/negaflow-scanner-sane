@@ -16,6 +16,7 @@
 #include <thread>
 #include <utility>
 
+#include "process/cancel.h"
 #include "process/command_line.h"
 
 namespace negaflow::process {
@@ -23,7 +24,22 @@ namespace negaflow::process {
 namespace {
 
 /// 유틸리티 타임아웃 뒤 강제 종료까지의 유예. macOS 의 0.5 s 와 같다(§11).
+///
+/// **획득에는 쓰지 않는다.** `-L` 이나 `-A` 는 스캔하지 않으므로 빨리 죽여도
+/// 잃을 것이 없지만, 스캔 도중에 죽이면 스캐너가 물려 전원을 다시 넣어야
+/// 한다(C-2). 획득 감시견은 `kCancelGracePeriod` 를 쓴다.
 constexpr DWORD kTimeoutGraceMs = 500;
+
+/// 획득 감시견이 CTRL_BREAK 뒤 기다리는 시간.
+///
+/// 사용자 취소 경로와 같은 값이어야 한다 — 같은 신호를 같은 프로세스에 보내니
+/// 같은 시간이 걸린다. 실측(OpticFilm 8100): 스캔 6초 지점에서 CTRL_BREAK 를
+/// 보내면 `scanimage` 가 6,890 ms 만에 끝난다. macOS 를 그대로 옮긴 0.5 s 는
+/// 그 한가운데에서 죽이는 값이었다.
+///
+/// macOS 와 갈라지는 것은 알고 그러는 것이다. 맥은 libusb 로 열고, 죽여도
+/// 다음 스캔이 된다. Windows 는 usbscan.sys 로 열고, 죽이면 물린다.
+constexpr DWORD kAcquisitionGraceMs = static_cast<DWORD>(kCancelGracePeriod.count());
 
 /// 파이프 읽기 단위. 진행률 레코드는 짧고 옵션 덤프는 수십 KB 다.
 constexpr DWORD kReadChunk = 8192;
@@ -587,8 +603,9 @@ AcquisitionRun runAcquisition(const std::filesystem::path& executable,
 
     AcquisitionWatchdog watchdog;
     if (useWatchdog) {
+        // 유예가 길다. 짧게 잡으면 감시견이 스캐너를 죽인다 — 위 상수 참조.
         watchdog.start(firstProgressTimeout, stallTimeout,
-                       [&child] { terminateChild(child, kTimeoutGraceMs); });
+                       [&child] { terminateChild(child, kAcquisitionGraceMs); });
     }
 
     drainPipe(errPipe.parentEnd.get(), [&](std::string_view chunk) {
