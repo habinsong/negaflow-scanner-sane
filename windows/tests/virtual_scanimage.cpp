@@ -260,18 +260,25 @@ constexpr const char* kEpsonDeviceName = "epson2:usbscan:001";
            "    -y 0..297.18mm [297.18]\n";
 }
 
-[[nodiscard]] std::string epsonOptionDump(bool hasEightByTen, const std::string& requestedSource) {
+[[nodiscard]] std::string epsonOptionDump(bool hasEightByTen, const std::string& requestedSource,
+                                         const std::string& requestedMode) {
     const std::string source = requestedSource.empty() ? "Flatbed" : requestedSource;
     const std::string sourceList =
         hasEightByTen ? "Flatbed|Transparency Unit|TPU8x10" : "Flatbed|Transparency Unit";
+
+    // 기본 모드가 Lineart 이고 **그 상태에서 `--depth` 가 비활성이다**
+    // (실측: GT-X980 = V850). 모드를 적용하지 않은 덤프만 읽으면 지원 심도가
+    // 통째로 빈다. 어댑터는 그때 모드를 적용해 한 번 더 읽어야 한다.
+    const std::string mode = requestedMode.empty() ? "Lineart" : requestedMode;
+    const bool depthActive = (mode != "Lineart");
 
     std::string dump;
     dump += "Options specific to device `";
     dump += kEpsonDeviceName;
     dump += "':\n";
     dump += "  Scan Mode:\n";
-    dump += "    --mode Lineart|Gray|Color|Infrared [Color]\n";
-    dump += "    --depth 8|16 [8]\n";
+    dump += "    --mode Lineart|Gray|Color|Infrared [" + mode + "]\n";
+    dump += std::string("    --depth 8|16 [") + (depthActive ? "8" : "inactive") + "]\n";
     // Color 에서는 하프톤과 임계값이 비활성이다. 비활성 옵션도 제약 목록을
     // 그대로 출력하므로, 목록만 보고 설정하면 scanimage 가 거절한다.
     dump += "    --halftoning None|Halftone A (Hard Tone)|Halftone B (Soft Tone)|"
@@ -401,7 +408,7 @@ int main(int argc, char** argv) {
         if (epson) {
             // 소스를 준 덤프와 안 준 덤프가 달라야 한다. 어댑터가 소스를
             // 적용해 다시 읽지 않으면 TPU 한계를 평판 한계로 착각한다.
-            out(epsonOptionDump(epsonHasEightByTen(scenario), valueOf("--source")));
+            out(epsonOptionDump(epsonHasEightByTen(scenario), valueOf("--source"), mode));
             return 0;
         }
         out(optionDump(mode == "Gray"));

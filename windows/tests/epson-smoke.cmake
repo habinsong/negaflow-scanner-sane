@@ -89,6 +89,16 @@ expect("평판이므로 위치 지정 스캔을 지원한다" found_pos GREATER 
 string(FIND "${caps_out}" "\"supportsInfrared\":true" found_ir)
 expect("Infrared 모드를 적외선 채널로 인식한다" found_ir GREATER -1)
 
+# 이 계열은 기본 모드가 Lineart 이고 **그 상태에서 --depth 가 비활성이다**
+# (실측: GT-X980 = V850). 모드를 적용하지 않은 첫 덤프만 읽으면 지원 심도가
+# 통째로 빈다. 어댑터가 모드를 적용해 다시 읽어야 이 값이 나온다.
+string(FIND "${caps_out}" "\"bitDepths\":[8,16]" found_depths)
+expect("Lineart 기본이라 비활성인 심도를 다시 읽어 복구한다" found_depths GREATER -1)
+
+# 기기 범위를 그대로 호스트에 알린다. genesys 의 -100..100 과 다르다.
+string(FIND "${caps_out}" "\"brightnessRange\":{\"minimum\":-4,\"maximum\":3,\"step\":1}" found_bright)
+expect("밝기 범위를 기기 값 그대로 보고한다" found_bright GREATER -1)
+
 if(NOT caps_out MATCHES "\"capabilityToken\":\"([^\"]+)\"")
     message(FATAL_ERROR "capabilityToken 을 찾지 못했다.\n${caps_out}")
 endif()
@@ -142,8 +152,8 @@ if(NOT EXISTS "${WORKDIR}/args.log")
 endif()
 file(READ "${WORKDIR}/args.log" args)
 
-string(FIND "${args}" "-A -d epson2:usbscan:001 --source TPU8x10" found_a_source)
-expect("옵션 조회를 소스를 적용해 다시 한다" found_a_source GREATER -1)
+string(FIND "${args}" "-A -d epson2:usbscan:001 --source TPU8x10 --mode Color" found_a_source)
+expect("옵션 조회를 소스와 모드를 적용해 다시 한다" found_a_source GREATER -1)
 
 string(FIND "${args}" "--film-type Negative Film" found_film)
 expect("컬러 네거티브를 --film-type Negative Film 으로 보낸다" found_film GREATER -1)
@@ -186,7 +196,48 @@ string(FIND "${args}" "--eject" found_eject)
 expect("비활성 옵션을 설정하지 않는다"
        found_halftone EQUAL -1 AND found_threshold EQUAL -1 AND found_eject EQUAL -1)
 
-# --- ⑤ 기기 범위 밖 밝기 -----------------------------------------------------
+# --- ⑤ 정수 mm 절삭 보정 -----------------------------------------------------
+#
+# epson2-ops.c 의 e2_init_parameters 는
+#
+#   ((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi + 0.5) - s->top
+#
+# 로 계산하는데 `(int)` 캐스트가 나눗셈보다 먼저 걸린다. br_y 가 소수 mm 면
+# 결과의 세로만 최대 1 mm 어치 짧아진다 — 요청한 종횡비와 어긋나고 필름 컷이
+# 조용히 잘린다. 어댑터가 아래(bottom)를 정수로 맞춰 보내야 한다.
+#
+# originY 20 + height 23.5 => bottom 43.5 이므로 44 로 키운다 => 높이 24.
+# 위 ④ 의 요청은 bottom 이 이미 정수(20+24=44)라 이 경로를 안 지난다.
+
+string(REPLACE "\"heightMM\":24" "\"heightMM\":23.5" align_request "${request}")
+file(WRITE "${WORKDIR}/align.json" "${align_request}")
+
+# 로그를 새 파일로 돌린다. ④ 의 요청이 이미 높이 24 를 보냈으므로, 같은
+# 파일에 이어 쓰면 그 줄에 걸려 보정이 없어도 통과한다.
+file(TO_NATIVE_PATH "${WORKDIR}/args-align.log" ARGLOG_ALIGN)
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_ALIGN}")
+
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/align.json"
+    OUTPUT_VARIABLE align_out
+    ERROR_VARIABLE align_err
+    RESULT_VARIABLE align_code)
+
+if(NOT align_code EQUAL 0)
+    message(FATAL_ERROR "정렬 스캔이 ${align_code} 로 끝났다.\nstderr: ${align_err}")
+endif()
+
+file(READ "${WORKDIR}/args-align.log" args_after_align)
+string(FIND "${args_after_align}" "-l 10 -t 20 -x 36 -y 24" found_aligned)
+expect("소수 mm 아래를 정수로 키워 보낸다 (23.5 -> 24)" found_aligned GREATER -1)
+
+# 호스트가 요청과 다른 높이를 받았음을 알아야 한다. 조용히 바꾸면 앱이
+# 종횡비를 잘못 계산한다.
+string(FIND "${align_out}" "\"heightMM\":24" found_applied_height)
+expect("실제로 적용한 높이를 appliedOptions 로 알린다" found_applied_height GREATER -1)
+
+# --- ⑥ 기기 범위 밖 밝기 -----------------------------------------------------
 #
 # epson2 의 밝기는 B7/B8 명령 레벨에서 -4..3 이다. genesys 는 -100..100 이라
 # 앱이 같은 값을 두 기기에 보내면 Epson 에서만 터진다. 보내기 전에 거절해야
@@ -207,7 +258,7 @@ expect("범위 밖 밝기 요청은 exit 1 이다" bright_code EQUAL 1)
 string(FIND "${bright_out}" "\"type\":\"error\"" found_bright_error)
 expect("범위 밖 밝기를 오류로 보고한다" found_bright_error GREATER -1)
 
-# --- ⑥ TPU8x10 이 없는 Epson -------------------------------------------------
+# --- ⑦ TPU8x10 이 없는 Epson -------------------------------------------------
 #
 # TPU8x10 은 epson2-ops.c 의 TPU2 분기가 모델명 GT-X800/GT-X900/GT-X980 일
 # 때만 붙인다. 그 밖의 투과 장비는 `Transparency Unit` 하나뿐이므로, 8x10 을

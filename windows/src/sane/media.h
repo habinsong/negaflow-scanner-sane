@@ -138,6 +138,14 @@ struct MediaSelection {
 /// 감마를 **안 건드리는 것이 중립이 아니다** — `Default`(index 0)는 표시용 감마
 /// 0x02 를 보낸다. `User defined` 만이 항등 램프(진짜 선형)다.
 /// 근거: windows_docs/10-lessons/driver-option-reference.md §8.2
+///
+/// **비활성일 때 강제로 보내지 않는다. 되돌리지 마라.** 맥에서 커밋 `7f950dc`
+/// 가 `82b7b32`("set the Epson linear gamma even when the option reports
+/// inactive")를 되돌렸다. `OPT_GAMMA_CORRECTION` 의 비활성은 "지금 꺼져 있다"가
+/// 아니라 **"이 하드웨어에 감마 명령이 없다"** 는 뜻이고, 그 상태에서 옵션을
+/// 보내면 `attempted to set inactive option` 으로 스캔 전체가 실패한다.
+/// 그래서 `resolveMedia` 는 활성일 때만 값을 정하고, 재덤프는 활성 여부와
+/// 무관하게 싣는다. 되돌리려면 실기 증거가 필요하다.
 [[nodiscard]] std::optional<std::string> epsonRawGammaCorrection(const OptionDump& opts);
 
 /// 이 덤프 하나로 모든 소스를 대표할 수 있는가(추가 open 회피).

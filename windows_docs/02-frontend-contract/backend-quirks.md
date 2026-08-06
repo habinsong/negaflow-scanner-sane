@@ -395,8 +395,10 @@ Windows에서는 여기에 하나가 더 붙는다.
 
 - [ ] §0의 분기 목록 16개가 전부 이식됐고 새 분기가 추가되지 않았다
 - [ ] genesys 16-bit 톤 억제의 근거를 조사하고 결과를 기록했다
-- [ ] epson2 gamma 리버트 이력을 코드 주석에 남겼다
-- [ ] `epson2AlignedHeightMM` 4갈래 전부 fixture
+- [x] epson2 gamma 리버트 이력을 코드 주석에 남겼다
+- [x] `epson2AlignedHeightMM` 4갈래 전부 fixture — `test_main.cpp`
+      `testEpson2AlignedHeight()` 가 단위로, `epson-smoke` ⑤ 가 요청부터
+      `-y` 인자와 `appliedOptions` 까지 통째로 돌린다
 - [ ] coolscan `--negative=no` 강제
 - [ ] pieusb 3종 처리(advance/재시도/watchdog)
 - [ ] `IRStrategy.cleanImage` 도달 불가 상태 유지
