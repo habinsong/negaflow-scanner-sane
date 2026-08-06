@@ -308,6 +308,30 @@ V700·V750 / V800·V850). 그 밖의 투과 장비 — 예를 들어 일본 모�
 는 `Transparency Unit` 하나만 낸다. 8x10을 전제로 만든 코드는 그런 기기에서
 투과 스캔을 아예 못 하게 된다. 두 경우 모두 `epson-smoke` 가 돌린다.
 
+### 2.4a 사용자는 자기가 산 이름을 못 본다
+
+`detect` 가 내는 이름은 **기기가 스스로 말하는 것**이고, 그것이 일본 내수
+모델명이다.
+
+```text
+Perfection V800 / V850  →  GT-X980
+Perfection V700 / V750  →  GT-X900
+Perfection 4870         →  GT-X700
+```
+
+epson2 는 `esci_request_extended_identity` 가 준 buf[46..61] 을 그대로
+모델명으로 쓴다(`e2_set_model`). 추정이 아니다 — epson2-ops.c 의 TPU2 분기가
+바로 그 문자열로 검사하므로(`e2_model(s, "GT-X980")`), 그렇지 않으면 그
+분기가 영영 안 돈다.
+
+`displayName` 은 `capitalized(vendor) + " " + model` 이므로 사용자는
+**"Epson GT-X980"** 을 본다. 자기가 산 V800 이 아니다.
+
+**여기서 고치지 않는다.** 맥도 같은 문자열을 낸다. 별칭 표를 넣으려면 양쪽을
+같이 고쳐야 하고, 그것은 제품 결정이지 이식 작업이 아니다. `epson-smoke` 는
+이 사실을 고정만 한다 — 누가 픽스처를 "Perfection V800 Photo" 로 되돌려
+문제를 감추지 못하게.
+
 ### 2.5a 프리뷰: epson2 는 고속 모드를 켠다
 
 genesys 와 달리 epson2 는 `--preview` 를 실제로 쓴다.

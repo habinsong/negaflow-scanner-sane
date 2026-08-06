@@ -59,6 +59,17 @@ expect("usbscan 장치를 USB 로 분류한다" found_usb GREATER -1)
 string(FIND "${detect_out}" "\"driverVersion\":\"epson2 (SANE)\"" found_driver)
 expect("백엔드를 epson2 로 보고한다" found_driver GREATER -1)
 
+# 기기가 스스로 말하는 이름은 판매명이 아니다. epson2 는
+# `esci_request_extended_identity` 가 준 문자열을 그대로 쓰고, 그것이 일본
+# 내수 모델명이다(V800/V850 = GT-X980, V700/V750 = GT-X900).
+#
+# 지어낸 값이 아니다 — epson2-ops.c 의 TPU2 분기가 바로 그 문자열로 검사한다.
+#
+# **사용자는 "Epson GT-X980" 을 보게 된다.** 자기가 산 V800 이 아니다. 맥도
+# 같으므로 여기서는 그 사실만 고정한다.
+string(FIND "${detect_out}" "\"displayName\":\"Epson GT-X980\"" found_display)
+expect("기기가 말하는 이름을 그대로 낸다 (판매명이 아니다)" found_display GREATER -1)
+
 # --- ② capabilities ---------------------------------------------------------
 
 execute_process(

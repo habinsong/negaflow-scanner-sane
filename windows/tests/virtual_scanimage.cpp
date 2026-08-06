@@ -330,8 +330,21 @@ constexpr const char* kEpsonDeviceName = "epson2:usbscan:001";
     return scenario != "epson-tpu";
 }
 
+/// 기기가 **스스로 말하는** 이름.
+///
+/// 판매명이 아니다. epson2 는 `esci_request_extended_identity` 가 준
+/// buf[46..61] 을 그대로 모델명으로 쓰고(`e2_set_model`), 그 값이 일본 내수
+/// 모델명이다. Perfection V800/V850 은 `GT-X980`, V700/V750 은 `GT-X900`,
+/// 4870 은 `GT-X700` 이라고 말한다.
+///
+/// 지어낸 값이 아니다 — epson2-ops.c 의 TPU2 분기가 바로 그 문자열로
+/// 검사한다(`e2_model(s, "GT-X980")`). 그렇지 않으면 그 분기가 영영 안 돈다.
+///
+/// **그래서 사용자는 negaflow 에서 "Epson GT-X980" 을 보게 된다.** 자기가 산
+/// V800 이 아니다. 맥도 같으므로 여기서 고치지 않는다 — 고치려면 양쪽을 같이
+/// 고쳐야 하고, 그것은 제품 결정이다.
 [[nodiscard]] const char* epsonModel(const std::string& scenario) {
-    return epsonHasEightByTen(scenario) ? "Perfection V800 Photo" : "Perfection 4870 Photo";
+    return epsonHasEightByTen(scenario) ? "GT-X980" : "GT-X700";
 }
 
 /// 소스별 지오메트리 한계.
