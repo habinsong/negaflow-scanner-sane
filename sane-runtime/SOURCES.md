@@ -23,7 +23,7 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 
 | 파일 | 출처 | 무엇을 고치나 |
 | --- | --- | --- |
-| `001-fix-build-on-mingw.patch` | MSYS2 (GPL-2.0-or-later) | MSYS2 원본 그대로. mingw 에서 컴파일되게 한다 |
+| `001-fix-build-on-mingw.patch` | [MSYS2 mingw-w64-sane](https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane) (GPL-2.0-or-later) | MSYS2 원본 그대로. mingw 에서 컴파일되게 한다 |
 | `002-binary-output-mode.patch` | 이 저장소 | `scanimage` 가 stdout 을 텍스트 모드로 열어 이미지의 `0x0A` 를 `0x0D 0x0A` 로 바꿔 내보내던 것을 막는다 |
 | `003-test-backend-on-mingw.patch` | 이 저장소 | `test` 백엔드가 mingw 에서 빌드되게 한다. 하드웨어 없는 회귀 시험에 필요하다 |
 | `004-usbdk-on-windows.patch` | 이 저장소 | `SANE_USB_USE_USBDK` 가 설정됐을 때만 libusb 의 UsbDk 백엔드를 쓴다. **기본값은 끈 채로 둔다** |
@@ -181,7 +181,6 @@ creates a new thread in each client process to handle the event." 메인
 그 안에 있다. `kCancelGracePeriod` 를 2,000 ms 에서 15,000 ms 로 올렸다 —
 그 전에 강제 종료로 넘어가면 애써 고친 것이 도로 무의미해진다.
 
-이 패치는 upstream 에 제출할 가치가 있다. 제출 전까지는 여기서 유지한다.
 
 ## 다시 만드는 법
 

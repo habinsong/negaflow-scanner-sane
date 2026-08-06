@@ -59,6 +59,37 @@ The Coolscan installer's GPL source payload contains a Homebrew formula with the
 `coolscan2`/`coolscan3` word-list allocation fix. Homebrew verifies the pinned source SHA-256,
 applies that patch, and builds the separate `sane-backends-negaflow` keg locally.
 
+### Windows redistributes the runtime, macOS does not
+
+The sentence above describes macOS only. **The Windows plugin ships a built SANE
+runtime** — there is no Homebrew to build it on the user's machine — so the
+obligations are different and stronger.
+
+- Upstream source: `backends-1.4.0.tar.bz2` from
+  <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
+- Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
+- License: GPL-2.0-or-later (with the SANE exception)
+- Modifications: seven patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
+  described in [`sane-runtime/SOURCES.md`](sane-runtime/SOURCES.md)
+- Build recipe: [`sane-runtime/PKGBUILD`](sane-runtime/PKGBUILD), based on the
+  MSYS2 `mingw-w64-sane` package
+- Backends built: `genesys epson2 epsonds coolscan2 coolscan3 test`
+
+`001-fix-build-on-mingw.patch` is taken unchanged from MSYS2's
+`mingw-w64-sane` package (GPL-2.0-or-later, same licence as the work it patches):
+<https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane>
+
+The other six are written for this project.
+
+**Because a Windows release distributes GPL binaries, it must carry the
+corresponding source.** The recipe above plus the pinned tarball hash reproduces
+the exact runtime; ship that source alongside, or a written offer for it. The
+plugin's own source is this repository, which is GPL-2.0-or-later.
+
+The runtime links libusb-1.0 (LGPL-2.1-or-later) dynamically, so the user can
+substitute their own build. See
+[`windows_docs/07-distribution/gpl-compliance.md`](windows_docs/07-distribution/gpl-compliance.md).
+
 ## negaflow-scanner-sane
 
 - Project: <https://github.com/habinsong/negaflow-scanner-sane>

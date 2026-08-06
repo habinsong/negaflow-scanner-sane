@@ -55,6 +55,33 @@ negaflow application bundle. These are architectural facts; whether a
 particular distribution is an aggregate or a derivative work must be assessed
 from the actual code, communication semantics, and files distributed.
 
+### Windows
+
+The same boundary holds, with one difference that matters for licensing:
+**the Windows plug-in ships a built SANE runtime.** There is no Homebrew to
+build it on the user's machine, so the plug-in distribution contains GPL
+binaries and must carry the corresponding source.
+
+- Recipe and patches: [`sane-runtime/`](sane-runtime/) —
+  `PKGBUILD`, seven patches, and `SOURCES.md` describing each one
+- The pinned tarball hash plus that recipe reproduces the exact runtime
+
+The chain stays process-separated at every link:
+
+```text
+negaflow (Apache-2.0)
+    │  versioned JSON/NDJSON over stdio, separate process
+negaflow-scanner-sane.exe (GPL-2.0-or-later)
+    │  command line + stdout, separate process
+scanimage.exe (GPL-2.0-or-later)
+```
+
+The adapter does not link `libsane`. It runs `scanimage` and parses its
+output — the same relationship the macOS plug-in has. The Windows adapter's
+own sources live in `windows/` and carry this project's GPL tag;
+`scripts/verify-provenance.py` fails the build if any third-party licence tag
+or copyright line appears there.
+
 - SANE source: <https://gitlab.com/sane-project/backends>
 - GNU license FAQ: <https://www.gnu.org/licenses/gpl-faq.html.en>
 - Apache/GPL compatibility: <https://www.apache.org/licenses/GPL-compatibility>
