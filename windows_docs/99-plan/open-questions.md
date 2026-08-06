@@ -531,38 +531,23 @@ epson_smoke    Epson 인자 계약 17검사 — 소스별 지오메트리, TPU8x
 
 ---
 
-## Q-18. 스캔이 끝난 뒤 `sane_read` 가 내는 I/O 오류의 원인은 무엇인가
+## Q-18. 스캔이 끝난 뒤 `sane_read` 가 내는 I/O 오류의 원인은 무엇인가 — **답함**
 
-**질문**: OpticFilm 8100 에서 진행률 100% 를 찍은 **뒤** `sane_read` 가
-`SANE_STATUS_IO_ERROR` 를 내는 일이 간헐적으로 일어난다. 어느 호출이 어떤
-Win32 오류로 실패하는가?
+**답**: 스캔 헤드가 아직 움직이는데 프로세스를 끝내고 있었다. OpticFilm
+모델표에 `ModelFlag::MUST_WAIT` 이 없어 genesys 가 파킹 명령만 내고
+반환한다(`move_back_home(dev, false)`). 움직이는 장치는 제어 전송에 답하지
+않고, usbscan.sys 는 자기 2분 타임아웃을 다 쓴 뒤 `ERROR_SEM_TIMEOUT`(121)로
+실패한다.
 
-**왜 중요한가**: 데이터를 다 받은 스캔이 통째로 버려진다. 3600 dpi 는 35초,
-7200 dpi 는 58초다. **실패율이 낮지 않다 — 매트릭스 3회 중 2회.**
+`patches/008-opticfilm-wait-for-park.patch` 로 그 플래그를 켰다. 고친 뒤
+같은 순서를 간격 없이 3사이클(15회) 돌려 전부 통과했고, 느려지지도 않았다.
 
-**지금까지 안 것**:
+전체 근거와 실측은
+[validation-matrix](../09-hardware/validation-matrix.md) §7a.2.
 
-```text
-증상        Progress 100.0% 뒤 "sane_read: Error during device I/O", exit 9
-위치        genesys.cpp 의 sane_read_impl 이 EOF 시점에 그 호출 안에서
-            move_back_home 을 부른다. scanner_move_back_home 은 TA 헤드 복귀,
-            모터 이동, update_home_sensor_gpio, scanner_read_reliable_status,
-            작은 모터 세션까지 전부 레지스터 I/O 다
-재현        같은 해상도(3600) 8회 연속 → 8/8 성공, 재현 안 됨
-공통점      실패한 두 번 다 직전 스캔과 **해상도가 달랐다**
-```
-
-**답이 바꾸는 것**: 우리 `sanei_usb` usbscan 경로에 제어 전송 재시도를
-넣을지, 아니면 genesys 쪽 문제로 보고 다르게 대응할지.
-
-**닫는 방법**: `SANE_DEBUG_SANEI_USB=1` 로 재현해 오류 코드를 잡는다.
-우리 패치가 ReadFile/WriteFile/DeviceIoControl 실패를 DBG 레벨 1 로 남긴다.
-
-**하지 말 것**: 코드를 모른 채 재시도를 넣는 것. 고쳐진 것인지 가려진
-것인지 구분할 수 없게 된다.
-
-**관련**: [validation-matrix](../09-hardware/validation-matrix.md) §7a.2,
-`sane-runtime/patches/005-usbscan-backend.patch`
+**남는 것**: 이 플래그를 켠 모델이 1.4.0 에 하나도 없다. OpticFilm 8100 으로만
+확인했고, 나머지 다섯 항목은 같은 계열이라는 이유로 함께 켰다. 다른 모델이
+손에 들어오면 확인한다.
 
 ---
 

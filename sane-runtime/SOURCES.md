@@ -30,6 +30,7 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | `005-usbscan-backend.patch` | 이 저장소 | `sanei_usb` 에 `usbscan.sys` 백엔드를 더한다. 아래 참조 |
 | `006-debug-output-on-mingw.patch` | 이 저장소 | `SANE_DEBUG_*` 를 켜면 프론트엔드가 segfault 하던 것을 고친다 |
 | `007-cancel-on-sigbreak.patch` | 이 저장소 | Windows 에서 취소가 스캐너를 죽이지 않게 한다. 아래 참조 |
+| `008-opticfilm-wait-for-park.patch` | 이 저장소 | OpticFilm 이 스캔 헤드를 세운 뒤 끝나게 한다. 아래 참조 |
 
 ### 005 — usbscan.sys 백엔드
 
@@ -181,6 +182,52 @@ creates a new thread in each client process to handle the event." 메인
 그 안에 있다. `kCancelGracePeriod` 를 2,000 ms 에서 15,000 ms 로 올렸다 —
 그 전에 강제 종료로 넘어가면 애써 고친 것이 도로 무의미해진다.
 
+### 008 — 스캔 헤드를 세우지 않고 프로세스를 끝내던 것
+
+OpticFilm 모델표에 `ModelFlag::MUST_WAIT` 이 없다. 그래서 genesys 가
+
+```c
+move_back_home(dev, /*wait_until_home=*/false);
+dev->parking = true;
+```
+
+로 **파킹 명령만 내고 반환하고**, 헤드가 아직 움직이는 중에 `scanimage` 가
+끝난다. 움직이는 OpticFilm 은 제어 전송에 답하지 않는다.
+
+Linux 나 macOS 에서는 재시도 한 번으로 끝날 일이지만, Windows 의 still-image
+클래스 드라이버는 **자기 2분 타임아웃을 다 쓴 뒤** `ERROR_SEM_TIMEOUT`(121)로
+실패한다(`IOCTL_SET_TIMEOUT` 이 듣지 않는 것은 005 참조). 그러면
+
+```text
+usbscan_control_msg: request 0x04 failed, error 121
+  → update_home_sensor_gpio → scanner_move_back_home → sanei_genesys_asic_init
+  → open of device genesys:usbscan:000 failed: Error during device I/O
+```
+
+로 **다음 스캔의 열기가 죽거나**, `sane_read` 가 EOF 시점에 파킹하다 죽어
+**데이터를 다 받은 스캔이 버려진다**.
+
+실측(OpticFilm 8100, 600/1200/2400/3600/7200 dpi 를 이어서):
+
+```text
+간격 0초, 3사이클     3회 중 2회 실패 (실패 시각이 시작 +120.0초)
+간격 8초, 3사이클     15/15 성공
+같은 해상도 8회 연속   8/8 성공 — 해상도가 안 바뀌면 잘 안 난다
+```
+
+8초가 헤드가 집에 돌아가는 시간이다.
+
+플래그를 켜면 `sane_read` 는 EOF 에서 파킹하지 않고, `sane_cancel` 이
+`wait_until_home` 으로 파킹한다(홈 센서를 100 ms 씩 300회, 30초 상한).
+완료된 스캔을 파킹 실패로 잃는 경로 자체가 사라진다.
+
+1.4.0 의 어느 모델도 이 플래그를 켜지 않는다 — upstream 이 돌린 적 없는
+경로다. 그래서 켜기 전에 세 호출 지점을 모두 읽었고 전부 짧고 상한이 있다.
+
+**고친 뒤**: 간격 0초로 15/15 성공. 느려지지 않았다(7200 dpi 57.5 → 58.5초).
+
+OpticFilm 6개 항목에만 켰다. 8100 으로만 확인했고 나머지는 같은 계열이라는
+이유로 함께 켰다.
 
 ## 다시 만드는 법
 

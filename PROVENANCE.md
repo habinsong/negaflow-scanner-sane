@@ -63,7 +63,7 @@ build it on the user's machine, so the plug-in distribution contains GPL
 binaries and must carry the corresponding source.
 
 - Recipe and patches: [`sane-runtime/`](sane-runtime/) —
-  `PKGBUILD`, seven patches, and `SOURCES.md` describing each one
+  `PKGBUILD`, eight patches, and `SOURCES.md` describing each one
 - The pinned tarball hash plus that recipe reproduces the exact runtime
 
 The chain stays process-separated at every link:

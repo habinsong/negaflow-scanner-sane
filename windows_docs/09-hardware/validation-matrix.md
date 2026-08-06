@@ -361,7 +361,7 @@ OpticFilm 과 Epson 사용자는 그 경로를 지나지 않는다.
 지나갔다면 문제가 됐을 것이다. 픽셀 하나가 float 4개(16바이트)라 7200 dpi
 한 장이 **1.1 GB** 다.
 
-### 7a.2 미해결 — 스캔이 끝난 뒤 `sane_read` 가 I/O 오류를 낸다
+### 7a.2 해결 — 스캔 헤드를 세우지 않고 프로세스를 끝내고 있었다
 
 위 매트릭스를 세 번 돌려 **두 번 실패했다.**
 
@@ -395,20 +395,69 @@ if (dev->total_bytes_read >= dev->total_bytes_to_read) {
 세션까지 **전부 레지스터 I/O**(제어 전송 `IOCTL_SEND_USB_REQUEST`)다. 큰 벌크
 전송 직후 그중 하나가 실패하면 `sane_read` 가 EOF 대신 IO_ERROR 를 낸다.
 
-**재현 조건을 아직 못 잡았다.**
+#### 재현과 원인
 
 ```text
-같은 해상도(3600)로 8회 연속        8/8 성공 — 재현 안 됨
-해상도를 바꿔 가며(600~7200) 반복    진행 중
+같은 해상도(3600)로 8회 연속            8/8 성공 — 재현 안 됨
+해상도를 바꿔 가며(600~7200) 연속        4번째에서 실패, 오류 코드 확보
+같은 순서에 스캔 사이 8초 쉬기           15/15 성공
 ```
 
-두 실패 모두 **직전 스캔과 해상도가 다를 때** 나왔다는 것이 유일한 공통점이다.
+오류 코드가 결정적이었다.
 
-**고치지 않았다.** 어느 호출이 어떤 Win32 오류로 실패하는지 모르는 채로
-재시도를 넣으면, 고쳐졌는지 가려졌는지 구분할 수 없다. `sanei_usb` 는 실패를
-DBG 레벨 1 로 남기므로 재현되면 오류 코드가 나온다.
+```text
+usbscan_control_msg: request 0x04 failed, error 121
+  → UsbDevice::control_msg
+  → ScannerInterfaceUsb::write_register
+  → CommandSetGl846::update_home_sensor_gpio
+  → scanner_stop_action
+  → scanner_move_back_home_ta
+  → scanner_move_back_home
+  → sanei_genesys_asic_init
+  → sane_open_impl: failed during open device 'usbscan:000'
+```
 
-실패율이 낮지 않다(3회 중 2회). 사용자가 만나는 문제로 봐야 한다.
+`121` 은 `ERROR_SEM_TIMEOUT` 이고, 시작 10:53:55 → 실패 10:55:55 로 **정확히
+120초**다. usbscan.sys 자신의 2분 타임아웃이다(`IOCTL_SET_TIMEOUT` 이 듣지
+않는다는 것은 patch 005 주석에 이미 적혀 있다).
+
+원인은 이렇다. OpticFilm 모델표에 `ModelFlag::MUST_WAIT` 이 없어서 genesys 가
+
+```c
+move_back_home(dev, /*wait_until_home=*/false);
+dev->parking = true;
+```
+
+로 **파킹 명령만 내고 반환한다.** 헤드가 아직 움직이는 중에 `scanimage` 가
+끝나고, 움직이는 OpticFilm 은 제어 전송에 답하지 않는다. 그래서
+
+- 다음 스캔의 `sane_open` 이 120초를 버리고 실패하거나,
+- 이번 스캔의 `sane_read` 가 EOF 시점 파킹에서 실패한다
+  (데이터는 이미 다 받았는데 버려진다).
+
+8초를 쉬면 사라지는 이유가 이것이다 — 그 시간이 헤드가 집에 돌아가는 시간이다.
+
+#### 고친 방법
+
+`sane-runtime/patches/008-opticfilm-wait-for-park.patch` 가 OpticFilm 6개
+항목에 `ModelFlag::MUST_WAIT` 을 넣는다. 그러면
+
+- `sane_read` 는 EOF 에서 파킹하지 않는다 → 완료된 스캔을 파킹 실패로 잃는
+  경로가 사라진다
+- `sane_cancel` 이 `wait_until_home` 으로 파킹한다 → 홈 센서를 100 ms 씩
+  300회 확인하고 30초에 포기한다. 프로세스가 끝날 때 장치가 멈춰 있다
+
+1.4.0 의 어느 모델도 이 플래그를 켜지 않아 upstream 이 이 경로를 돌린 적이
+없다. 그래서 켜기 전에 두 호출 지점을 모두 읽었고, 둘 다 짧고 상한이 있다.
+
+#### 고친 뒤 실측
+
+```text
+해상도를 바꿔 가며 연속, 간격 0초, 3사이클      15/15 성공
+```
+
+**느려지지 않았다.** 사이클당 시간이 전과 같다(7200 dpi 57.5초 → 58.5초).
+`sane_cancel` 시점에는 헤드가 거의 돌아와 있어서 기다림이 1초 안쪽이다.
 
 ## 8. README 지원 표 갱신
 

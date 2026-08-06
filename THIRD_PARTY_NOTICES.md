@@ -69,7 +69,7 @@ obligations are different and stronger.
   <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
 - Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
 - License: GPL-2.0-or-later (with the SANE exception)
-- Modifications: seven patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
+- Modifications: eight patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
   described in [`sane-runtime/SOURCES.md`](sane-runtime/SOURCES.md)
 - Build recipe: [`sane-runtime/PKGBUILD`](sane-runtime/PKGBUILD), based on the
   MSYS2 `mingw-w64-sane` package
@@ -79,7 +79,7 @@ obligations are different and stronger.
 `mingw-w64-sane` package (GPL-2.0-or-later, same licence as the work it patches):
 <https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane>
 
-The other six are written for this project.
+The other seven are written for this project.
 
 **Because a Windows release distributes GPL binaries, it must carry the
 corresponding source.** The recipe above plus the pinned tarball hash reproduces

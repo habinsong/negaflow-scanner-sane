@@ -1,0 +1,86 @@
+--- a/backend/genesys/tables_model.cpp	2026-08-06 11:09:28.665839300 +0900
++++ b/backend/genesys/tables_model.cpp	2026-08-06 11:09:28.665839300 +0900
+@@ -2370,7 +2370,32 @@
++    /* MUST_WAIT: do not leave the scan head travelling when the scan ends.
++
++       Without it genesys issues the park command and returns immediately
++       (`move_back_home(dev, false)`), so `scanimage` exits while the head is
++       still moving.  A moving OpticFilm does not answer control transfers.
++       On Linux and macOS that costs a retry; on Windows the still-image class
++       driver waits its own two minutes and then fails the transfer with
++       ERROR_SEM_TIMEOUT (121), which surfaces as
++
++           open of device genesys:usbscan:000 failed: Error during device I/O
++
++       in the *next* scan, or as `sane_read: Error during device I/O` in the
++       current one -- `sane_read` parks at EOF, so a parking failure throws
++       away a scan whose data was already complete.
++
++       Measured on an OpticFilm 8100, scanning 600/1200/2400/3600/7200 dpi in
++       sequence: back to back, 2 of 3 runs failed this way; with an 8 s idle
++       gap between scans, 15 of 15 succeeded.  The gap is what the head needs
++       to reach home.
++
++       No model in 1.4.0 sets this flag, so upstream never exercises the path.
++       It is small and bounded: `sane_read` stops parking at EOF, and
++       `sane_cancel` parks with `wait_until_home`, which polls the home sensor
++       300 times at 100 ms and gives up after 30 s.  */
+     model.flags = ModelFlag::WARMUP |
+                   ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+-                  ModelFlag::SHADING_REPARK;
++                  ModelFlag::SHADING_REPARK |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x0807, model);
+@@ -2436,7 +2437,8 @@
+                   ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+                   ModelFlag::SHADING_REPARK |
+-                  ModelFlag::SWAP_16BIT_DATA;
++                  ModelFlag::SWAP_16BIT_DATA |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x0c04, model);
+@@ -2514,7 +2516,8 @@
+     model.flags = ModelFlag::WARMUP |
+                   ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+-                  ModelFlag::SHADING_REPARK;
++                  ModelFlag::SHADING_REPARK |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x0c12, model);
+@@ -2584,7 +2587,8 @@
+ 
+     model.flags = ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+-                  ModelFlag::SHADING_REPARK;
++                  ModelFlag::SHADING_REPARK |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x0c3a, 0x0605, model);
+@@ -2655,7 +2659,8 @@
+     model.flags = ModelFlag::WARMUP |
+                   ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+-                  ModelFlag::SHADING_REPARK;
++                  ModelFlag::SHADING_REPARK |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x0c13, model);
+@@ -2725,7 +2730,8 @@
+ 
+     model.flags = ModelFlag::CUSTOM_GAMMA |
+                   ModelFlag::DARK_CALIBRATION |
+-                  ModelFlag::SHADING_REPARK;
++                  ModelFlag::SHADING_REPARK |
++                  ModelFlag::MUST_WAIT;
+ 
+     model.search_lines = 200;
+     s_usb_devices->emplace_back(0x07b3, 0x130d, model);
