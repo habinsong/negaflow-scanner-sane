@@ -531,6 +531,41 @@ epson_smoke    Epson 인자 계약 17검사 — 소스별 지오메트리, TPU8x
 
 ---
 
+## Q-18. 스캔이 끝난 뒤 `sane_read` 가 내는 I/O 오류의 원인은 무엇인가
+
+**질문**: OpticFilm 8100 에서 진행률 100% 를 찍은 **뒤** `sane_read` 가
+`SANE_STATUS_IO_ERROR` 를 내는 일이 간헐적으로 일어난다. 어느 호출이 어떤
+Win32 오류로 실패하는가?
+
+**왜 중요한가**: 데이터를 다 받은 스캔이 통째로 버려진다. 3600 dpi 는 35초,
+7200 dpi 는 58초다. **실패율이 낮지 않다 — 매트릭스 3회 중 2회.**
+
+**지금까지 안 것**:
+
+```text
+증상        Progress 100.0% 뒤 "sane_read: Error during device I/O", exit 9
+위치        genesys.cpp 의 sane_read_impl 이 EOF 시점에 그 호출 안에서
+            move_back_home 을 부른다. scanner_move_back_home 은 TA 헤드 복귀,
+            모터 이동, update_home_sensor_gpio, scanner_read_reliable_status,
+            작은 모터 세션까지 전부 레지스터 I/O 다
+재현        같은 해상도(3600) 8회 연속 → 8/8 성공, 재현 안 됨
+공통점      실패한 두 번 다 직전 스캔과 **해상도가 달랐다**
+```
+
+**답이 바꾸는 것**: 우리 `sanei_usb` usbscan 경로에 제어 전송 재시도를
+넣을지, 아니면 genesys 쪽 문제로 보고 다르게 대응할지.
+
+**닫는 방법**: `SANE_DEBUG_SANEI_USB=1` 로 재현해 오류 코드를 잡는다.
+우리 패치가 ReadFile/WriteFile/DeviceIoControl 실패를 DBG 레벨 1 로 남긴다.
+
+**하지 말 것**: 코드를 모른 채 재시도를 넣는 것. 고쳐진 것인지 가려진
+것인지 구분할 수 없게 된다.
+
+**관련**: [validation-matrix](../09-hardware/validation-matrix.md) §7a.2,
+`sane-runtime/patches/005-usbscan-backend.patch`
+
+---
+
 ---|
 | A | 호스트가 SANE 플러그인의 성질을 알고 처리한다(현행 추정) |
 | B | v3에 `idStability` 같은 필드를 추가한다 |
