@@ -53,7 +53,7 @@
 | D-17 | 어댑터는 `libsane`을 링크하지 않는다 | 확정 | [gpl-compliance](../07-distribution/gpl-compliance.md) §5 |
 | D-18 | `--all-options-json` 패치를 v2에 도입하지 않는다 | 확정 | [gpl-compliance](../07-distribution/gpl-compliance.md) §5 |
 | D-19 | 1차 릴리스는 사용자 범위 설치만 | 확정 | [packaging-and-install](../07-distribution/packaging-and-install.md) §5 |
-| D-20 | 설치 프로그램 도구 | **미결** | [packaging-and-install](../07-distribution/packaging-and-install.md) §5.1 |
+| D-20 | 설치 프로그램은 NSIS 로 만든 단일 exe | **확정** (2026-08-06) | [packaging-and-install](../07-distribution/packaging-and-install.md) §5.1 |
 | D-21 | 드라이버 바인딩을 설치와 분리 | 확정 | [packaging-and-install](../07-distribution/packaging-and-install.md) §7.1 |
 | D-22 | 1차 릴리스에 자동 업데이트 없음 | 확정 | [packaging-and-install](../07-distribution/packaging-and-install.md) §11 |
 | D-23 | SANE 런타임 바이너리 전체를 서명 | 확정 | [signing-and-trust](../07-distribution/signing-and-trust.md) §5 |
@@ -168,10 +168,13 @@ D-17 폐기
   └─ 라이브러리 선택 전부 (RapidJSON, libtiff 직접 사용)
 ```
 
-### 3.4 D-20(설치 도구)이 정해지면
+### 3.4 D-20(설치 도구) — 정해졌다
 
-미결이므로 아직 아무것도 흔들지 않는다. 다만 D-16(소스 아카이브 포함)이
-**설치물 크기를 약 30 MB 늘린다**는 제약이 도구 선택에 들어간다.
+NSIS. MSI 를 만들지 않는다. 사용자 범위 설치라 시스템 설치 관리자에 등록할
+이유가 없고, §5.2 의 요건 중 MSI 여야만 되는 것이 없다.
+
+D-16(소스 아카이브 포함)이 설치물을 키운다는 제약은 실측으로 해소됐다.
+배포물 15 MB 가 LZMA solid 로 **5.1 MB** 가 된다.
 
 ## 4. 결정이 아닌 것 — 자유롭게 바꿔도 되는 것
 

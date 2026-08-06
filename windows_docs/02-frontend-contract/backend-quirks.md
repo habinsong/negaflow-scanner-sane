@@ -208,6 +208,36 @@ shrunk > 0 이고 range.containsExactly(shrunk)
 `Flatbed` / `Transparency Unit` / `TPU8x10`. 8x10을 우선한다.
 `--film-type`으로 극성을 지정한다.
 
+**`TPU8x10`은 세 모델에만 붙는다.** `backend/epson2-ops.c`의 TPU2 분기가
+모델명을 `GT-X800` / `GT-X900` / `GT-X980` 으로 검사한다(= 4990 /
+V700·V750 / V800·V850). 그 밖의 투과 장비 — 예를 들어 일본 모델 `GT-X970` —
+는 `Transparency Unit` 하나만 낸다. 8x10을 전제로 만든 코드는 그런 기기에서
+투과 스캔을 아예 못 하게 된다. 두 경우 모두 `epson-smoke` 가 돌린다.
+
+### 2.7 Windows: 필요한 sanei_usb API가 genesys의 부분집합이다
+
+epson2와 epsonds가 부르는 것은 `init` `open` `close` `read_bulk` `write_bulk`
+`set_timeout` `get_vendor_product` `find_devices`
+`attach_matching_devices` 아홉이고, **전부 genesys 도 부른다.** genesys 는
+OpticFilm 8100 실기에서 usbscan 경로로 돈다 — 그러니 usbscan 백엔드 쪽에
+Epson 전용으로 남은 구멍은 없다. genesys 는 그 위에 `control_msg`
+`clear_halt` `reset` `get_descriptor` 까지 쓴다.
+
+실측(2026-08-06): 두 백엔드 모두 Windows 에서 로드·초기화되고, 설정을 읽고,
+USB 와 네트워크를 훑고 정상 종료한다. `scsi EPSON` 줄과 `net autodiscovery`
+줄도 걸리지 않는다.
+
+### 2.8 V800/V850 은 PID 목록에 있다 — 확인함
+
+한 번 잘못 짚었으니 적어 둔다. `backend/epson_usb.c` 는 항목이 36개뿐이고
+`0x0151`(GT-X980 = V800/V850)이 없다. 그러나 **그 파일은 폐기된 `epson`
+백엔드의 것이다.** epson2 는 `backend/epson2_usb.c` 를 쓰고, 그쪽은
+`epson2.desc` 에서 생성돼 182개이며 `0x012c`(V700/V750)와 `0x0151` 이 모두
+들어 있다.
+
+실측: 재고 `epson2.conf` 로 `sanei_usb_find_devices` 가 183회 불리고
+(182개 + 종료용 0) 그 안에 `0x0151` 이 있다. 설정을 손댈 이유가 없다.
+
 ## 3. coolscan3 (Nikon Coolscan LS 계열)
 
 ### 3.1 `--mode`가 없다

@@ -130,31 +130,55 @@ negaflow 본체 windows_docs README §3.7이 WiX에 대해 같은 우려를 기�
 > 취급하지 않는다.
 
 ```text
-D-20  설치 프로그램 도구는 미결이다.
-      WiX 사용 조건을 확인하거나 대안(Inno Setup)을 검증한 뒤 정한다.
-      기술 요건은 §5.2로 고정하고 도구는 나중에 고른다.
+D-20  결정: NSIS.  (2026-08-06)
 ```
+
+MSI 를 만들지 않는다. §5.2 의 요건은 도구와 무관하고, MSI 여야만 되는 것이
+하나도 없다 — 사용자 범위 설치라 시스템 설치 관리자에 등록할 이유가 없다.
+
+NSIS 를 고른 이유는 셋이다.
+
+- 라이선스가 zlib 계열이라 조건이 없다. WiX 의 Open Source Maintenance Fee
+  같은 문제가 없다.
+- **SANE 을 빌드하는 그 MSYS2 안에 이미 있다**
+  (`mingw-w64-ucrt-x86_64-nsis`). 도구 하나를 위해 별도 Windows 설치를
+  늘리지 않는다. Inno Setup 은 MSYS2 에 없다.
+- 무인 설치(`/S`), 롤백, 설치 로그, 제거를 스크립트로 직접 쓴다. MSI 의
+  트랜잭션을 커스텀 액션으로 흉내내는 것보다 읽기 쉽다.
+
+생성된 exe 안에는 NSIS 스텁 코드가 들어간다. 그것을 배포하므로 고지를
+`THIRD_PARTY_NOTICES.md` 에 적었다. GPL 바이너리는 그 안에 **자료로** 들어
+있다가 그대로 풀린다 — 결합 저작물이 아니라 단순 취합이다.
+
+구현은 [`Installer/windows/negaflow-scanner-sane.nsi`](../../Installer/windows/negaflow-scanner-sane.nsi),
+사용법은 [`Installer/windows/README.md`](../../Installer/windows/README.md).
 
 ### 5.2 기술 요건
 
 도구와 무관하게 만족해야 하는 것:
 
+도구와 무관하게 만족해야 하는 것, 그리고 현재 상태(2026-08-06 실측):
+
 ```text
-1. 사용자 범위 설치 (관리자 권한 불필요)
-2. 아키텍처별 별도 패키지 (x64 / ARM64)
-3. 대상 OS 최소 버전 확인
-4. 기존 설치 감지 및 업그레이드
-5. 깨끗한 제거 (설정 파일 포함 여부는 선택)
-6. Authenticode 서명
-7. 롤백 (설치 실패 시 이전 상태 복원)
-8. 무인 설치 지원 (`/quiet`)
-9. 설치 로그
-10. 드라이버 바인딩 단계를 설치와 분리
+ 1. 사용자 범위 설치 (관리자 권한 불필요)      됨   RequestExecutionLevel user
+ 2. 아키텍처별 별도 패키지 (x64 / ARM64)       일부 x64 만. ARM64 는 거절한다
+ 3. 대상 OS 최소 버전 확인                     됨   AtLeastWin10
+ 4. 기존 설치 감지 및 업그레이드                됨   덮어쓰기 실측
+ 5. 깨끗한 제거                                됨   폴더·레지스트리·상위 폴더
+ 6. Authenticode 서명                          안 함 D-1, 인증서 없음(영구)
+ 7. 롤백 (설치 실패 시 이전 상태 복원)          됨   파일 잠금으로 실측
+ 8. 무인 설치 지원                              됨   `/S`, 창을 띄우지 않는다
+ 9. 설치 로그                                   됨   설치 폴더의 install.log
+10. 드라이버 바인딩 단계를 설치와 분리           해당 없음 — 드라이버를 안 바꾼다
 ```
 
+10번은 사라졌다. usbscan.sys 경로를 택해 드라이버를 바꾸지 않으므로
+바인딩 단계 자체가 없다(runtime-route-decision §4.4b).
+
 7번이 중요하다. macOS의 `install-plugin-user.sh`가 이미
-staging → 기존 이동 → 새것 이동 → 실패 시 복원 패턴을 구현한다.
-MSI는 트랜잭션을 자체 지원하지만, 커스텀 액션으로 하면 직접 해야 한다.
+staging → 기존 이동 → 새것 이동 → 실패 시 복원 패턴을 구현한다. NSIS 판도
+같은 순서다. 기존을 옆으로 옮기는 rename 이 실패하는 것이 곧 "실행 중인가"
+검사여서, 프로세스 목록을 뒤지지 않는다.
 
 ### 5.3 업그레이드
 
@@ -277,51 +301,32 @@ D-21  드라이버 바인딩을 설치와 분리한다.
 
 ## 9. ZIP 배포 (수동 설치)
 
-macOS의 ZIP + `install.sh` 대응.
+**하지 않는다.** 계획 단계에서는 macOS 의 ZIP + `install.sh` 에 맞춰 ZIP +
+`install.ps1` 을 두려 했고 실제로 한 번 만들었지만, 단일 exe 가 그 일을 전부
+한다 — 무인 설치도, 대상 폴더 지정도, 롤백도, 제거도. 설치 경로가 둘이면
+둘 다 계속 동작하게 유지해야 하고, 언젠가 한쪽만 고치게 된다.
 
-```text
-negaflow-scanner-sane-<ver>-win-x64.zip
-    negaflow-scanner-sane-<ver>\
-        sane\                       (플러그인 디렉터리 내용 전부)
-        install.ps1
-```
-
-`install.ps1`은 `scripts/install-release.sh`의 대응이다.
+무인·스크립트 설치는 exe 로 한다.
 
 ```powershell
-# 검증
-manifest.json의 schemaVersion == 1
-protocolVersion == 2
-id == "sane"
-executable == "negaflow-scanner-sane.exe"
-Authenticode 서명 검증
-
-# 설치
-$root = "$env:LOCALAPPDATA\Negaflow\ScannerPlugins"
-staging에 복사
-기존이 있으면 임시 이름으로 이동
-새것을 제자리로 이동
-실패 시 이전 것 복원
+.\negaflow-scanner-sane-<ver>-x64-setup.exe /S /D=C:\경로
 ```
 
-`NEGAFLOW_PLUGINS_DIR` 환경 변수로 대상을 바꿀 수 있게 한다
-(macOS의 `install-release.sh`가 하는 것과 같다. `verify-release`가
-이 기능을 쓴다).
+`/D=` 는 **맨 뒤에, 따옴표 없이** 와야 한다. NSIS 의 제약이다.
 
 ## 10. 릴리스 검증
 
 `verify-release.ps1`이 확인할 것 (macOS `verify-release.sh` 대응):
 
 ```text
-아티팩트 존재:  MSI, ZIP, PDB ZIP, 소스 아카이브 2종, SHA256SUMS
+아티팩트 존재:  setup.exe, PDB ZIP, 소스 아카이브 2종, SHA256SUMS
 체크섬 일치
-ZIP 압축 해제 후:
+setup.exe /S /D=<임시 경로> 로 설치한 뒤:
     negaflow-scanner-sane.exe가 실행 가능
     manifest.json 필드 4종
     LICENSES\ 4개 파일
     소스 아카이브 존재, 병치 사본과 SHA-256 일치
-    install.ps1 존재, 구문 검사
-Authenticode 서명 검증 (signtool verify /pa)
+Authenticode 서명 검증 (signtool verify /pa) — 서명하면
 PE machine type이 기대 아키텍처와 일치
 PDB GUID가 exe의 것과 일치
 import table에 sane 없음
@@ -391,21 +396,25 @@ MSI는 `/l*v` 로그를 지원한다. 기본으로 켤지, 실패 시에만 남�
 
 ## 14. 체크리스트
 
-- [ ] 아키텍처별 MSI 2종
-- [ ] Coolscan 변종 없음(단일 런타임)
-- [ ] 사용자 범위 설치
-- [ ] 드라이버 경고가 설치 전에 표시됨
-- [ ] 드라이버 바인딩이 설치와 분리됨
-- [ ] 소스 아카이브 2종이 설치물에 포함됨
-- [ ] LICENSES\ 4개 파일
-- [ ] 업그레이드 시 이전 버전 제거
-- [ ] 롤백 동작
-- [ ] 제거 시 드라이버 안내
-- [ ] ZIP + install.ps1 경로
-- [ ] `NEGAFLOW_PLUGINS_DIR` 지원
-- [ ] verify-release.ps1이 전 항목 검사
+2026-08-06 기준. 실측 결과는 `Installer/windows/README.md` §검증한 것.
+
+- [x] Coolscan 변종 없음(단일 런타임)
+- [x] 사용자 범위 설치
+- [x] 소스 아카이브가 설치물에 포함됨 (`source/`)
+- [x] LICENSES\ 4개 파일
+- [x] 업그레이드 시 이전 버전이 사라짐 (폴더 통째 교체)
+- [x] 롤백 동작 — 파일을 잠근 채 설치해 확인
+- [x] 무인 설치 동작 — `/S`, 창을 띄우지 않는다
+- [x] 설치 로그
+- [x] 설치 후 실제로 도는지 확인 (`detect` 종료 코드)
+- [ ] 아키텍처별 패키지 2종 — x64 만. ARM64 는 거절한다
+- [ ] Authenticode 서명 — D-1, 인증서 없음(영구 제외)
+- [ ] verify-release.ps1
 - [ ] ACL이 좁게 설정됨
-- [ ] 무인 설치 동작
+- [x] ~~드라이버 경고~~ / ~~드라이버 바인딩 분리~~ / ~~제거 시 드라이버 안내~~
+      — 드라이버를 바꾸지 않으므로 해당 없음
+- [x] ~~ZIP + install.ps1 경로~~ / ~~`NEGAFLOW_PLUGINS_DIR` 지원~~
+      — §9 참조. 단일 exe 의 `/S /D=` 로 대체
 
 ## 15. 열린 질문
 

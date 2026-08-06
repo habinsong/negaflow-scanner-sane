@@ -30,3 +30,4 @@ CODEX.md
 
 # Windows 배포물은 빌드 산출물이다 (15 MB). make-payload.sh 가 만든다.
 Installer/windows/payload/
+Installer/windows/*-setup.exe
