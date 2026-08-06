@@ -34,7 +34,7 @@
  	{
  	  double progr;
 +#ifdef _WIN32
-+	  /* The handler cannot call sane_cancel itself — it runs on another
++	  /* The handler cannot call sane_cancel itself: it runs on another
 +	     thread.  Doing it here means the backend is only ever touched by
 +	     one thread, and the sane_read below then returns
 +	     SANE_STATUS_CANCELLED so every existing exit path still holds.  */

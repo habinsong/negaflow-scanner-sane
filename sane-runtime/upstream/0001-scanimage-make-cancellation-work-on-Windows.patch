@@ -1,0 +1,107 @@
+From 5b8be4fa20881e79bb015f8c2a59d620097a4619 Mon Sep 17 00:00:00 2001
+From: habin song <habin959@gmail.com>
+Date: Thu, 6 Aug 2026 08:59:26 +0900
+Subject: [PATCH] scanimage: make cancellation work on Windows
+
+A parent process on Windows can aim a control event at one child only
+through CTRL_BREAK_EVENT, and that arrives as SIGBREAK, not SIGINT --
+"CTRL+C or CTRL+BREAK is treated as a signal (SIGINT or SIGBREAK)".
+scanimage installs handlers for SIGINT and SIGTERM only, so the event
+falls through to the default handler, which ends the process in the
+middle of a transfer.  sane_cancel never runs.
+
+That is not merely untidy.  Measured with a Plustek OpticFilm 8100
+(genesys) reached through the Windows still-image class driver, a
+scanner left that way answers nothing afterwards -- the next open fails
+with "Invalid argument" -- until it is power cycled.
+
+Installing a SIGBREAK handler is not enough on its own.  Windows runs
+console control handlers on a thread the system creates for the event,
+while the main thread sits inside sane_read.  Calling sane_cancel from
+there races with it; measured, that crashed with an access violation
+after 171 ms and left the scanner in the same state.  On POSIX the
+handler interrupts the main thread, so the existing code is fine there.
+
+So on Windows the handler only raises a flag and the read loop performs
+the cancellation on its own thread.  The backend is then touched by one
+thread at a time, and the following sane_read returns
+SANE_STATUS_CANCELLED, so every existing exit path still applies.
+
+Measured after the change:
+
+    baseline scan            21 s, 3030277 bytes
+    CTRL_BREAK during scan   "trying to stop scanner"
+                             "sane_read: Operation was canceled"
+                             exit code 2 after 6890 ms
+    scan after the cancel    17 s, 3030277 bytes
+---
+ frontend/scanimage.c | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/frontend/scanimage.c b/frontend/scanimage.c
+index 3766071..c1239fe 100644
+--- a/frontend/scanimage.c
++++ b/frontend/scanimage.c
+@@ -316,6 +316,11 @@ auth_callback (SANE_String_Const resource,
+     }
+ }
+ 
++#ifdef _WIN32
++/* Set by the handler, acted on by the read loop.  See the comment there.  */
++static volatile sig_atomic_t cancel_requested = 0;
++#endif
++
+ static void
+ sighandler (int signum)
+ {
+@@ -328,7 +333,16 @@ sighandler (int signum)
+ 	{
+ 	  first_time = SANE_FALSE;
+ 	  fprintf (stderr, "%s: trying to stop scanner\n", prog_name);
++#ifdef _WIN32
++	  /* Windows runs this handler on a thread the system creates for the
++	     event, while the main thread sits inside sane_read.  Calling
++	     sane_cancel from here races with it: measured, that crashed with
++	     an 0xC0000005 access violation and left the scanner needing a
++	     power cycle.  Ask the read loop to cancel on its own thread.  */
++	  cancel_requested = 1;
++#else
+ 	  sane_cancel (device);
++#endif
+ 	}
+       else
+ 	{
+@@ -1559,6 +1573,17 @@ scan_it (FILE *ofp, void* pw)
+       while (1)
+ 	{
+ 	  double progr;
++#ifdef _WIN32
++	  /* The handler cannot call sane_cancel itself: it runs on another
++	     thread.  Doing it here means the backend is only ever touched by
++	     one thread, and the sane_read below then returns
++	     SANE_STATUS_CANCELLED so every existing exit path still holds.  */
++	  if (cancel_requested)
++	    {
++	      cancel_requested = 0;
++	      sane_cancel (device);
++	    }
++#endif
+ 	  status = sane_read (device, buffer, buffer_size, &len);
+ 	  total_bytes += (SANE_Word) len;
+           progr = ((total_bytes * 100.) / (double) hundred_percent);
+@@ -2709,6 +2734,12 @@ List of available devices:", prog_name);
+ #endif
+   signal (SIGINT, sighandler);
+   signal (SIGTERM, sighandler);
++#ifdef SIGBREAK
++  /* On Windows a parent can only aim a control event at one child, and the
++     only event it can aim is CTRL_BREAK_EVENT, which arrives as SIGBREAK
++     rather than SIGINT.  */
++  signal (SIGBREAK, sighandler);
++#endif
+ 
+   if (test == 0)
+     {
+-- 
+2.54.0.windows.1
+

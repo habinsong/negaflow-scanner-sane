@@ -1,0 +1,65 @@
+From 65061aa2de4fa9a475c236f9aac6bdfc72e36ecf Mon Sep 17 00:00:00 2001
+From: habin song <habin959@gmail.com>
+Date: Thu, 6 Aug 2026 08:59:25 +0900
+Subject: [PATCH] scanimage: write image data to stdout in binary mode on
+ Windows
+
+On Windows the C runtime opens stdout in text mode, so every 0x0A byte in
+the image is written as 0x0D 0x0A.  Redirecting scanimage to a file or a
+pipe therefore produces a corrupt PNM, TIFF, PNG or JPEG: the file grows
+by roughly the number of newline-valued bytes and no reader can decode it.
+
+Reproduce on Windows (MSYS2/MinGW build):
+
+    scanimage --format=tiff -d <dev> > out.tiff
+    # out.tiff is larger than the reported image size and fails to open
+
+_setmode on the output stream fixes it.  The call is guarded so nothing
+changes on other platforms.  Both the single-image and the batch paths
+need it, because batch reopens the stream per file.
+---
+ frontend/scanimage.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/frontend/scanimage.c b/frontend/scanimage.c
+index 3766071..528801c 100644
+--- a/frontend/scanimage.c
++++ b/frontend/scanimage.c
+@@ -43,6 +43,10 @@
+ #include <libgen.h>     // for basename()
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#ifdef _WIN32
++#include <fcntl.h>
++#include <io.h>
++#endif
+ 
+ #ifdef HAVE_LIBPNG
+ #include <png.h>
+@@ -2753,6 +2757,12 @@ List of available devices:", prog_name);
+                   scanimage_exit(1);
+                 }
+             }
++#ifdef _WIN32
++          /* The Windows CRT opens streams in text mode by default, so every
++             0x0A written becomes 0x0D 0x0A.  That corrupts every image format
++             this program emits.  SANE only handled this for OS/2 above.  */
++          _setmode (_fileno (ofp), _O_BINARY);
++#endif
+ #ifdef HAVE_LIBJPEG
+          if (output_format == OUTPUT_PDF || output_format == OUTPUT_PDF_PER_PAGE)
+            {
+@@ -2862,6 +2872,10 @@ List of available devices:", prog_name);
+ 	      if (ofp == NULL)
+ 	        {
+ 	          ofp = fopen (part_path, "w");
++#ifdef _WIN32
++	          if (ofp != NULL)
++	            _setmode (_fileno (ofp), _O_BINARY);
++#endif
+ #ifdef HAVE_LIBJPEG
+ 	          if ((output_format == OUTPUT_PDF || output_format == OUTPUT_PDF_PER_PAGE) && ofp != NULL)
+ 	             init_pdf = SANE_TRUE;
+-- 
+2.54.0.windows.1
+
