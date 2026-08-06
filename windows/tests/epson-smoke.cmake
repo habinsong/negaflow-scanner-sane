@@ -71,8 +71,8 @@ if(NOT caps_code EQUAL 0)
     message(FATAL_ERROR "capabilities 가 ${caps_code} 로 끝났다.\nstderr: ${caps_err}")
 endif()
 
-string(FIND "${caps_out}" "\"transparencyModes\":[\"TPU8x10\"]" found_tpu)
-expect("TPU8x10 을 투과 소스로 인식한다" found_tpu GREATER -1)
+string(FIND "${caps_out}" "\"transparencyModes\":[\"Transparency Unit\",\"TPU8x10\"]" found_tpu)
+expect("투과 소스 둘을 모두 인식한다" found_tpu GREATER -1)
 
 # 여기가 이 계열의 함정이다. 소스를 적용하지 않은 덤프는 평판 한계
 # (215.9 x 297.18mm)를 내고, TPU8x10 을 적용한 덤프가 8x10 인치
@@ -172,5 +172,88 @@ expect("획득에 전체 장치 이름을 쓴다 (주소가 안 바뀌므로)" f
 string(REGEX MATCHALL "\n-A |^-A " option_reads "${args}")
 list(LENGTH option_reads option_read_count)
 expect("옵션 조회는 두 번뿐이다" option_read_count EQUAL 2)
+
+# epson2 의 --film-type 은 네 값이다(Positive/Negative × Film/Slide). 부분
+# 일치로 고르면 Slide 를 집는다.
+string(FIND "${args}" "Negative Slide" found_slide)
+expect("Negative Film 대신 Negative Slide 를 집지 않는다" found_slide EQUAL -1)
+
+# 비활성 옵션도 제약 목록을 그대로 출력한다. 목록만 보고 설정하면
+# scanimage 가 "attempted to set inactive option" 으로 거절한다.
+string(FIND "${args}" "--halftoning" found_halftone)
+string(FIND "${args}" "--threshold" found_threshold)
+string(FIND "${args}" "--eject" found_eject)
+expect("비활성 옵션을 설정하지 않는다"
+       found_halftone EQUAL -1 AND found_threshold EQUAL -1 AND found_eject EQUAL -1)
+
+# --- ⑤ 기기 범위 밖 밝기 -----------------------------------------------------
+#
+# epson2 의 밝기는 B7/B8 명령 레벨에서 -4..3 이다. genesys 는 -100..100 이라
+# 앱이 같은 값을 두 기기에 보내면 Epson 에서만 터진다. 보내기 전에 거절해야
+# 한다 — 스캐너까지 갔다가 실패하면 램프만 켜고 시간을 버린다.
+
+string(REPLACE "\"brightnessAdjustment\":0" "\"brightnessAdjustment\":10"
+       bright_request "${request}")
+file(WRITE "${WORKDIR}/bright.json" "${bright_request}")
+
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/bright.json"
+    OUTPUT_VARIABLE bright_out
+    ERROR_VARIABLE bright_err
+    RESULT_VARIABLE bright_code)
+
+expect("범위 밖 밝기 요청은 exit 1 이다" bright_code EQUAL 1)
+string(FIND "${bright_out}" "\"type\":\"error\"" found_bright_error)
+expect("범위 밖 밝기를 오류로 보고한다" found_bright_error GREATER -1)
+
+# --- ⑥ TPU8x10 이 없는 Epson -------------------------------------------------
+#
+# TPU8x10 은 epson2-ops.c 의 TPU2 분기가 모델명 GT-X800/GT-X900/GT-X980 일
+# 때만 붙인다. 그 밖의 투과 장비는 `Transparency Unit` 하나뿐이므로, 8x10 을
+# 전제로 만든 코드는 그런 기기에서 투과 스캔을 아예 못 하게 된다.
+
+file(TO_NATIVE_PATH "${WORKDIR}/args-tpu.log" ARGLOG_TPU)
+set(ENV{NEGAFLOW_VSCAN_SCENARIO} "epson-tpu")
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_TPU}")
+
+execute_process(
+    COMMAND "${PLUGIN}" capabilities "sane-epson2:usbscan:001"
+    OUTPUT_VARIABLE tpu_caps_out
+    ERROR_VARIABLE tpu_caps_err
+    RESULT_VARIABLE tpu_caps_code)
+
+if(NOT tpu_caps_code EQUAL 0)
+    message(FATAL_ERROR "capabilities(epson-tpu) 가 ${tpu_caps_code} 로 끝났다.\nstderr: ${tpu_caps_err}")
+endif()
+
+string(FIND "${tpu_caps_out}" "\"transparencyModes\":[\"Transparency Unit\"]" found_tpu_only)
+expect("8x10 이 없으면 Transparency Unit 하나만 낸다" found_tpu_only GREATER -1)
+
+string(FIND "${tpu_caps_out}" "\"scanWidthRange\":{\"minimum\":0,\"maximum\":101.6}" found_tpu_w)
+expect("그 소스를 적용한 지오메트리를 읽는다" found_tpu_w GREATER -1)
+
+if(NOT tpu_caps_out MATCHES "\"capabilityToken\":\"([^\"]+)\"")
+    message(FATAL_ERROR "capabilityToken(epson-tpu) 을 찾지 못했다.\n${tpu_caps_out}")
+endif()
+string(REPLACE "${token}" "${CMAKE_MATCH_1}" tpu_request "${request}")
+file(WRITE "${WORKDIR}/request-tpu.json" "${tpu_request}")
+
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/request-tpu.json"
+    OUTPUT_VARIABLE tpu_scan_out
+    ERROR_VARIABLE tpu_scan_err
+    RESULT_VARIABLE tpu_scan_code)
+
+if(NOT tpu_scan_code EQUAL 0)
+    message(FATAL_ERROR "scan(epson-tpu) 이 ${tpu_scan_code} 로 끝났다.\nstderr: ${tpu_scan_err}")
+endif()
+
+file(READ "${WORKDIR}/args-tpu.log" tpu_args)
+string(FIND "${tpu_args}" "--source Transparency Unit" found_tpu_source)
+expect("8x10 이 없으면 Transparency Unit 을 쓴다" found_tpu_source GREATER -1)
+string(FIND "${tpu_args}" "TPU8x10" found_tpu_8x10)
+expect("없는 소스를 만들어 보내지 않는다" found_tpu_8x10 EQUAL -1)
 
 message(STATUS "epson-smoke 통과")

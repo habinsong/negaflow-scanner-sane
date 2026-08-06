@@ -23,7 +23,11 @@
 //             (프로세스가 매번 새로 뜨므로 메모리로는 셀 수 없다).
 // rounded     exit 0 인데 "rounded value of" 경고 → I-1 로 결과를 버려야 한다
 // bigout      1 MiB 넘는 stdout+stderr → 파이프 교착 재현
+// epson       Epson 평판(GT-X980 = V800/V850). 소스가 셋이고 TPU8x10 이 있다
+// epson-tpu   TPU8x10 이 없는 Epson 평판(GT-X700 = 4870). 투과 소스가 하나뿐
 // ```
+//
+// `epson` 으로 시작하는 시나리오는 전부 Epson 페르소나다.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -199,41 +203,116 @@ constexpr const char* kDeviceName = "genesys:libusb:001:002";
 // --- Epson 평판 (V700/V750/V800/V850) -------------------------------------
 //
 // Windows 에서 이 계열의 SANE 이름은 `epson2:usbscan:NNN` 이다 — still-image
-// 클래스 드라이버를 통해 열리기 때문이다. genesys 와 달리 소스마다 지오메트리
-// 한계가 다르고(`Flatbed` 와 `TPU8x10`), 필름 종류·색 보정·감마를 인자로
-// 받는다. 그 인자들이 정확한 순서로 나가는지가 이 픽스처의 목적이다.
+// 클래스 드라이버를 통해 열리기 때문이다.
+//
+// **이 덤프는 지어낸 것이 아니라 sane-backends 1.4.0 의 epson2 소스에서
+// 옮긴 것이다.** 지어내면 실기에 없는 것을 검사하게 되고, 그러면 통과하는
+// 시험이 아무것도 보장하지 않는다. 근거:
+//
+// ```text
+// 값 목록      backend/epson2.c  mode_list / film_list / correction_list /
+//                                gamma_list_ab / FBF_STR·TPU_STR·TPU_STR2
+// 옵션 이름    include/sane/saneopts.h 와 backend/epson2.h
+// 순서·그룹    backend/epson2.h 의 OPT_* 열거, epson2.c 의 init_options
+// 밝기 -4..3   backend/epson2-ops.c 의 epson_cmd[] 중 B7/B8 의 bright_range
+// ```
+//
+// 특히 두 가지가 genesys 와 다르고, 어댑터가 틀리면 실기에서만 드러난다.
+//
+// ① 소스가 셋이다. `TPU8x10` 은 epson2-ops.c 의 TPU2 분기가 모델명이
+//    GT-X800 / GT-X900 / GT-X980 일 때만 붙인다(= 4990 / V700·V750 /
+//    V800·V850). 다른 투과 장비는 `Transparency Unit` 하나뿐이므로 두 경우를
+//    모두 흉내낸다 — 어댑터는 8x10 이 있으면 그쪽(더 큰 영역)을 골라야 한다.
+// ② 밝기 범위가 -4..3 이다. genesys 의 -100..100 로 만든 요청을 그대로
+//    보내면 실기에서 거절당한다. 어댑터가 기기 범위로 검사해야 한다.
 constexpr const char* kEpsonDeviceName = "epson2:usbscan:001";
 
-[[nodiscard]] std::string epsonOptionDump(bool transparencyUnit) {
+/// 이 기기가 TPU8x10 까지 내는가.
+[[nodiscard]] bool epsonHasEightByTen(const std::string& scenario) {
+    return scenario != "epson-tpu";
+}
+
+[[nodiscard]] const char* epsonModel(const std::string& scenario) {
+    return epsonHasEightByTen(scenario) ? "Perfection V800 Photo" : "Perfection 4870 Photo";
+}
+
+/// 소스별 지오메트리 한계.
+///
+/// 숫자 자체는 기기가 보고하는 값이라 모델마다 다르다. 여기서 고정하는 것은
+/// **소스마다 한계가 다르다**는 사실이고, 어댑터가 소스를 적용해 덤프를 다시
+/// 읽지 않으면 사용자에게 없는 영역을 제시하게 된다는 점이다.
+[[nodiscard]] std::string epsonGeometry(const std::string& source) {
+    if (source == "TPU8x10") {  // 8 x 10 인치
+        return "    -l 0..203.2mm [0]\n"
+               "    -t 0..254mm [0]\n"
+               "    -x 0..203.2mm [203.2]\n"
+               "    -y 0..254mm [254]\n";
+    }
+    if (source == "Transparency Unit") {
+        return "    -l 0..101.6mm [0]\n"
+               "    -t 0..228.6mm [0]\n"
+               "    -x 0..101.6mm [101.6]\n"
+               "    -y 0..228.6mm [228.6]\n";
+    }
+    return "    -l 0..215.9mm [0]\n"  // 평판
+           "    -t 0..297.18mm [0]\n"
+           "    -x 0..215.9mm [215.9]\n"
+           "    -y 0..297.18mm [297.18]\n";
+}
+
+[[nodiscard]] std::string epsonOptionDump(bool hasEightByTen, const std::string& requestedSource) {
+    const std::string source = requestedSource.empty() ? "Flatbed" : requestedSource;
+    const std::string sourceList =
+        hasEightByTen ? "Flatbed|Transparency Unit|TPU8x10" : "Flatbed|Transparency Unit";
+
     std::string dump;
     dump += "Options specific to device `";
     dump += kEpsonDeviceName;
     dump += "':\n";
     dump += "  Scan Mode:\n";
     dump += "    --mode Lineart|Gray|Color|Infrared [Color]\n";
-    dump += "    --source Flatbed|TPU8x10 [Flatbed]\n";
-    dump += "    --film-type Positive Film|Negative Film [Positive Film]\n";
     dump += "    --depth 8|16 [8]\n";
-    dump += "    --resolution 300|600|800|1200|2400|3200|4800|6400dpi [800]\n";
+    // Color 에서는 하프톤과 임계값이 비활성이다. 비활성 옵션도 제약 목록을
+    // 그대로 출력하므로, 목록만 보고 설정하면 scanimage 가 거절한다.
+    dump += "    --halftoning None|Halftone A (Hard Tone)|Halftone B (Soft Tone)|"
+            "Halftone C (Net Screen)|Dither A (4x4 Bayer)|Dither B (4x4 Spiral)|"
+            "Dither C (4x4 Net Screen)|Dither D (8x4 Net Screen)|Text Enhanced Technology|"
+            "Download pattern A|Download pattern B [inactive]\n";
+    dump += "    --dropout None|Red|Green|Blue [None]\n";
+    dump += "    --brightness -4..3 (in steps of 1) [0]\n";
+    dump += "    --sharpness -2..2 (in steps of 1) [0]\n";
+    dump += "    --gamma-correction Default|User defined|High density printing|"
+            "Low density printing|High contrast printing [Default]\n";
+    dump += "    --color-correction None|Built in CCT profile|User defined CCT profile [None]\n";
+    dump += "    --resolution 50|75|100|150|200|300|400|600|800|1200|1600|2400|3200|4800|"
+            "6400dpi [50]\n";
+    dump += "    --threshold 0..255 (in steps of 1) [inactive]\n";
+    dump += "  Advanced:\n";
+    dump += "    --mirror[=(yes|no)] [no]\n";
+    dump += "    --auto-area-segmentation[=(yes|no)] [inactive]\n";
+    dump += "    --red-gamma-table 0..255,... [inactive]\n";
+    dump += "    --green-gamma-table 0..255,... [inactive]\n";
+    dump += "    --blue-gamma-table 0..255,... [inactive]\n";
+    dump += "    --wait-for-button[=(yes|no)] [no]\n";
+    dump += "  Color correction:\n";
+    dump += "    --cct-type Automatic|Reflective|Colour negatives|Monochrome negatives|"
+            "Colour positives [Automatic]\n";
+    dump += "    --cct-profile -2..2 (in steps of 0.000015259),... [inactive]\n";
+    dump += "  Preview:\n";
     dump += "    --preview[=(yes|no)] [no]\n";
-    dump += "  Enhancement:\n";
-    dump += "    --color-correction None|User defined [None]\n";
-    dump += "    --gamma-correction Default|User defined [Default]\n";
-    dump += "    --brightness -100..100 (in steps of 1) [0]\n";
     dump += "  Geometry:\n";
-    // TPU8x10 은 8x10 인치 = 203.2 x 254 mm. 평판은 A4 크기다. 소스에 따라
-    // 한계가 달라지므로 어댑터는 소스를 적용한 덤프를 따로 읽어야 한다.
-    if (transparencyUnit) {
-        dump += "    -l 0..203.2mm [0]\n";
-        dump += "    -t 0..254mm [0]\n";
-        dump += "    -x 0..203.2mm [203.2]\n";
-        dump += "    -y 0..254mm [254]\n";
-    } else {
-        dump += "    -l 0..215.9mm [0]\n";
-        dump += "    -t 0..297.18mm [0]\n";
-        dump += "    -x 0..215.9mm [215.9]\n";
-        dump += "    -y 0..297.18mm [297.18]\n";
-    }
+    dump += epsonGeometry(source);
+    dump += "  Focus:\n";
+    dump += "    --autofocus[=(yes|no)] [no]\n";
+    dump += "    --focus 0..254 (in steps of 1) [0]\n";
+    dump += "  Optional equipment:\n";
+    dump += "    --source " + sourceList + " [" + source + "]\n";
+    dump += "    --auto-eject[=(yes|no)] [inactive]\n";
+    // 네 값이다. `Negative Film` 을 부분 일치로 고르면 `Negative Slide` 를
+    // 집을 수 있다 — 그래서 네 값을 모두 낸다.
+    dump += "    --film-type Positive Film|Negative Film|Positive Slide|Negative Slide "
+            "[Positive Film]\n";
+    dump += "    --eject [inactive]\n";
     return dump;
 }
 
@@ -294,7 +373,8 @@ int main(int argc, char** argv) {
             return 1;
         }
         if (epson) {
-            out(std::string(kEpsonDeviceName) + "\tEpson\tPerfection V800 Photo\tflatbed scanner\n");
+            out(std::string(kEpsonDeviceName) + "\tEpson\t" + epsonModel(scenario) +
+                "\tflatbed scanner\n");
             return 0;
         }
         out(std::string(kDeviceName) + "\tPlustek\tOpticFilm 8100\tfilm scanner\n");
@@ -302,8 +382,8 @@ int main(int argc, char** argv) {
     }
     if (has("-L") || has("--list-devices")) {
         if (epson) {
-            out(std::string("device `") + kEpsonDeviceName +
-                "' is a Epson Perfection V800 Photo flatbed scanner\n");
+            out(std::string("device `") + kEpsonDeviceName + "' is a Epson " +
+                epsonModel(scenario) + " flatbed scanner\n");
             return 0;
         }
         out(std::string("device `") + kDeviceName + "' is a Plustek OpticFilm 8100 film scanner\n");
@@ -321,7 +401,7 @@ int main(int argc, char** argv) {
         if (epson) {
             // 소스를 준 덤프와 안 준 덤프가 달라야 한다. 어댑터가 소스를
             // 적용해 다시 읽지 않으면 TPU 한계를 평판 한계로 착각한다.
-            out(epsonOptionDump(valueOf("--source") == "TPU8x10"));
+            out(epsonOptionDump(epsonHasEightByTen(scenario), valueOf("--source")));
             return 0;
         }
         out(optionDump(mode == "Gray"));
