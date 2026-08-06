@@ -153,15 +153,27 @@ Windows 이식에서 이 이력을 모른 채 "비활성이어도 보내면 되�
 
 ### 2.3 정수 mm 절삭 보정 (`epson2AlignedHeightMM`)
 
-`backend/epson2-ops.c`의 `e2_init_parameters`:
+`backend/epson2-ops.c`의 `e2_init_parameters`. `params.lines`를 **두 번**
+대입하는데, 문제는 두 번째다.
 
 ```c
-((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi + 0.5) - s->top
+/* ① 일반 경로 — 여기는 멀쩡하다 */
+s->params.lines =
+    ((SANE_UNFIX(s->val[OPT_BR_Y].w - s->val[OPT_TL_Y].w) / MM_PER_INCH) * dpi) + 0.5;
+
+/* ② 아래 가장자리를 넘치면 다시 계산한다 */
+if (SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi < (s->params.lines + s->top)) {
+    s->params.lines =
+        ((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi + 0.5) - s->top;
+}
 ```
 
-`(int)` 캐스트가 나눗셈보다 먼저 걸린다(1.4.0과 master 모두 동일).
-`br_y`가 소수 mm면 결과 이미지의 세로만 최대 1 mm어치 짧아진다. 요청한
-종횡비와 어긋나고 필름 컷이 조용히 잘린다.
+②의 `(int)` 캐스트가 나눗셈보다 먼저 걸려 **`br_y`를 밀리미터 단위로
+버린다**(1.4.0의 1421행, master도 같다). `lines`와 `top`이 둘 다 올림되면
+조건이 참이 되므로 이 경로는 드물지 않다. `br_y`가 소수 mm면 결과 이미지의
+세로만 최대 1 mm어치 짧아진다. 요청한 종횡비와 어긋나고 필름 컷이 조용히
+잘린다. 아래를 정수 mm로 맞춰 보내면 `(int) br_y == br_y`가 되어 아무것도
+잃지 않는다 — 그것이 아래 알고리즘이다.
 
 보정 알고리즘:
 
@@ -187,6 +199,19 @@ shrunk > 0 이고 range.containsExactly(shrunk)
 `abs(요청 높이 - 적용 높이) < 1 mm`를 허용한다.
 
 **이 tolerance는 높이에만 있다.** 폭·원점에는 없다.
+
+폭에도 절삭이 있지만 성격이 다르므로 보정하지 않는다.
+
+```c
+/* pixels_per_line is rounded to the next 8bit boundary */
+s->params.pixels_per_line = s->params.pixels_per_line & ~7;
+```
+
+폭은 **픽셀 단위로 8의 배수까지 내림**한다(1.4.0과 master 모두). 최대 7픽셀
+손실이라 2400 dpi 에서 0.074 mm, 600 dpi 에서 0.30 mm 다. 높이 쪽 1 mm 와
+자릿수가 다르고, mm 를 조정해서 없앨 수 있는 종류가 아니다(요청 폭과
+무관하게 8 경계로 떨어진다). 맥도 같으므로 **동작을 맞춘다.** 앱은 결과의
+실제 픽셀 폭을 result 이벤트로 받는다.
 
 이 패치는 `Formula/sane-backends-negaflow.rb`에도 들어 있어 Coolscan 설치
 경로에서는 백엔드 자체가 고쳐진다. 하지만 stock SANE 사용자를 위해
@@ -214,6 +239,32 @@ V700·V750 / V800·V850). 그 밖의 투과 장비 — 예를 들어 일본 모�
 는 `Transparency Unit` 하나만 낸다. 8x10을 전제로 만든 코드는 그런 기기에서
 투과 스캔을 아예 못 하게 된다. 두 경우 모두 `epson-smoke` 가 돌린다.
 
+### 2.6a 초점은 우리가 건드리지 않는다 — `--source`가 이미 옮긴다
+
+`--focus`를 보내고 싶어질 수 있다. V700/V750/V800/V850은 필름을 유리에서
+띄워 스캔하니까 초점을 필름면으로 옮겨야 할 것 같다. **이미 옮겨져 있다.**
+
+`epson2.c`의 `--source` 처리(`sane_control_option`)가 하는 일이다.
+
+```c
+} else if (strcmp(TPU_STR, value) == 0 || strcmp(TPU_STR2, value) == 0) {
+        ...
+        if (s->hw->focusSupport)
+                s->val[OPT_FOCUS_POS].w = FOCUS_ABOVE_25MM;   /* 64 + 25 */
+```
+
+`FOCUS_ON_GLASS`가 64, `FOCUS_ABOVE_25MM`가 64+25 다. 투과 소스를 고르면
+백엔드가 초점을 **유리 위 2.5 mm**, 즉 필름 홀더 면으로 옮기고, Flatbed 나
+ADF 를 고르면 유리로 되돌린다. 우리가 `--focus`를 따로 보내면 그 기본값을
+덮어쓴다.
+
+`focusSupport`는 기기에 물어서 정한다(`esci_request_focus_position`이
+성공하면 참). 지원하지 않는 기기에서는 `--focus`가 `[inactive]`로 나오므로
+보내면 스캔 전체가 실패한다.
+
+같은 분기가 `--film-type`도 그때 활성화한다. 소스를 적용해 덤프를 다시
+읽어야 하는 이유가 지오메트리만은 아니다.
+
 ### 2.7 Windows: 필요한 sanei_usb API가 genesys의 부분집합이다
 
 epson2와 epsonds가 부르는 것은 `init` `open` `close` `read_bulk` `write_bulk`
@@ -237,6 +288,15 @@ USB 와 네트워크를 훑고 정상 종료한다. `scsi EPSON` 줄과 `net aut
 
 실측: 재고 `epson2.conf` 로 `sanei_usb_find_devices` 가 183회 불리고
 (182개 + 종료용 0) 그 안에 `0x0151` 이 있다. 설정을 손댈 이유가 없다.
+
+### 2.9 epsonds 와 겹치지 않는다
+
+둘 다 `dll.conf` 에 있으니 한 기기가 두 번 나올 수 있다. 안 그런다.
+
+실측: epsonds 는 PID 73개를 찾고 그 안에 `0x012c`(V700/V750)도
+`0x0151`(V800/V850)도 없다. epsonds 는 ESC/I-2 를 쓰는 DS 계열 문서
+스캐너를 맡고, Perfection 필름 평판은 epson2 가 맡는다. 목록이 겹치지
+않으므로 `detect` 에 중복이 생기지 않는다.
 
 ## 3. coolscan3 (Nikon Coolscan LS 계열)
 
