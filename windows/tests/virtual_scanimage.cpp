@@ -25,9 +25,15 @@
 // bigout      1 MiB 넘는 stdout+stderr → 파이프 교착 재현
 // epson       Epson 평판(GT-X980 = V800/V850). 소스가 셋이고 TPU8x10 이 있다
 // epson-tpu   TPU8x10 이 없는 Epson 평판(GT-X700 = 4870). 투과 소스가 하나뿐
+// of-7200     OpticFilm 7200   해상도 7200/3600/1800/900, 36x25,  IR 없음
+// of-7300     OpticFilm 7300   해상도 7200/3600/1800/900, 36x24,  IR 없음
+// of-7500i    OpticFilm 7500i  해상도 7200/3600/1800/900, 36x24,  IR 있음
+// of-8100     OpticFilm 8100   해상도 7200/3600/2400/1200/600, 36.33x25, IR 없음
+// of-8200i    OpticFilm 8200i  해상도 7200/3600/1800/900, 36.33x25, IR 있음
 // ```
 //
-// `epson` 으로 시작하는 시나리오는 전부 Epson 페르소나다.
+// `epson` 으로 시작하는 시나리오는 전부 Epson 페르소나이고, `of-` 로 시작하는
+// 것은 OpticFilm 모델별 페르소나다.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -200,6 +206,98 @@ constexpr const char* kDeviceName = "genesys:libusb:001:002";
     return dump;
 }
 
+// --- OpticFilm 모델별 (genesys) --------------------------------------------
+//
+// 8100 만 실기로 확인했다. 나머지 값은 `backend/genesys/tables_model.cpp` 를
+// 그대로 옮긴 것이고, 덤프의 생김새는 **실기 8100 이 낸 것**을 본떴다.
+//
+// 핵심은 모델마다 해상도 목록이 다르다는 것이다.
+//
+// ```text
+// 7400 (v1/v2), 8100                          7200 3600 2400 1200 600
+// 7200, 7200i, 7200 v2, 7300, 7500i,
+// 7600i (v1/v2), 8200i                        7200 3600 1800 900
+// ```
+//
+// 8100 에서 되는 600 dpi 가 7500i 에는 아예 없다. 목록을 안 보고 보내면 그
+// 기기에서만 스캔이 실패한다 — 손에 있는 한 대로는 절대 안 드러난다.
+//
+// 적외선은 7200i / 7500i / 7600i / 8200i 만 낸다
+// (`ScanMethod::TRANSPARENCY_INFRARED`). 소스 문자열은 genesys.h 의
+// `STR_TRANSPARENCY_ADAPTER` 와 `STR_TRANSPARENCY_ADAPTER_INFRARED` 다.
+//
+// 심도는 전 모델이 **16 하나뿐이다**(`bpp_color_values = { 16 }`). 실기 8100
+// 도 `--depth 16 [16]` 을 낸다. 8-bit 요청은 거절해야 한다.
+constexpr const char* kOpticFilmDeviceName = "genesys:usbscan:000";
+
+struct OpticFilmModel {
+    const char* scenario;
+    const char* model;
+    const char* resolutions;  ///< 덤프에 그대로 나가는 목록(내림차순)
+    const char* defaultDpi;   ///< 목록의 최솟값
+    const char* widthMM;
+    const char* heightMM;
+    bool infrared;
+};
+
+constexpr OpticFilmModel kOpticFilmModels[] = {
+    {"of-7200", "OpticFilm 7200", "7200|3600|1800|900", "900", "36", "25", false},
+    {"of-7300", "OpticFilm 7300", "7200|3600|1800|900", "900", "36", "24", false},
+    {"of-7500i", "OpticFilm 7500i", "7200|3600|1800|900", "900", "36", "24", true},
+    {"of-8100", "OpticFilm 8100", "7200|3600|2400|1200|600", "600", "36.33", "25", false},
+    {"of-8200i", "OpticFilm 8200i", "7200|3600|1800|900", "900", "36.33", "25", true},
+};
+
+[[nodiscard]] const OpticFilmModel* opticFilmModel(const std::string& scenario) {
+    for (const auto& m : kOpticFilmModels) {
+        if (scenario == m.scenario) return &m;
+    }
+    return nullptr;
+}
+
+[[nodiscard]] std::string opticFilmDump(const OpticFilmModel& m, bool grayMode) {
+    const std::string w = m.widthMM;
+    const std::string h = m.heightMM;
+
+    std::string dump;
+    dump += "\nAll options specific to device `";
+    dump += kOpticFilmDeviceName;
+    dump += "':\n";
+    dump += "  Scan Mode:\n";
+    dump += std::string("    --mode Color|Gray [") + (grayMode ? "Gray" : "Color") + "]\n";
+    dump += std::string("    --source Transparency Adapter") +
+            (m.infrared ? "|Transparency Adapter Infrared" : "") + " [Transparency Adapter]\n";
+    dump += "    --preview[=(yes|no)] [no]\n";
+    dump += "    --depth 16 [16]\n";
+    dump += std::string("    --resolution ") + m.resolutions + "dpi [" + m.defaultDpi + "]\n";
+    dump += "  Geometry:\n";
+    dump += "    -l 0.." + w + "mm [0]\n";
+    dump += "    -t 0.." + h + "mm [0]\n";
+    dump += "    -x 0.." + w + "mm [" + w + "]\n";
+    dump += "    -y 0.." + h + "mm [" + h + "]\n";
+    dump += "  Enhancement:\n";
+    dump += "    --custom-gamma[=(yes|no)] [no] [advanced]\n";
+    dump += "    --gamma-table 0..65535,... [inactive]\n";
+    dump += "    --red-gamma-table 0..65535,... [inactive]\n";
+    dump += "    --green-gamma-table 0..65535,... [inactive]\n";
+    dump += "    --blue-gamma-table 0..65535,... [inactive]\n";
+    dump += "    --brightness -100..100 (in steps of 1) [0]\n";
+    dump += "    --contrast -100..100 (in steps of 1) [0]\n";
+    dump += "  Extras:\n";
+    dump += "    --lamp-off-time 0..60 [15]\n";
+    dump += "    --lamp-off-scan[=(yes|no)] [no]\n";
+    dump += std::string("    --color-filter Red|Green|Blue [") +
+            (grayMode ? "Green" : "inactive") + "]\n";
+    dump += "    --calibration-file <string> [] [advanced]\n";
+    dump += "    --expiration-time -1..30000 (in steps of 1) [60]\n";
+    dump += "  Sensors:\n";
+    dump += "  Buttons:\n";
+    dump += "    --clear-calibration [advanced]\n";
+    dump += "    --force-calibration [advanced]\n";
+    dump += "    --ignore-internal-offsets [advanced]\n";
+    return dump;
+}
+
 // --- Epson 평판 (V700/V750/V800/V850) -------------------------------------
 //
 // Windows 에서 이 계열의 SANE 이름은 `epson2:usbscan:NNN` 이다 — still-image
@@ -357,6 +455,7 @@ int main(int argc, char** argv) {
     const std::string scenario = environmentValue("NEGAFLOW_VSCAN_SCENARIO");
     logInvocation(args);
     const bool epson = scenario.rfind("epson", 0) == 0;
+    const OpticFilmModel* opticFilm = opticFilmModel(scenario);
     const auto has = [&](const std::string& flag) {
         for (const auto& a : args) {
             if (a == flag) return true;
@@ -384,6 +483,11 @@ int main(int argc, char** argv) {
                 "\tflatbed scanner\n");
             return 0;
         }
+        if (opticFilm != nullptr) {
+            out(std::string(kOpticFilmDeviceName) + "\tPlustek\t" + opticFilm->model +
+                "\tfilm scanner\n");
+            return 0;
+        }
         out(std::string(kDeviceName) + "\tPlustek\tOpticFilm 8100\tfilm scanner\n");
         return 0;
     }
@@ -391,6 +495,11 @@ int main(int argc, char** argv) {
         if (epson) {
             out(std::string("device `") + kEpsonDeviceName + "' is a Epson " +
                 epsonModel(scenario) + " flatbed scanner\n");
+            return 0;
+        }
+        if (opticFilm != nullptr) {
+            out(std::string("device `") + kOpticFilmDeviceName + "' is a Plustek " +
+                opticFilm->model + " film scanner\n");
             return 0;
         }
         out(std::string("device `") + kDeviceName + "' is a Plustek OpticFilm 8100 film scanner\n");
@@ -409,6 +518,10 @@ int main(int argc, char** argv) {
             // 소스를 준 덤프와 안 준 덤프가 달라야 한다. 어댑터가 소스를
             // 적용해 다시 읽지 않으면 TPU 한계를 평판 한계로 착각한다.
             out(epsonOptionDump(epsonHasEightByTen(scenario), valueOf("--source"), mode));
+            return 0;
+        }
+        if (opticFilm != nullptr) {
+            out(opticFilmDump(*opticFilm, mode == "Gray"));
             return 0;
         }
         out(optionDump(mode == "Gray"));

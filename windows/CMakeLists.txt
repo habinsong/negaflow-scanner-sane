@@ -313,6 +313,15 @@ if(WIN32 AND TIFF_FOUND AND NEGAFLOW_HAVE_RAPIDJSON)
             -DVSCAN=$<TARGET_FILE:virtual_scanimage>
             -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}/epson-smoke-$<CONFIG>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/epson-smoke.cmake)
+
+    # OpticFilm 은 8100 한 대만 손에 있다. 모델마다 해상도 목록·스캔 영역·
+    # 적외선이 달라서, 그 한 대로는 안 드러나는 것을 여기서 잡는다.
+    add_test(NAME opticfilm_matrix
+        COMMAND ${CMAKE_COMMAND}
+            -DPLUGIN=$<TARGET_FILE:negaflow-scanner-sane>
+            -DVSCAN=$<TARGET_FILE:virtual_scanimage>
+            -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}/opticfilm-matrix-$<CONFIG>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/opticfilm-matrix.cmake)
 elseif(WIN32)
     message(WARNING
         "실행 파일을 만들지 않는다 — libtiff 또는 RapidJSON 이 없다.\n"

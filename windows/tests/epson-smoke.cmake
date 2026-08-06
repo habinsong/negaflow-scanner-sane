@@ -196,6 +196,64 @@ string(FIND "${args}" "--eject" found_eject)
 expect("비활성 옵션을 설정하지 않는다"
        found_halftone EQUAL -1 AND found_threshold EQUAL -1 AND found_eject EQUAL -1)
 
+# --- ④a 프리뷰 ---------------------------------------------------------------
+#
+# 프리뷰는 별도 계약이다(wire/request.cpp ⑪): `preview:true` 면 해상도가 0,
+# infrared·multiExposure 가 거짓, **outputRawTIFF 도 거짓**이어야 한다.
+#
+# epson2 의 `--preview` 는 `esci_set_speed(s, 1)` 로 고속 모드를 켠다
+# (epson2-ops.c). 해상도는 안 건드리므로, 해상도를 **보내지 않아서** 기기
+# 기본값(목록의 최솟값)으로 훑게 하는 것이 프리뷰가 싼 이유다. 여기서
+# `--resolution` 을 함께 보내면 프리뷰가 본스캔 해상도로 돈다.
+
+file(TO_NATIVE_PATH "${WORKDIR}/args-preview.log" ARGLOG_PREVIEW)
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG_PREVIEW}")
+
+file(TO_NATIVE_PATH "${WORKDIR}/preview.tiff" preview_path)
+string(REPLACE "\\" "\\\\" preview_path_json "${preview_path}")
+set(preview_request "{\"protocolVersion\":2,\
+\"requestID\":\"6f9619ff-8b86-d011-b42d-00cf4fc964ff\",\
+\"deviceID\":\"sane-epson2:usbscan:001\",\
+\"resolutionDPI\":0,\
+\"bitDepth\":16,\
+\"colorMode\":\"color\",\
+\"filmType\":\"colorNegative\",\
+\"preview\":true,\
+\"multiExposure\":false,\
+\"infrared\":false,\
+\"scanArea\":{\"originXMM\":10,\"originYMM\":20,\"widthMM\":36,\"heightMM\":24},\
+\"outputRawTIFF\":false,\
+\"capabilityToken\":\"${token}\",\
+\"outputPath\":\"${preview_path_json}\"}")
+file(WRITE "${WORKDIR}/preview.json" "${preview_request}")
+
+execute_process(
+    COMMAND "${PLUGIN}" scan
+    INPUT_FILE "${WORKDIR}/preview.json"
+    OUTPUT_VARIABLE preview_out
+    ERROR_VARIABLE preview_err
+    RESULT_VARIABLE preview_code)
+
+expect("프리뷰 스캔이 성공한다" preview_code EQUAL 0)
+string(FIND "${preview_out}" "\"type\":\"result\"" found_preview_result)
+expect("프리뷰가 result 를 낸다" found_preview_result GREATER -1)
+
+file(READ "${ARGLOG_PREVIEW}" preview_args)
+string(FIND "${preview_args}" "--preview=yes" found_preview_flag)
+expect("프리뷰에 --preview=yes 를 보낸다" found_preview_flag GREATER -1)
+string(FIND "${preview_args}" "--resolution" found_preview_res)
+expect("프리뷰에 --resolution 을 보내지 않는다" found_preview_res EQUAL -1)
+
+# 프리뷰라도 소스는 투과여야 한다. 평판으로 훑으면 필름이 안 보인다.
+string(FIND "${preview_args}" "--source TPU8x10" found_preview_source)
+expect("프리뷰도 투과 소스로 한다" found_preview_source GREATER -1)
+
+# 프리뷰는 옵션을 다시 읽지 않는다 — 이미 읽은 것을 쓴다.
+string(FIND "${preview_args}" "-A " found_preview_dump)
+expect("프리뷰가 옵션을 다시 읽지 않는다" found_preview_dump EQUAL -1)
+
+set(ENV{NEGAFLOW_VSCAN_ARGLOG} "${ARGLOG}")
+
 # --- ⑤ 정수 mm 절삭 보정 -----------------------------------------------------
 #
 # epson2-ops.c 의 e2_init_parameters 는
