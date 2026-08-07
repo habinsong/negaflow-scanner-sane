@@ -28,6 +28,10 @@ extension SANEBackend {
         let brightnessRange = opts.numericRange("brightness")
         let contrastRange = opts.numericRange("contrast")
         let hardwareExposureRange = opts.numericRange("scan-exposure-time")
+        // 초점은 활성 옵션일 때만 노출한다. epson2 평판은 source에 따라 기본값이 달라지므로
+        // 범위를 그대로 올려 호스트가 실제 값을 고르게 한다.
+        let focusRange = opts.isActive("focus") ? opts.numericRange("focus") : nil
+        let supportsAutofocus = opts.isActive("autofocus")
         let resolutionRange = opts.numericRange("resolution")
         let supportsHardwareExposure = hardwareExposureRange.map { range in
             SANEBackend.hardwareExposureTimes.allSatisfy { range.containsExactly(Double($0)) }
@@ -157,6 +161,16 @@ extension SANEBackend {
                 ? "현재 스캔 옵션 조합에서 --contrast가 비활성입니다."
                 : "scanimage -A에 --contrast 옵션이 없습니다."
         }
+        if focusRange == nil {
+            disabledReasons["focus"] = opts.hasOption("focus")
+                ? "현재 스캔 옵션 조합에서 --focus가 비활성입니다."
+                : "scanimage -A에 --focus 옵션이 없습니다."
+        }
+        if !supportsAutofocus {
+            disabledReasons["autofocus"] = opts.hasOption("autofocus")
+                ? "현재 스캔 옵션 조합에서 --autofocus가 비활성입니다."
+                : "scanimage -A에 --autofocus 옵션이 없습니다."
+        }
         if !supportsScanArea {
             disabledReasons["scanArea"] = "scanimage -A에 mm 단위 -x/-y 범위가 없어 요청 영역을 정확히 적용할 수 없습니다."
         }
@@ -177,6 +191,8 @@ extension SANEBackend {
             brightnessRange: brightnessRange,
             contrastRange: contrastRange,
             hardwareExposureRange: hardwareExposureRange,
+            focusRange: focusRange,
+            supportsAutofocus: supportsAutofocus,
             scanOriginXRange: opts.rangeUnit("l") == "mm" ? opts.numericRange("l") : nil,
             scanOriginYRange: opts.rangeUnit("t") == "mm" ? opts.numericRange("t") : nil,
             scanWidthRange: opts.rangeUnit("x") == "mm" ? opts.numericRange("x") : nil,
@@ -199,9 +215,6 @@ extension SANEBackend {
             || l.contains("slide")
     }
 
-    /// Epson V700/V750/V800/V850 계열은 일반 TPU와 전체 8x10 투과 영역을 별도 source로
-    /// 노출한다. 평판 프리뷰/프레임 배치는 가장 넓은 TPU8x10을 우선하고, 없는 장치는
-    /// 기존 투과 source를 사용한다.
     /// Color/Gray를 적용한 덤프에서도 `--depth`가 활성이 아닐 때 장치가 고정으로 쓰는 심도.
     /// nil이면 "심도 불명"이며 추정하지 않는다.
     ///
@@ -223,14 +236,24 @@ extension SANEBackend {
         return only > 8 ? .sixteen : nil
     }
 
+    /// Epson V700/V750/V800/V850 계열은 필름 홀더용 투과 source와 8x10 필름 영역 가이드용
+    /// source를 따로 노출한다. 8x10 쪽이 영역은 넓지만 유리면에 초점을 두는 다른 렌즈를 쓴다 —
+    /// GT-X900 실측에서 같은 필름 지점을 위상상관으로 정렬해 비교하니 홀더용 source가
+    /// 1.76배 선명했고(같은 조건 반복 측정 편차는 2.9%), 두 source는 좌표계도 서로 달라
+    /// 프리뷰에서 잡은 영역을 본 스캔에 그대로 쓸 수 없다. 그래서 프리뷰와 본 스캔 모두
+    /// 홀더용 source를 쓰고, 8x10만 있는 장치에서만 그것을 고른다.
     static func preferredTransparencySource(in sources: [String]) -> String? {
         let visibleTransparency = sources.filter {
             isTransparencySource($0) && !isInfraredValue($0)
         }
-        return visibleTransparency.first {
-            $0.lowercased().replacingOccurrences(of: " ", with: "").contains("8x10")
-        } ?? visibleTransparency.first
+        return visibleTransparency.first { !isWideFilmAreaGuideSource($0) }
+            ?? visibleTransparency.first
             ?? sources.first(where: isTransparencySource)
+    }
+
+    /// 8x10 필름 영역 가이드용 투과 source인지(필름 홀더용보다 넓지만 유리면 초점).
+    static func isWideFilmAreaGuideSource(_ s: String) -> Bool {
+        s.lowercased().replacingOccurrences(of: " ", with: "").contains("8x10")
     }
 
     /// infrared 소스/모드 값인지.

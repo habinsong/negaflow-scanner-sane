@@ -17,6 +17,10 @@ public struct PluginScanRequestV2: Codable, Sendable, Equatable {
     public var contrastAdjustment: Double?
     public var scanArea: ScanArea
     public var hardwareExposureTime: Int?
+    /// 스캔 직전 장치 오토포커스. `focusPosition`과 동시에 지정할 수 없다.
+    public var autofocus: Bool?
+    /// 수동 초점 위치. 호스트가 한 번 찾아둔 값을 배치 내내 재사용하는 경로다.
+    public var focusPosition: Int?
     public var outputRawTIFF: Bool
     public var capabilityToken: String?
     public var outputPath: String
@@ -62,6 +66,24 @@ public struct PluginScanRequestV2: Codable, Sendable, Equatable {
         guard capabilityToken.map({ $0.utf8.count <= 1_048_576 }) ?? true else {
             throw ScannerError(.unsupportedOption, "capabilityToken이 허용 크기를 초과했습니다.")
         }
+        // 오토포커스와 수동 위치를 함께 받으면 장치가 어느 쪽을 따르는지 보장할 수 없다.
+        guard !(autofocus == true && focusPosition != nil) else {
+            throw ScannerError(
+                .unsupportedOption,
+                "autofocus와 focusPosition을 동시에 지정할 수 없습니다."
+            )
+        }
+        guard focusPosition.map({ $0 >= 0 }) ?? true else {
+            throw ScannerError(.unsupportedOption, "focusPosition이 유효하지 않습니다.")
+        }
+        let focus: ScanFocus?
+        if autofocus == true {
+            focus = .auto
+        } else if let focusPosition {
+            focus = .manual(focusPosition)
+        } else {
+            focus = nil
+        }
         if preview {
             guard resolutionDPI == 0,
                   !infrared,
@@ -97,6 +119,7 @@ public struct PluginScanRequestV2: Codable, Sendable, Equatable {
             hardwareExposureTime: hardwareExposureTime,
             brightnessAdjustment: brightnessAdjustment,
             contrastAdjustment: contrastAdjustment,
+            focus: focus,
             outputRawTIFF: outputRawTIFF,
             temporaryOutputURL: URL(fileURLWithPath: outputPath),
             capabilityToken: capabilityToken
@@ -118,6 +141,8 @@ public struct PluginAppliedScanOptionsV2: Codable, Sendable, Equatable {
     public var hardwareExposureTime: Int?
     public var brightnessAdjustment: Double?
     public var contrastAdjustment: Double?
+    public var autofocus: Bool?
+    public var focusPosition: Int?
     public var outputRawTIFF: Bool
 
     /// `appliedScanArea`는 백엔드에 실제로 보낸 영역이다. 요청과 다를 수 있으므로
@@ -134,6 +159,8 @@ public struct PluginAppliedScanOptionsV2: Codable, Sendable, Equatable {
         hardwareExposureTime = request.hardwareExposureTime
         brightnessAdjustment = request.brightnessAdjustment
         contrastAdjustment = request.contrastAdjustment
+        autofocus = request.autofocus
+        focusPosition = request.focusPosition
         outputRawTIFF = request.outputRawTIFF
     }
 
@@ -149,6 +176,8 @@ public struct PluginAppliedScanOptionsV2: Codable, Sendable, Equatable {
         case hardwareExposureTime
         case brightnessAdjustment
         case contrastAdjustment
+        case autofocus
+        case focusPosition
         case outputRawTIFF
     }
 
@@ -165,6 +194,8 @@ public struct PluginAppliedScanOptionsV2: Codable, Sendable, Equatable {
         try container.encode(hardwareExposureTime, forKey: .hardwareExposureTime)
         try container.encode(brightnessAdjustment, forKey: .brightnessAdjustment)
         try container.encode(contrastAdjustment, forKey: .contrastAdjustment)
+        try container.encode(autofocus, forKey: .autofocus)
+        try container.encode(focusPosition, forKey: .focusPosition)
         try container.encode(outputRawTIFF, forKey: .outputRawTIFF)
     }
 }

@@ -159,6 +159,15 @@ public struct ScannerDescriptor: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// 초점 지정. 장치가 focus/autofocus 옵션을 실제로 노출할 때만 의미가 있다(epson2 평판 등).
+/// 두 방식은 상호배타다 — 오토포커스를 켜면 수동 위치는 무시되므로 타입으로 갈라 둔다.
+public enum ScanFocus: Codable, Sendable, Equatable {
+    /// 스캔 직전 장치 오토포커스. GT-X900 실측으로 컷당 약 50초가 더 든다.
+    case auto
+    /// 장치 focus 위치를 직접 지정. 한 번 찾아둔 값을 배치 내내 재사용하는 경로다.
+    case manual(Int)
+}
+
 public struct ScannerCapabilities: Codable, Sendable, Equatable {
     public var supportedResolutions: [Resolution]
     public var supportedModes: [ColorMode]
@@ -175,6 +184,9 @@ public struct ScannerCapabilities: Codable, Sendable, Equatable {
     public var brightnessRange: ScannerOptionRange?
     public var contrastRange: ScannerOptionRange?
     public var hardwareExposureRange: ScannerOptionRange?
+    /// 수동 초점 위치 범위. nil이면 이 장치/옵션 조합에서 수동 초점을 쓸 수 없다.
+    public var focusRange: ScannerOptionRange?
+    public var supportsAutofocus: Bool
     public var scanOriginXRange: ScannerOptionRange?
     public var scanOriginYRange: ScannerOptionRange?
     public var scanWidthRange: ScannerOptionRange?
@@ -202,6 +214,8 @@ public struct ScannerCapabilities: Codable, Sendable, Equatable {
         brightnessRange: ScannerOptionRange? = nil,
         contrastRange: ScannerOptionRange? = nil,
         hardwareExposureRange: ScannerOptionRange? = nil,
+        focusRange: ScannerOptionRange? = nil,
+        supportsAutofocus: Bool = false,
         scanOriginXRange: ScannerOptionRange? = nil,
         scanOriginYRange: ScannerOptionRange? = nil,
         scanWidthRange: ScannerOptionRange? = nil,
@@ -228,6 +242,8 @@ public struct ScannerCapabilities: Codable, Sendable, Equatable {
         self.brightnessRange = brightnessRange
         self.contrastRange = contrastRange
         self.hardwareExposureRange = hardwareExposureRange
+        self.focusRange = focusRange
+        self.supportsAutofocus = supportsAutofocus
         self.scanOriginXRange = scanOriginXRange
         self.scanOriginYRange = scanOriginYRange
         self.scanWidthRange = scanWidthRange
@@ -253,6 +269,8 @@ public struct ScanOptions: Codable, Sendable, Equatable {
     public var hardwareExposureTime: Int?
     public var brightnessAdjustment: Double?
     public var contrastAdjustment: Double?
+    /// nil이면 초점을 지정하지 않는다 — 장치 기본값 그대로다(기존 동작).
+    public var focus: ScanFocus?
     public var outputRawTIFF: Bool
     public var temporaryOutputURL: URL?
     public var capabilityToken: String?
@@ -263,6 +281,7 @@ public struct ScanOptions: Codable, Sendable, Equatable {
         scanArea: ScanArea = .fullFrame35mm, infraredEnabled: Bool = false,
         multiExposureEnabled: Bool = false, hardwareExposureTime: Int? = nil,
         brightnessAdjustment: Double? = nil, contrastAdjustment: Double? = nil,
+        focus: ScanFocus? = nil,
         outputRawTIFF: Bool = true, temporaryOutputURL: URL? = nil,
         capabilityToken: String? = nil
     ) {
@@ -271,6 +290,7 @@ public struct ScanOptions: Codable, Sendable, Equatable {
         self.infraredEnabled = infraredEnabled; self.multiExposureEnabled = multiExposureEnabled
         self.hardwareExposureTime = hardwareExposureTime; self.outputRawTIFF = outputRawTIFF
         self.brightnessAdjustment = brightnessAdjustment; self.contrastAdjustment = contrastAdjustment
+        self.focus = focus
         self.temporaryOutputURL = temporaryOutputURL
         self.capabilityToken = capabilityToken
     }

@@ -205,6 +205,25 @@ extension SANEBackend {
             }
         }
 
+        switch options.focus {
+        case .auto:
+            guard media.hasAutofocusOption else {
+                throw ScannerError(.unsupportedOption, "이 스캐너는 --autofocus를 제공하지 않습니다.")
+            }
+        case .manual(let position):
+            guard let focusRange = media.focusRange else {
+                throw ScannerError(.unsupportedOption, "이 스캐너는 --focus를 제공하지 않습니다.")
+            }
+            guard focusRange.containsExactly(Double(position)) else {
+                throw ScannerError(
+                    .unsupportedOption,
+                    "요청 focus \(position)을 정확히 적용할 수 없습니다."
+                )
+            }
+        case .none:
+            break
+        }
+
         // 고정 심도 기기는 --depth를 보낼 수 없으므로 요청 심도가 그 값과 같을 때만 통과한다.
         // 실제 결과가 이 심도인지는 획득 뒤 TIFF 검증이 다시 확인한다.
         if let fixedDepth = media.fixedDepth {
@@ -821,6 +840,17 @@ extension SANEBackend {
             }
             if media.hasScanExposureOption, let exposureTime = options.hardwareExposureTime {
                 args += ["--scan-exposure-time=\(exposureTime)"]
+            }
+            // 초점은 요청이 있을 때만 보낸다. 지정하지 않으면 장치 기본값이 그대로 쓰인다.
+            // autofocus와 focus를 함께 보내면 장치가 어느 쪽을 따르는지 보장할 수 없어 갈라 둔다.
+            switch options.focus {
+            case .auto where media.hasAutofocusOption:
+                args += ["--autofocus=yes"]
+            case .manual(let position) where media.focusRange != nil:
+                args += ["--focus=\(position)"]
+                if media.hasAutofocusOption { args += ["--autofocus=no"] }
+            case .auto, .manual, .none:
+                break
             }
             if case .cleanImage(let optionName) = media.irStrategy {
                 args += ["--\(optionName)=yes"]

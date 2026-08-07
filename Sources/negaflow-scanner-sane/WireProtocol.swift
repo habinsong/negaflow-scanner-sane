@@ -44,6 +44,8 @@ struct PluginCapabilities: Codable {
     var brightnessRange: ScannerOptionRange?
     var contrastRange: ScannerOptionRange?
     var hardwareExposureRange: ScannerOptionRange?
+    var focusRange: ScannerOptionRange?
+    var supportsAutofocus: Bool?
     var scanOriginXRange: ScannerOptionRange?
     var scanOriginYRange: ScannerOptionRange?
     var scanWidthRange: ScannerOptionRange?

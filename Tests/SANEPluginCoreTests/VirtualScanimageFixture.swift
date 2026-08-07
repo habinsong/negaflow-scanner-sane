@@ -68,12 +68,14 @@ struct VirtualSANEDevice: Sendable {
                 widthMM: 215.9,
                 heightMM: 297.18
             ),
+            // 실기(GT-X900)의 필름 홀더용 투과 source 범위. 8x10 가이드용(203.2×254)보다
+            // 좁지만 렌즈가 달라 실측 1.76배 선명하다.
             optionDump: epsonOptionDump(
-                selectedSource: "TPU8x10",
-                widthMM: 203.2,
-                heightMM: 254
+                selectedSource: "Transparency Unit",
+                widthMM: 149.8,
+                heightMM: 246.3
             ),
-            previewArea: ScanArea(widthMM: 203.2, heightMM: 254),
+            previewArea: ScanArea(widthMM: 149.8, heightMM: 246.3),
             fullScanResolution: Resolution(2400),
             supportsInfrared: false
         )
@@ -193,6 +195,8 @@ struct VirtualSANEDevice: Sendable {
             --film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]
             --gamma-correction Default|User defined|High density printing|Low density printing|High contrast printing [Default]
             --color-correction None|Built in CCT profile|User defined CCT profile [Built in CCT profile]
+            --autofocus[=(yes|no)] [no] [advanced]
+            --focus 0..254 [89] [advanced]
           Geometry:
             -l 0..\(widthMM)mm (in steps of 0.1) [0]
             -t 0..\(heightMM)mm (in steps of 0.1) [0]
@@ -277,7 +281,7 @@ struct VirtualScanimageFixture {
         fi
         if [ "$1" = "-A" ]; then
           case " $* " in
-            *"--source TPU8x10"*) exec /bin/cat \(shellQuote(optionsURL.path)) ;;
+            *"--source Transparency Unit"*) exec /bin/cat \(shellQuote(optionsURL.path)) ;;
             *) exec /bin/cat \(shellQuote(baseOptionsURL.path)) ;;
           esac
         fi

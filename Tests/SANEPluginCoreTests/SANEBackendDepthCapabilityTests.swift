@@ -73,7 +73,7 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
             ),
             [
                 "-A", "-d", "epson2:libusb:002:002",
-                "--source", "TPU8x10",
+                "--source", "Transparency Unit",
                 "--mode", "Color",
                 "--color-correction", "None",
                 "--gamma-correction", "User defined",

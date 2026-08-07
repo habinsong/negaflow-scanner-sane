@@ -561,7 +561,7 @@ final class SANEBackendEnvironmentTests: XCTestCase {
             .map(String.init)
         XCTAssertTrue(invocations.contains {
             $0.contains(
-                "--source TPU8x10 --mode Color --color-correction None "
+                "--source Transparency Unit --mode Color --color-correction None "
                     + "--gamma-correction User defined"
             )
         })

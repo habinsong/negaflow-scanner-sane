@@ -131,6 +131,7 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var hasBrightnessOption: Bool = false
         var hasContrastOption: Bool = false
         var hasScanExposureOption: Bool = false
+        var hasAutofocusOption: Bool = false
         var hasModeOption: Bool = false
         var hasDepthOption: Bool = false
         var hasFilmTypeOption: Bool = false
@@ -145,6 +146,8 @@ public final class SANEBackend: ScannerBackend, @unchecked Sendable {
         var brightnessRange: ScannerOptionRange?
         var contrastRange: ScannerOptionRange?
         var hardwareExposureRange: ScannerOptionRange?
+        /// 활성 --focus의 범위. nil이면 수동 초점을 적용할 수 없다.
+        var focusRange: ScannerOptionRange?
         var resolutionRange: ScannerOptionRange?
         var scanLeftRange: ScannerOptionRange? = nil
         var scanTopRange: ScannerOptionRange? = nil

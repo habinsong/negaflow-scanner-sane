@@ -173,6 +173,8 @@ case "capabilities":
             brightnessRange: caps.brightnessRange,
             contrastRange: caps.contrastRange,
             hardwareExposureRange: caps.hardwareExposureRange,
+            focusRange: caps.focusRange,
+            supportsAutofocus: caps.supportsAutofocus,
             scanOriginXRange: caps.scanOriginXRange,
             scanOriginYRange: caps.scanOriginYRange,
             scanWidthRange: caps.scanWidthRange,

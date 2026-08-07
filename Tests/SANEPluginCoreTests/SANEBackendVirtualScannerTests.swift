@@ -3,7 +3,7 @@ import XCTest
 @testable import SANEPluginCore
 
 final class SANEBackendVirtualScannerTests: XCTestCase {
-    func testEpsonV700V750V800V850PreviewAndPositionedScansUseTPU8x10() async throws {
+    func testEpsonV700V750V800V850PreviewAndPositionedScansUseFilmHolderSource() async throws {
         XCTAssertEqual(VirtualSANEDevice.epsonFilmFlatbeds.count, 4)
 
         for device in VirtualSANEDevice.epsonFilmFlatbeds {
@@ -22,8 +22,8 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
             XCTAssertTrue(capabilities.supportsPreview, device.name)
             XCTAssertTrue(capabilities.supportsTransparency, device.name)
             XCTAssertTrue(capabilities.supportsPositionedScanArea, device.name)
-            XCTAssertEqual(capabilities.maxScanArea.widthMM, 203.2, accuracy: 0.001, device.name)
-            XCTAssertEqual(capabilities.maxScanArea.heightMM, 254, accuracy: 0.001, device.name)
+            XCTAssertEqual(capabilities.maxScanArea.widthMM, 149.8, accuracy: 0.001, device.name)
+            XCTAssertEqual(capabilities.maxScanArea.heightMM, 246.3, accuracy: 0.001, device.name)
             XCTAssertTrue(capabilities.supportedResolutions.contains(device.fullScanResolution), device.name)
 
             let preview = ScanOptions(
@@ -71,11 +71,11 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
 
             let log = try fixture.invocations()
             XCTAssertTrue(
-                log.contains("-A -d \(device.address) --source TPU8x10"),
+                log.contains("-A -d \(device.address) --source Transparency Unit"),
                 device.name
             )
             XCTAssertTrue(
-                log.contains("--source TPU8x10 --mode Color"),
+                log.contains("--source Transparency Unit --mode Color"),
                 device.name
             )
             XCTAssertTrue(
@@ -333,7 +333,7 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
         XCTAssertEqual(SANEBackend.connectionType(of: "vendor:internal:0"), .internalBus)
     }
 
-    func testTPU8x10IsPreferredWithoutSelectingInfraredSource() {
+    func testFilmHolderSourceIsPreferredOverWideGuideAndInfrared() {
         XCTAssertEqual(
             SANEBackend.preferredTransparencySource(in: [
                 "Flatbed",
@@ -341,6 +341,11 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 "Transparency Unit Infrared",
                 "TPU8x10",
             ]),
+            "Transparency Unit"
+        )
+        // 8x10 가이드용만 노출하는 장치에서는 그것 말고 쓸 투과 source가 없다.
+        XCTAssertEqual(
+            SANEBackend.preferredTransparencySource(in: ["Flatbed", "TPU8x10"]),
             "TPU8x10"
         )
         XCTAssertEqual(
@@ -349,6 +354,148 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
                 "Transparency Adapter Infrared",
             ]),
             "Transparency Adapter"
+        )
+    }
+
+    /// 초점을 지정하지 않으면 인자가 늘지 않아야 한다. 기존 스캔 동작이 그대로 보존되는지.
+    func testScanWithoutFocusRequestSendsNoFocusArguments() async throws {
+        let device = try XCTUnwrap(VirtualSANEDevice.epsonFilmFlatbeds.first)
+        let fixture = try VirtualScanimageFixture(device: device)
+        defer { fixture.cleanup() }
+        let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
+
+        let detected = try await backend.detectScanners()
+        let descriptor = try XCTUnwrap(detected.only)
+        let report = try await backend.getCapabilitiesReport(scannerID: descriptor.id)
+        _ = try await backend.startFullScan(
+            makeFocusScanOptions(descriptor: descriptor, device: device, fixture: fixture, report: report)
+        ) { _ in }
+
+        let log = try fixture.invocations()
+        XCTAssertFalse(log.contains("--focus"))
+        XCTAssertFalse(log.contains("--autofocus"))
+    }
+
+    /// 수동 초점은 값을 그대로 보내고, 장치가 오토포커스도 노출하면 명시적으로 끈다.
+    func testManualFocusSendsPositionAndDisablesAutofocus() async throws {
+        let device = try XCTUnwrap(VirtualSANEDevice.epsonFilmFlatbeds.first)
+        let fixture = try VirtualScanimageFixture(device: device)
+        defer { fixture.cleanup() }
+        let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
+
+        let detected = try await backend.detectScanners()
+        let descriptor = try XCTUnwrap(detected.only)
+        let report = try await backend.getCapabilitiesReport(scannerID: descriptor.id)
+        XCTAssertEqual(report.capabilities.focusRange?.minimum, 0)
+        XCTAssertEqual(report.capabilities.focusRange?.maximum, 254)
+        XCTAssertTrue(report.capabilities.supportsAutofocus)
+
+        var options = makeFocusScanOptions(
+            descriptor: descriptor,
+            device: device,
+            fixture: fixture,
+            report: report
+        )
+        options.focus = .manual(72)
+        _ = try await backend.startFullScan(options) { _ in }
+
+        let log = try fixture.invocations()
+        XCTAssertTrue(log.contains("--focus=72"))
+        XCTAssertTrue(log.contains("--autofocus=no"))
+    }
+
+    func testAutoFocusSendsAutofocusYesWithoutManualPosition() async throws {
+        let device = try XCTUnwrap(VirtualSANEDevice.epsonFilmFlatbeds.first)
+        let fixture = try VirtualScanimageFixture(device: device)
+        defer { fixture.cleanup() }
+        let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
+
+        let detected = try await backend.detectScanners()
+        let descriptor = try XCTUnwrap(detected.only)
+        let report = try await backend.getCapabilitiesReport(scannerID: descriptor.id)
+        var options = makeFocusScanOptions(
+            descriptor: descriptor,
+            device: device,
+            fixture: fixture,
+            report: report
+        )
+        options.focus = .auto
+        _ = try await backend.startFullScan(options) { _ in }
+
+        let log = try fixture.invocations()
+        XCTAssertTrue(log.contains("--autofocus=yes"))
+        XCTAssertFalse(log.contains("--focus="))
+    }
+
+    /// focus 옵션이 없는 장치(OpticFilm 등)는 조용히 무시하지 않고 시작 전에 거절한다.
+    func testFocusRequestIsRejectedOnScannerWithoutFocusOption() async throws {
+        let device = try XCTUnwrap(VirtualSANEDevice.opticFilmScanners.first)
+        let fixture = try VirtualScanimageFixture(device: device)
+        defer { fixture.cleanup() }
+        let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
+
+        let detected = try await backend.detectScanners()
+        let descriptor = try XCTUnwrap(detected.only)
+        let report = try await backend.getCapabilitiesReport(scannerID: descriptor.id)
+        XCTAssertNil(report.capabilities.focusRange)
+        XCTAssertFalse(report.capabilities.supportsAutofocus)
+
+        var options = makeFocusScanOptions(
+            descriptor: descriptor,
+            device: device,
+            fixture: fixture,
+            report: report
+        )
+        options.focus = .manual(72)
+        do {
+            _ = try await backend.startFullScan(options) { _ in }
+            XCTFail("focus를 지원하지 않는 장치가 수동 초점 요청을 받아들였습니다")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .unsupportedOption)
+        }
+    }
+
+    /// 범위 밖 위치는 장치에 보내기 전에 거절한다(v2는 요청을 보정하지 않는다).
+    func testOutOfRangeManualFocusIsRejected() async throws {
+        let device = try XCTUnwrap(VirtualSANEDevice.epsonFilmFlatbeds.first)
+        let fixture = try VirtualScanimageFixture(device: device)
+        defer { fixture.cleanup() }
+        let backend = SANEBackend(scanimagePath: fixture.executableURL.path)
+
+        let detected = try await backend.detectScanners()
+        let descriptor = try XCTUnwrap(detected.only)
+        let report = try await backend.getCapabilitiesReport(scannerID: descriptor.id)
+        var options = makeFocusScanOptions(
+            descriptor: descriptor,
+            device: device,
+            fixture: fixture,
+            report: report
+        )
+        options.focus = .manual(999)
+        do {
+            _ = try await backend.startFullScan(options) { _ in }
+            XCTFail("범위 밖 focus 요청이 통과했습니다")
+        } catch let error as ScannerError {
+            XCTAssertEqual(error.code, .unsupportedOption)
+        }
+    }
+
+    private func makeFocusScanOptions(
+        descriptor: ScannerDescriptor,
+        device: VirtualSANEDevice,
+        fixture: VirtualScanimageFixture,
+        report: SANECapabilityReport
+    ) -> ScanOptions {
+        ScanOptions(
+            scannerID: descriptor.id,
+            resolution: device.fullScanResolution,
+            bitDepth: .sixteen,
+            colorMode: .color,
+            filmType: .colorNegative,
+            scanArea: ScanArea(originXMM: 10, originYMM: 20, widthMM: 36, heightMM: 24),
+            outputRawTIFF: true,
+            temporaryOutputURL: fixture.outputURL("focus-\(UUID().uuidString).tiff"),
+            capabilityToken: report.capabilityToken
         )
     }
 }
