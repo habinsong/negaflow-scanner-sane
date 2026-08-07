@@ -687,8 +687,30 @@ extension SANEBackend {
             || s.contains("device i/o")
     }
 
+    /// scanimage 는 요청값을 장치 표현으로 옮길 때 `rounded value of <opt> from <a> to <b>` 를
+    /// stderr 에 남긴다. 그런데 SANE 은 값을 고정소수점(1/65536)으로 들고 있어 mm 요청은 대개
+    /// 정확히 표현되지 않고, 그래서 **표시상 같은 값**에도 이 경고가 붙는다 — GT-X900 의
+    /// 투과 영역 요청이 `from 149.86 to 149.86` 으로 경고를 내면서 스캔이 통째로 거절됐다.
+    /// 요청이 실제로 다른 값으로 바뀐 경우에만 실패로 본다. 형식을 읽지 못하면 보수적으로
+    /// 경고로 취급한다.
     static func containsInexactOptionWarning(_ stderr: String) -> Bool {
-        stderr.lowercased().contains("rounded value of")
+        for line in stderr.split(whereSeparator: \.isNewline) {
+            let lower = line.lowercased()
+            guard lower.contains("rounded value of") else { continue }
+            guard let fromRange = lower.range(of: " from "),
+                  let toRange = lower.range(
+                      of: " to ",
+                      range: fromRange.upperBound..<lower.endIndex
+                  ) else {
+                return true
+            }
+            let requested = lower[fromRange.upperBound..<toRange.lowerBound]
+                .trimmingCharacters(in: .whitespaces)
+            let applied = lower[toRange.upperBound...]
+                .trimmingCharacters(in: .whitespaces)
+            if requested != applied { return true }
+        }
+        return false
     }
 
     private func resolveDeviceAddress(

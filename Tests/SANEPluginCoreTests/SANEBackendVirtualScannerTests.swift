@@ -480,6 +480,33 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
         }
     }
 
+    /// SANE 은 값을 고정소수점으로 들고 있어 표시상 같은 값에도 rounded 경고를 낸다.
+    /// 그걸 실패로 취급하면 정상 스캔이 통째로 거절된다(GT-X900 의 149.86mm 투과 영역).
+    func testRoundingWarningOnlyCountsWhenTheValueActuallyChanged() {
+        XCTAssertFalse(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of br-x from 149.86 to 149.86"
+        ))
+        XCTAssertFalse(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of br-y from 246.38 to 246.38\nProgress: 100.0%"
+        ))
+        XCTAssertTrue(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of br-x from 36 to 35.9"
+        ))
+        XCTAssertTrue(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of tl-x from 10 to 10.1"
+        ))
+        // 여러 줄 중 하나라도 실제로 바뀌었으면 실패로 본다.
+        XCTAssertTrue(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of br-x from 149.86 to 149.86\n"
+                + "scanimage: rounded value of br-y from 36 to 35.9"
+        ))
+        // 형식을 읽지 못하면 보수적으로 경고로 취급한다.
+        XCTAssertTrue(SANEBackend.containsInexactOptionWarning(
+            "scanimage: rounded value of br-x"
+        ))
+        XCTAssertFalse(SANEBackend.containsInexactOptionWarning("Progress: 100.0%"))
+    }
+
     private func makeFocusScanOptions(
         descriptor: ScannerDescriptor,
         device: VirtualSANEDevice,
