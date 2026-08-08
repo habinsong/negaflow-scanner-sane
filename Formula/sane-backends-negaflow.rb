@@ -1,8 +1,8 @@
 class SaneBackendsNegaflow < Formula
-  desc "SANE scanner backends with the Coolscan depth-list and epson2 scan-height fixes"
+  desc "SANE scanner backends with Coolscan depth-list, epson2 scan-height and infrared fixes"
   homepage "https://www.sane-project.org/"
   url "https://gitlab.com/-/project/429008/uploads/843c156420e211859e974f78f64c3ea3/sane-backends-1.4.0.tar.gz"
-  version "1.4.0-negaflow.2"
+  version "1.4.0-negaflow.3"
   sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"
   license "GPL-2.0-or-later"
 
@@ -59,3 +59,20 @@ diff --git a/backend/epson2-ops.c b/backend/epson2-ops.c
 @@ -1423 +1423 @@ e2_init_parameters(Epson_Scanner * s)
 -			((int) SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *
 +			(SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *
+diff --git a/backend/epson2.c b/backend/epson2.c
+--- a/backend/epson2.c
++++ b/backend/epson2.c
+@@ -97 +96,0 @@
+-#ifdef SANE_FRAME_IR
+@@ -99 +97,0 @@
+-#endif
+diff --git a/backend/epson2-ops.c b/backend/epson2-ops.c
+--- a/backend/epson2-ops.c
++++ b/backend/epson2-ops.c
+@@ -1374 +1373,0 @@
+-#ifdef SANE_FRAME_IR
+@@ -1376 +1375 @@
+-		s->params.format = SANE_FRAME_IR;
++		s->params.format = SANE_FRAME_GRAY;
+@@ -1380 +1378,0 @@
+-#endif
