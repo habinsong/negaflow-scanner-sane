@@ -87,7 +87,7 @@
 > `sane_close` 에서 기대는 USB 리셋을 제공하지 못한다.
 >
 > 근거와 실측: [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md)
-> §4.4b, [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md)
+> §4.4b, [sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md)
 
 다른 결정과 달리 D-09는 소유 문서가 없어 여기서 정의한다.
 [runtime-route-decision](../01-sane-runtime/runtime-route-decision.md) §8이

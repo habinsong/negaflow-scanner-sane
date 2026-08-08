@@ -83,11 +83,14 @@ std::optional<std::string> preferredTransparencySource(const std::vector<std::st
         if (isTransparencySource(s) && !isInfraredValue(s)) visible.push_back(&s);
     }
 
-    // ① 8x10 우선(더 큰 투과 영역)
+    // ① 필름 홀더용 소스 우선. 8x10 필름 영역 가이드용 소스는 영역이 넓지만 유리면에
+    //    초점을 두는 다른 렌즈를 쓴다 — GT-X900 실측에서 같은 필름 지점을 위상상관으로
+    //    정렬해 비교하니 홀더용이 1.76배 선명했다(반복 측정 편차 2.9%). 두 소스는
+    //    좌표계도 달라 프리뷰에서 잡은 영역을 본 스캔에 그대로 쓸 수 없다.
     for (const auto* s : visible) {
-        if (contains(removeSpaces(toLower(*s)), "8x10")) return *s;
+        if (!contains(removeSpaces(toLower(*s)), "8x10")) return *s;
     }
-    // ② IR 아닌 투과 소스의 첫 값
+    // ② 8x10 만 노출하는 장치에서는 그것을 쓴다
     if (!visible.empty()) return *visible.front();
     // ③ 투과 소스인 첫 값 — IR 을 배제하지 않는다(원본 동작 그대로)
     for (const auto& s : sources) {

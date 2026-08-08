@@ -151,7 +151,41 @@ bool isStaleDeviceError(std::string_view stderrText) {
 }
 
 bool containsInexactOptionWarning(std::string_view stderrText) {
-    return contains(toLower(stderrText), "rounded value of");
+    // scanimage 는 요청값을 장치 표현으로 옮길 때 `rounded value of <opt> from <a> to <b>`
+    // 를 남긴다. SANE 은 값을 고정소수점(1/65536)으로 들고 있어 mm 요청은 대개 정확히
+    // 표현되지 않고, 그래서 **표시상 같은 값**에도 이 경고가 붙는다 — GT-X900 의 투과
+    // 영역 요청이 `from 149.86 to 149.86` 으로 경고를 내면서 완주한 스캔이 통째로
+    // 거절됐다. 요청이 실제로 다른 값으로 바뀐 경우에만 실패로 본다. 형식을 읽지 못하면
+    // 보수적으로 경고로 취급한다.
+    const std::string lowered = toLower(stderrText);
+    std::size_t line = 0;
+    while (line <= lowered.size()) {
+        const std::size_t end = lowered.find('\n', line);
+        const std::string_view text =
+            std::string_view(lowered).substr(line, end == std::string::npos ? std::string::npos
+                                                                            : end - line);
+        line = end == std::string::npos ? lowered.size() + 1 : end + 1;
+        if (!contains(text, "rounded value of")) continue;
+
+        const std::size_t from = text.find(" from ");
+        if (from == std::string_view::npos) return true;
+        const std::size_t to = text.find(" to ", from + 6);
+        if (to == std::string_view::npos) return true;
+
+        const auto trim = [](std::string_view v) {
+            while (!v.empty() && std::isspace(static_cast<unsigned char>(v.front()))) {
+                v.remove_prefix(1);
+            }
+            while (!v.empty() && std::isspace(static_cast<unsigned char>(v.back()))) {
+                v.remove_suffix(1);
+            }
+            return v;
+        };
+        if (trim(text.substr(from + 6, to - (from + 6))) != trim(text.substr(to + 4))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 StderrClass classifyStderr(std::string_view message) {

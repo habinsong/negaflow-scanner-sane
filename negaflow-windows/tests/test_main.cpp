@@ -560,10 +560,15 @@ void testFixedDepthAndHelpers() {
     CHECK_EQ(minimumPositiveScanDimension(negaflow::util::OptionRange{0.0, 10.0, 0.5}), 0.5);
     CHECK_EQ(minimumPositiveScanDimension(negaflow::util::OptionRange{0.0, 10.0, std::nullopt}), 0.1);
 
-    // 8x10 우선
+    // 필름 홀더용 소스 우선 — 8x10 가이드용은 유리면 초점의 다른 렌즈라 흐리다
     const auto pref = preferredTransparencySource({"Flatbed", "Transparency Unit", "TPU8x10"});
     CHECK(pref.has_value());
-    if (pref) CHECK_EQ(*pref, std::string("TPU8x10"));
+    if (pref) CHECK_EQ(*pref, std::string("Transparency Unit"));
+
+    // 8x10 만 노출하는 장치에서는 그것 말고 쓸 투과 소스가 없다
+    const auto only8x10 = preferredTransparencySource({"Flatbed", "TPU8x10"});
+    CHECK(only8x10.has_value());
+    if (only8x10) CHECK_EQ(*only8x10, std::string("TPU8x10"));
 
     // IR 은 본 스캔 후보에서 제외된다
     const auto p2 = preferredTransparencySource({"Transparency Adapter",
@@ -573,6 +578,17 @@ void testFixedDepthAndHelpers() {
     // ③ 폴백은 IR 을 배제하지 않는다(원본 동작 — I-20 후보)
     const auto p3 = preferredTransparencySource({"Transparency Adapter Infrared"});
     CHECK(p3.has_value());
+
+    // 표시상 같은 값에 붙는 rounded 경고는 실패로 보지 않는다(GT-X900 의 149.86mm)
+    CHECK(!negaflow::process::containsInexactOptionWarning(
+        "scanimage: rounded value of br-x from 149.86 to 149.86"));
+    CHECK(negaflow::process::containsInexactOptionWarning(
+        "scanimage: rounded value of br-x from 36 to 35.9"));
+    CHECK(negaflow::process::containsInexactOptionWarning(
+        "scanimage: rounded value of br-x from 149.86 to 149.86\n"
+        "scanimage: rounded value of br-y from 36 to 35.9"));
+    CHECK(negaflow::process::containsInexactOptionWarning("scanimage: rounded value of br-x"));
+    CHECK(!negaflow::process::containsInexactOptionWarning("Progress: 100.0%"));
 
     CHECK(isTransparencySource("TPU"));
     CHECK(isTransparencySource("Film Holder"));

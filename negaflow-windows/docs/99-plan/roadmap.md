@@ -11,6 +11,7 @@
 - [product-invariants](product-invariants.md)
 - [open-questions](open-questions.md)
 - [field-lessons](../10-lessons/field-lessons.md) — 이미 실패한 시도들
+- [macos-parity-backlog](macos-parity-backlog.md) — macOS 에서 고쳤지만 아직 없는 것
 
 ## 0. 원칙
 

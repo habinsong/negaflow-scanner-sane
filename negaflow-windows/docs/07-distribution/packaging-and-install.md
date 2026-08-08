@@ -151,7 +151,7 @@ NSIS 를 고른 이유는 셋이다.
 있다가 그대로 풀린다 — 결합 저작물이 아니라 단순 취합이다.
 
 구현은 [`Installer/windows/negaflow-scanner-sane.nsi`](../../Installer/windows/negaflow-scanner-sane.nsi),
-사용법은 [`Installer/windows/README.md`](../../Installer/windows/README.md).
+사용법은 [`Installer/windows/README.md`](../../../negaflow-mac/Installer/windows/README.md).
 
 ### 5.2 기술 요건
 

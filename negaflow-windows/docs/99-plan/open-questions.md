@@ -295,7 +295,7 @@ upstream에 제출할 것인가?
 
 ### 패치 세트 (2026-08-06)
 
-전문: [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md).
+전문: [sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md).
 성격이 셋으로 갈린다.
 
 | 패치 | 성격 | 제출 가치 |

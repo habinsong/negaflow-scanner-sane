@@ -559,7 +559,7 @@ localtime(&copy)      = 000002B99560FC00
 `patches/006-debug-output-on-mingw.patch` 로 고쳤다. 이것 없이는 Windows 에서
 SANE 을 진단할 방법이 없다.
 
-→ 패치 전문과 재현 절차: [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md)
+→ 패치 전문과 재현 절차: [sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md)
 
 ### 4.5 E-2를 닫지 못했다 — 시도한 방법과 실패 이유
 
@@ -650,7 +650,7 @@ D-05(`dll.conf` 를 수정하지 않는다)를 지키는 편이 여전히 안전
 장치 상태가 오염되지 않는다.
 
 **Gray 는 제외했다.** upstream genesys 결함으로 무한 정지한다 —
-[sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md) 참조.
+[sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md) 참조.
 
 ### S-2 — binary stdout 정확성
 

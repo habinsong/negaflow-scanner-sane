@@ -214,7 +214,7 @@ Gray 모드를 돌리지 않는다     upstream genesys 결함으로 무한 정�
 kCancelGracePeriod 를 줄이지 않는다  15,000 ms 는 실측 6,890 ms 에서 나온 값이다
 ```
 
-전문: [sane-runtime/SOURCES.md](../../sane-runtime/SOURCES.md),
+전문: [sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md),
 [cancellation](../03-process-and-io/cancellation.md) §10,
 [spike-checklist](../99-plan/spike-checklist.md)
 
