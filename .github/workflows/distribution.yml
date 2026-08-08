@@ -77,7 +77,7 @@ jobs:
       - name: Run release-quality gate
         run: |
           python3 negaflow-mac/scripts/verify-provenance.py
-          swift test -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
+          swift test --package-path negaflow-mac -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
           bash negaflow-mac/scripts/install-patched-sane.sh
       - name: Build signed and notarized plug-in release
         env:

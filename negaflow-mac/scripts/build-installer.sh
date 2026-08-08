@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 라이선스·README 는 플랫폼 트리 밖 저장소 루트에 있다.
+REPO_ROOT="$(cd "$ROOT/.." && pwd)"
 VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
 OUTPUT_DIR="${NEGAFLOW_INSTALLER_OUTPUT_DIR:-$ROOT/.build/release-artifacts}"
 INSTALLER_MODE="${NEGAFLOW_INSTALLER_MODE:-local}"
@@ -181,16 +183,16 @@ if [[ "$INSTALLER_VARIANT" == "coolscan" ]]; then
 fi
 cp "$SOURCE_ARCHIVE" "$SETUP_SCRIPTS/sane/"
 cp \
-  "$ROOT/LICENSE" \
-  "$ROOT/COPYING" \
-  "$ROOT/THIRD_PARTY_NOTICES.md" \
-  "$ROOT/PROVENANCE.md" \
-  "$ROOT/README.md" \
-  "$ROOT/README_ko.md" \
-  "$ROOT/README_ja.md" \
-  "$ROOT/README_zh-Hans.md" \
-  "$ROOT/README_fr.md" \
-  "$ROOT/README_de.md" \
+  "$REPO_ROOT/LICENSE" \
+  "$REPO_ROOT/COPYING" \
+  "$REPO_ROOT/THIRD_PARTY_NOTICES.md" \
+  "$REPO_ROOT/PROVENANCE.md" \
+  "$REPO_ROOT/README.md" \
+  "$REPO_ROOT/README_ko.md" \
+  "$REPO_ROOT/README_ja.md" \
+  "$REPO_ROOT/README_zh-Hans.md" \
+  "$REPO_ROOT/README_fr.md" \
+  "$REPO_ROOT/README_de.md" \
   "$SETUP_SCRIPTS/sane/"
 chmod +x \
   "$SETUP_SCRIPTS/postinstall" \
@@ -275,16 +277,16 @@ fi
 cp "$BUILT_PKG" "$DMG_ROOT/$DMG_PKG_NAME"
 cp "$SOURCE_ARCHIVE" "$DMG_ROOT/"
 cp \
-  "$ROOT/THIRD_PARTY_NOTICES.md" \
-  "$ROOT/LICENSE" \
-  "$ROOT/COPYING" \
-  "$ROOT/PROVENANCE.md" \
-  "$ROOT/README.md" \
-  "$ROOT/README_ko.md" \
-  "$ROOT/README_ja.md" \
-  "$ROOT/README_zh-Hans.md" \
-  "$ROOT/README_fr.md" \
-  "$ROOT/README_de.md" \
+  "$REPO_ROOT/THIRD_PARTY_NOTICES.md" \
+  "$REPO_ROOT/LICENSE" \
+  "$REPO_ROOT/COPYING" \
+  "$REPO_ROOT/PROVENANCE.md" \
+  "$REPO_ROOT/README.md" \
+  "$REPO_ROOT/README_ko.md" \
+  "$REPO_ROOT/README_ja.md" \
+  "$REPO_ROOT/README_zh-Hans.md" \
+  "$REPO_ROOT/README_fr.md" \
+  "$REPO_ROOT/README_de.md" \
   "$DMG_ROOT/"
 
 BUILT_DMG="$WORK/$DMG_NAME"

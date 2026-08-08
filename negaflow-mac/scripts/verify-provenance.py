@@ -7,11 +7,13 @@ import sys
 from pathlib import Path
 
 
+# 소스 검사는 macOS 패키지 트리를 훑고, 라이선스·README 는 저장소 루트에 있다.
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 
 # The Windows adapter is first-party C++ written for this project. Native source
 # is rejected everywhere else so that a vendored SANE tree still fails the check.
-FIRST_PARTY_NATIVE_ROOT = "windows"
+FIRST_PARTY_NATIVE_ROOT = "negaflow-windows"
 
 
 def fail(message: str) -> None:
@@ -22,14 +24,14 @@ def fail(message: str) -> None:
 def repository_files() -> list[Path]:
     result = subprocess.run(
         ["git", "ls-files", "-co", "--exclude-standard", "-z"],
-        cwd=ROOT,
+        cwd=REPO_ROOT,
         check=True,
         stdout=subprocess.PIPE,
     )
     return [
-        ROOT / entry.decode("utf-8")
+        REPO_ROOT / entry.decode("utf-8")
         for entry in result.stdout.split(b"\0")
-        if entry and (ROOT / entry.decode("utf-8")).exists()
+        if entry and (REPO_ROOT / entry.decode("utf-8")).exists()
     ]
 
 
@@ -43,7 +45,7 @@ def verify_tree(files: list[Path]) -> tuple[int, int]:
     binary_count = 0
     text_count = 0
     for path in files:
-        relative = path.relative_to(ROOT)
+        relative = path.relative_to(REPO_ROOT)
         if path.suffix.lower() in native_suffixes:
             if relative.parts[0] != FIRST_PARTY_NATIVE_ROOT:
                 fail(f"vendored native source is not allowed: {relative}")
@@ -99,9 +101,15 @@ def verify_source_authorship_markers(files: list[Path]) -> None:
     )
     own_license = "spdx-license-identifier: gpl-2.0-or-later"
     for path in files:
-        relative = path.relative_to(ROOT)
+        relative = path.relative_to(REPO_ROOT)
         root = relative.parts[0]
+        if root == "negaflow-mac" and len(relative.parts) > 1:
+            root = relative.parts[1]
         if root not in {"Sources", "Tests", FIRST_PARTY_NATIVE_ROOT}:
+            continue
+        # 문서는 구현이 아니다. 트리를 분리하며 windows_docs 가 Windows 트리 안으로
+        # 들어왔는데, 다른 구현을 설명하는 문장이 이식 흔적으로 잡히면 안 된다.
+        if root == FIRST_PARTY_NATIVE_ROOT and relative.parts[1:2] == ("docs",):
             continue
         text = path.read_text(encoding="utf-8").lower()
         if root == FIRST_PARTY_NATIVE_ROOT:
@@ -128,9 +136,10 @@ def verify_distribution_policy() -> None:
         "COPYING",
         "THIRD_PARTY_NOTICES.md",
         "PROVENANCE.md",
-        "manifest.json",
     ):
-        if not (ROOT / required).is_file():
+        if not (REPO_ROOT / required).is_file():
+            fail(f"required release notice is missing: {required}")
+    if not (ROOT / "manifest.json").is_file():
             fail(f"required release notice is missing: {required}")
 
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
@@ -154,12 +163,12 @@ def verify_distribution_policy() -> None:
         "README_fr.md",
         "README_de.md",
     ):
-        readme = (ROOT / readme_name).read_text(encoding="utf-8")
+        readme = (REPO_ROOT / readme_name).read_text(encoding="utf-8")
         for installer_name in standard_installer_names + coolscan_installer_names:
             if installer_name not in readme:
                 fail(f"{readme_name} does not name the current installer: {installer_name}")
 
-    notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    notices = (REPO_ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     for marker in (
         "Homebrew 6.0.11",
         "0545b1b85053ad6292799e8f9b11caee373cb377364f4d293cc4711487a9b944",
@@ -188,12 +197,18 @@ def verify_distribution_policy() -> None:
 
     formula = (ROOT / "Formula/sane-backends-negaflow.rb").read_text(encoding="utf-8")
     for marker in (
-        'version "1.4.0-negaflow.2"',
+        'version "1.4.0-negaflow.3"',
         "depends_on macos: :tahoe",
         'sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"',
         "cs2_xmalloc (3 * sizeof (SANE_Word))",
         "cs3_xmalloc(3 *",
         "(SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *",
+        # epson2 적외선: sane.h 가 SANE_FRAME_IR 을 #if 0 으로 막아 두어 IR 모드가 통째로
+        # 컴파일에서 빠진다. 그 #ifdef 를 걷어내고 결과를 IR 프레임 타입 대신 GRAY 로
+        # 내보내는 두 패치가 살아 있는지 확인한다.
+        "-#ifdef SANE_FRAME_IR",
+        "-\t\ts->params.format = SANE_FRAME_IR;",
+        "+\t\ts->params.format = SANE_FRAME_GRAY;",
     ):
         if marker not in formula:
             fail(f"patched SANE formula is incomplete: {marker}")
