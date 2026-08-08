@@ -290,16 +290,18 @@ IR 패스에는 `--film-type` / `--color-correction` / `--gamma-correction` 을
 실측한 인자(`epson-smoke` ⑤a):
 
 ```text
--d epson2:usbscan:001 -p --source TPU8x10 --mode Color --color-correction None
+-d epson2:usbscan:001 -p --source Transparency Unit --mode Color --color-correction None
    --gamma-correction User defined --film-type Negative Film --brightness=0
    --resolution 2400 --depth 16 -l 10 -t 20 -x 36 -y 24 --format=tiff
--d epson2:usbscan:001 -p --source TPU8x10 --mode Infrared
+-d epson2:usbscan:001 -p --source Transparency Unit --mode Infrared
    --resolution 2400 --depth 16 -l 10 -t 20 -x 36 -y 24 --format=tiff
 ```
 
 ### 2.6 소스
 
-`Flatbed` / `Transparency Unit` / `TPU8x10`. 8x10을 우선한다.
+`Flatbed` / `Transparency Unit` / `TPU8x10`. **필름 홀더용인 `Transparency Unit`을
+우선한다** — 8x10 쪽은 영역이 넓지만 유리면에 초점을 두는 다른 렌즈라 필름이
+흐려진다(GT-X900 실측 1.76배 차이). 8x10만 있는 기기에서만 그것을 고른다.
 `--film-type`으로 극성을 지정한다.
 
 **`TPU8x10`은 세 모델에만 붙는다.** `backend/epson2-ops.c`의 TPU2 분기가

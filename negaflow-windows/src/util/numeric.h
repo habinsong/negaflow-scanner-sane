@@ -6,7 +6,7 @@
 //            Sources/SANEPluginCore/SANEBackend+ScanExecution.swift (saneNumber)
 //
 // 이 헤더는 <windows.h> 도 libtiff 도 포함하지 않는다. sane_logic 계약이다.
-// 근거: windows_docs/06-build/toolchain-and-layout.md §4.1
+// 근거: docs/06-build/toolchain-and-layout.md §4.1
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -30,7 +30,7 @@ struct OptionRange {
 /// 값이 범위 안에 **정확히** 존재하는가.
 ///
 /// 가장 가까운 값으로 스냅하지 않는다. 이것이 I-1(정확한 옵션 계약)의 바닥이다.
-/// 근거: windows_docs/02-frontend-contract/exact-option-contract.md
+/// 근거: docs/02-frontend-contract/exact-option-contract.md
 ///
 /// Swift 원본:
 ///     guard value.isFinite, value >= minimum, value <= maximum else { return false }
@@ -62,7 +62,7 @@ struct OptionRange {
 ///
 /// **넓히는 쪽을 먼저 시도한다.** 좁히면 필름이 잘리고, 넓히면 여백이 조금 더
 /// 들어올 뿐이다. 실패 방향을 고르는 문제이지 정확도 문제가 아니다.
-/// 근거: windows_docs/10-lessons/driver-option-reference.md §14.1
+/// 근거: docs/10-lessons/driver-option-reference.md §14.1
 ///
 /// 넷 중 하나를 돌려준다: 그대로 / 올림 / 내림 / 요청값.
 [[nodiscard]] double epson2AlignedHeightMM(double originYMM,
@@ -93,7 +93,7 @@ struct OptionRange {
 /// 것이 이 순서의 목적이다.
 ///
 /// 짝수 개면 위쪽 중앙이다(`count / 2` 는 절삭 나눗셈).
-/// 근거: windows_docs/04-imaging/exposure-merge.md §4.2
+/// 근거: docs/04-imaging/exposure-merge.md §4.2
 ///
 /// 이 함수가 `imaging` 이 아니라 여기 있는 것은 porting-map §2.7 의 배정이다 —
 /// 순수 정수 연산이라 imaging 을 링크하지 않는 곳에서도 쓸 수 있다.

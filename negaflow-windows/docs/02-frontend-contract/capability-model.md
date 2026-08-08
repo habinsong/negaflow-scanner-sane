@@ -286,7 +286,9 @@ visibleTransparency = sources 중 투과이면서 IR이 아닌 것
 ```
 
 Epson V700/V750/V800/V850 계열은 일반 TPU와 전체 8x10 투과 영역을 별도
-source로 노출한다. 평판 프리뷰/프레임 배치는 가장 넓은 TPU8x10을 우선한다.
+source로 노출한다. 프리뷰와 본 스캔 모두 필름 홀더용인 `Transparency Unit`을
+우선한다 — 8x10 쪽은 초점면이 유리면이라 필름이 흐려지고, 두 소스는 좌표계도
+달라 프리뷰에서 잡은 영역을 본 스캔에 그대로 쓸 수 없다.
 
 ## 5. `capabilityToken` 스키마
 

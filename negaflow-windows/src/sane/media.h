@@ -2,8 +2,8 @@
 // sane/media — 요청 + 옵션 덤프 → "이 장치와 대화하는 법".
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Discovery.swift (resolveMedia)
-// 정본 문서: windows_docs/02-frontend-contract/capability-model.md
-//            windows_docs/10-lessons/driver-option-reference.md
+// 정본 문서: docs/02-frontend-contract/capability-model.md
+//            docs/10-lessons/driver-option-reference.md
 //
 // **이식에서 가장 큰 단일 함수다**(약 290행). 백엔드별 분기가 여기 몰려 있다.
 //
@@ -137,7 +137,7 @@ struct MediaSelection {
 ///
 /// 감마를 **안 건드리는 것이 중립이 아니다** — `Default`(index 0)는 표시용 감마
 /// 0x02 를 보낸다. `User defined` 만이 항등 램프(진짜 선형)다.
-/// 근거: windows_docs/10-lessons/driver-option-reference.md §8.2
+/// 근거: docs/10-lessons/driver-option-reference.md §8.2
 ///
 /// **비활성일 때 강제로 보내지 않는다. 되돌리지 마라.** 맥에서 커밋 `7f950dc`
 /// 가 `82b7b32`("set the Epson linear gamma even when the option reports
@@ -153,7 +153,7 @@ struct MediaSelection {
 /// **성능 최적화가 아니라 신뢰성 요건이다.** 전용 필름 스캐너는 연속해서 여러 번
 /// 열면 다음 획득이 실패할 수 있다(OpticFilm 실측). Flatbed 와 Transparency 를
 /// 함께 가진 genesys 장치는 소스별 재검증을 그대로 수행한다.
-/// 근거: windows_docs/02-frontend-contract/backend-quirks.md §1.2, I-8
+/// 근거: docs/02-frontend-contract/backend-quirks.md §1.2, I-8
 [[nodiscard]] bool canReuseSinglePassOptionsDump(const OptionDump& opts,
                                                  std::string_view backend);
 

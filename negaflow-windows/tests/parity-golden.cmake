@@ -1,8 +1,8 @@
 # negaflow-scanner-sane — Windows adapter
 # parity-golden — `parity_dump` 출력이 골든과 같은가.
 #
-# 정본 문서: windows_docs/04-imaging/numerical-parity.md
-#            windows_docs/05-protocol/conformance-fixtures.md
+# 정본 문서: docs/04-imaging/numerical-parity.md
+#            docs/05-protocol/conformance-fixtures.md
 #
 # ## 이 검사가 무엇을 증명하고 무엇을 증명하지 않는가
 #
@@ -96,6 +96,6 @@ message(FATAL_ERROR
     "parity golden 불일치 (골든 ${expected_count}줄, 실제 ${actual_count}줄).\n"
     "수치가 갈렸으면 D-11(FMA 축약 금지)과 컴파일 플래그를 먼저 본다.\n"
     "의도한 변경이면 골든을 다시 만든다:\n"
-    "  ./build/<config>/parity_dump > windows/tests/golden/parity_dump.txt\n"
+    "  ./build/<config>/parity_dump > negaflow-windows/tests/golden/parity_dump.txt\n"
     "**다시 만들기 전에 macOS 파리티를 돌린다** — 골든만 고치면 Swift 와의\n"
     "차이가 그대로 굳는다.")

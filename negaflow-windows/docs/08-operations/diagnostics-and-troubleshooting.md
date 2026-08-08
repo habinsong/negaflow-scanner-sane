@@ -171,7 +171,7 @@ NEGAFLOW_SANE_DEBUG=1
 
 ## 5. 로그 정책
 
-negaflow 본체 windows_docs `10-scanner/plugin-architecture.md` §17이
+negaflow 본체 negaflow-windows/docs `10-scanner/plugin-architecture.md` §17이
 호스트 쪽 정책을 정의한다. 어댑터 쪽 대응:
 
 ### 5.1 stderr에 기록하는 것

@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/PluginProtocolV2.swift
 //            (PluginScanRequestV2.validatedOptions)
-// 정본 문서: windows_docs/02-frontend-contract/exact-option-contract.md §3
+// 정본 문서: docs/02-frontend-contract/exact-option-contract.md §3
 //
 // **검사 순서가 계약이다.** 같은 요청이 두 OS 에서 같은 오류를 내야 한다 —
 // wire v2 event schema 에 code 필드가 없어 메시지가 유일한 전달 수단이다(I-5).

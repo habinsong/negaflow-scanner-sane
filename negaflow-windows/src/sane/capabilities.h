@@ -2,7 +2,7 @@
 // sane/capabilities — 옵션 덤프 → 장치 능력.
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Capabilities.swift
-// 정본 문서: windows_docs/02-frontend-contract/capability-model.md
+// 정본 문서: docs/02-frontend-contract/capability-model.md
 //
 // **능력은 관측이지 약속이 아니다**(I-2). 장치가 실제로 노출한 옵션에서만
 // 판정하고, 모델명으로 능력을 발명하지 않는다.
@@ -96,7 +96,7 @@ inline constexpr int kHardwareExposureTimes[] = {11000, 14000, 30000};
 /// ③ 이 잠재적 구멍이다. 투과 소스가 전부 IR 인 장치에서는 IR 소스가 본 스캔에
 /// 선택된다. 알려진 대상 장치에는 해당 사례가 없어 macOS 에서 드러난 적이 없다.
 /// **동작을 그대로 옮긴다** — 한쪽만 고치면 두 플랫폼이 갈린다(I-20).
-/// 근거: windows_docs/10-lessons/driver-option-reference.md §5
+/// 근거: docs/10-lessons/driver-option-reference.md §5
 [[nodiscard]] std::optional<std::string> preferredTransparencySource(
     const std::vector<std::string>& sources);
 

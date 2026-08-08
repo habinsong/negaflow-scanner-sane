@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+ScanExecution.swift
 //            (validateExactOptions, validateAdjustment)
-// 정본 문서: windows_docs/02-frontend-contract/exact-option-contract.md
+// 정본 문서: docs/02-frontend-contract/exact-option-contract.md
 //
 // I-1: 요청한 값을 정확히 적용할 수 없으면 **스캔을 시작하지 않는다.**
 // 가장 가까운 값으로 스냅하지 않는다. "거의 맞으니까 괜찮다"가 없다.
@@ -26,7 +26,7 @@ namespace negaflow::sane {
 /// **8개를 유지한다.** 본체는 18개 stable category 를 쓰지만 v2 event schema 에
 /// code 필드가 없어 메시지 접두사가 유일한 전달 수단이다. Windows 에서만 늘리면
 /// 같은 실패가 OS 마다 다른 문구로 보인다(I-5).
-/// 근거: windows_docs/05-protocol/host-requirements.md §3.3
+/// 근거: docs/05-protocol/host-requirements.md §3.3
 enum class ErrorCode {
     NotConnected,
     Busy,

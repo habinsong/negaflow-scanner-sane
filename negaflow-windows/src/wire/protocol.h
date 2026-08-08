@@ -2,7 +2,7 @@
 // wire/protocol — `detect` / `capabilities` 응답의 JSON 형태.
 //
 // 이식 원본: Sources/negaflow-scanner-sane/WireProtocol.swift
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §3, §4
+// 정본 문서: docs/05-protocol/wire-contract.md §3, §4
 //
 // ## 이 타입들은 도메인 모델이 아니라 **wire DTO** 다
 //

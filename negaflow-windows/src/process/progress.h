@@ -3,12 +3,12 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Process.swift
 //            Sources/SANEPluginCore/SANEBackend+ScanExecution.swift
-// 정본 문서: windows_docs/03-process-and-io/timeouts-and-watchdog.md §5
+// 정본 문서: docs/03-process-and-io/timeouts-and-watchdog.md §5
 //
 // **이 파일은 순수하다.** process/ 계층의 나머지는 Win32 에 묶여 있지만
 // 이 판정 로직은 그렇지 않다. watchdog 전체가 이 위에 서 있으므로
 // 골든으로 검증할 수 있게 분리해 둔다.
-// 근거: windows_docs/06-build/porting-map.md §2.3
+// 근거: docs/06-build/porting-map.md §2.3
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 

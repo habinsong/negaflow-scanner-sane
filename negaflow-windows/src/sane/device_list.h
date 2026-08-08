@@ -3,11 +3,11 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Discovery.swift
 //            Sources/SANEPluginCore/SANEBackend+ScanExecution.swift (isVolatileUSBSelector)
-// 정본 문서: windows_docs/02-frontend-contract/device-identity.md
+// 정본 문서: docs/02-frontend-contract/device-identity.md
 //
 // **모델명으로 분기하지 않는다.** 벤더·모델은 목록에서 읽은 문자열일 뿐이고,
 // 능력 판정에 쓰지 않는다. 8200i 가 "OpticFilm 8100" 으로 보고되는 실측이 그 이유다.
-// 근거: windows_docs/10-lessons/field-lessons.md §10
+// 근거: docs/10-lessons/field-lessons.md §10
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -103,7 +103,7 @@ struct ListedDevice {
 ///
 /// 호스트가 중복 routed ID 를 "첫 항목만 남기고 plugin defect 로 기록" 한다.
 /// 우리가 먼저 정리하면 결과는 같고 결함 기록만 사라진다.
-/// 근거: windows_docs/05-protocol/host-requirements.md §3.1
+/// 근거: docs/05-protocol/host-requirements.md §3.1
 ///
 /// 제거한 개수를 돌려준다(진단용).
 [[nodiscard]] size_t dedupeByDevname(std::vector<ListedDevice>& devices);

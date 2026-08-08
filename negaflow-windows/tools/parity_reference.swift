@@ -82,7 +82,7 @@ let noUnit = SaneOptionDump("    --scan-exposure-time 0..65535 [11000]\n")
 emit("noUnit.unit", noUnit.rangeUnit("scan-exposure-time") ?? "<nil>")
 
 // CRLF — 알려진 divergence. Swift 는 "\r\n" 을 한 Character 로 보아 줄을 못 나눈다.
-// 근거: windows_docs/02-frontend-contract/option-dump-parser.md §2.2.1
+// 근거: docs/02-frontend-contract/option-dump-parser.md §2.2.1
 let crlf = SaneOptionDump("    --mode Color|Gray [Color]\r\n    --depth 8|16 [16]\r\n")
 emit("crlf.mode", crlf.enumValues("mode").joined(separator: "|"))
 emit("crlf.depth", crlf.intTokens("depth").map(String.init).joined(separator: ","))
@@ -841,7 +841,7 @@ for (label, text) in stderrSamples {
 
 // =========================================================================
 // imaging/align — 정렬. 전부 Float 이므로 비트 패턴으로 비교한다.
-// 근거: windows_docs/04-imaging/numerical-parity.md §4
+// 근거: docs/04-imaging/numerical-parity.md §4
 // =========================================================================
 
 /// Float 는 비트 패턴으로 비교한다. 십진 표기는 반올림으로 차이를 숨긴다.

@@ -41,7 +41,7 @@ hardwareExposurePlan() = hardwareExposureTimes.flatMap { exposure in
 
 **단위**: `--scan-exposure-time`의 단위는 백엔드가 정한다. 이 값들은
 특정 장치에서 측정된 것이며 프로토콜은 단위를 정의하지 않는다
-(negaflow 본체 windows_docs `10-scanner/protocol-contract.md` §7.2 필드 표:
+(negaflow 본체 negaflow-windows/docs `10-scanner/protocol-contract.md` §7.2 필드 표:
 "unit is adapter capability contract").
 
 ## 3. 전체 흐름 (`startSoftwareMultiPassScan`)

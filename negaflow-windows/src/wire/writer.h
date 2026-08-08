@@ -1,8 +1,8 @@
 // negaflow-scanner-sane — Windows adapter
 // wire/writer — 한 줄을 **끝까지** 내보내는 루프. Win32 호출은 주입받는다.
 //
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §7
-//            windows_docs/05-protocol/encoding-and-json.md §9 체크리스트 3항목
+// 정본 문서: docs/05-protocol/wire-contract.md §7
+//            docs/05-protocol/encoding-and-json.md §9 체크리스트 3항목
 //              - 한 번의 write 로 JSON + LF
 //              - 부분 쓰기 처리
 //              - ERROR_BROKEN_PIPE 를 EOF 로 처리

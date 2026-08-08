@@ -2,7 +2,7 @@
 // sane/args — `scanimage` 획득 인자 생성.
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+ScanExecution.swift (makeScanimageArgs)
-// 정본 문서: windows_docs/10-lessons/driver-option-reference.md §1
+// 정본 문서: docs/10-lessons/driver-option-reference.md §1
 //
 // **없는 옵션에는 플래그를 보내지 않는다.** coolscan3 에 `--mode` 를 넘기면
 // scanimage 가 스캔을 시작하기도 전에 죽는다. MediaSelection 의 hasXxxOption

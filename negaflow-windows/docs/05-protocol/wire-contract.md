@@ -4,7 +4,7 @@
 기준 커밋: c554aaf
 상태: 이식 정본
 범위: 이 플러그인이 **내는** 것과 **받는** 것
-비범위: 호스트 구현(negaflow 본체 windows_docs `10-scanner/protocol-contract.md`가 소유)
+비범위: 호스트 구현(negaflow 본체 negaflow-windows/docs `10-scanner/protocol-contract.md`가 소유)
 
 코드 근거: `Sources/negaflow-scanner-sane/main.swift`,
 `Sources/negaflow-scanner-sane/WireProtocol.swift`,
@@ -56,7 +56,7 @@ Windows에서 바뀌는 것은 `executable`뿐이다.
 **두 플랫폼의 버전을 동기화하는 것을 권장한다.**
 
 아키텍처별 매니페스트가 필요한가? 호스트가 실행 파일의 PE machine type을
-확인하므로(본체 windows_docs `10-scanner/plugin-architecture.md` §6.3
+확인하므로(본체 negaflow-windows/docs `10-scanner/plugin-architecture.md` §6.3
 "executable path"), 매니페스트에 아키텍처 필드는 필요 없다.
 x64용과 ARM64용을 **별도 설치물**로 배포하고 각각 `executable` 이름은
 같게 유지한다.
@@ -255,7 +255,7 @@ Windows도 같은 형태를 낸다: 옵셔널이 없으면 키를 쓰지 않는�
 호스트가 둘 다 받아들일 가능성이 높지만, I-5는 **같은 형태**를 요구한다.
 추측하지 않고 macOS 형태를 따른다.
 
-**이건 우리 쪽 추론만이 아니다.** negaflow 본체 windows_docs
+**이건 우리 쪽 추론만이 아니다.** negaflow 본체 negaflow-windows/docs
 `10-scanner/protocol-contract.md` §20(Windows port acceptance gate)이
 gate 항목으로 이렇게 적고 있다:
 
@@ -361,7 +361,7 @@ Swift `UUID`의 인코딩은 **대문자 하이픈 형태**다:
 Windows에서 `Guid.ToString()`은 **소문자**다:
 `7a91b43d-90f8-41e2-b71d-04d17cd9e03b`.
 
-**호스트가 문자열 비교를 하면 이것이 깨진다.** negaflow 본체 windows_docs
+**호스트가 문자열 비교를 하면 이것이 깨진다.** negaflow 본체 negaflow-windows/docs
 `10-scanner/protocol-contract.md` §20(Windows port acceptance gate)이
 "UUID format/case 차이가 value comparison을 깨지 않음"을 gate 항목으로
 명시한다. 즉 호스트는 대소문자 무시 비교를 해야 한다.
@@ -440,7 +440,7 @@ warnings: result.warnings.isEmpty ? nil : result.warnings
 
 `appliedOptions`는 커스텀 `encode(to:)`를 가지며 **12개 키를 전부 명시한다.**
 옵셔널도 `encode`(not `encodeIfPresent`)를 쓰므로 nil이면 `null`이다.
-negaflow 본체 windows_docs `10-scanner/protocol-contract.md` §9.1이
+negaflow 본체 negaflow-windows/docs `10-scanner/protocol-contract.md` §9.1이
 "key omission은 decode failure"라고 명시하므로
 이 동작이 필수다.
 
@@ -550,7 +550,7 @@ Windows에서 추가로 주의할 것:
 | IR artifact의 심도/색모델 의미가 약하다 | 어댑터가 자체 검증하지만 wire에 표현되지 않는다 |
 | `usbVendorID`/`usbProductID`/`serialNumber`가 항상 null | 같은 모델 2대 구분 불가 |
 
-이 목록은 negaflow 본체 windows_docs `10-scanner/protocol-contract.md`
+이 목록은 negaflow 본체 negaflow-windows/docs `10-scanner/protocol-contract.md`
 §21(알려진 현재 한계)과 일치해야 한다. Windows 이식에서
 **이 한계를 임의로 메우지 않는다.** v3 제안으로 분리한다.
 

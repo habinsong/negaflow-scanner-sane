@@ -3,8 +3,8 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Process.swift
 //            (appendScanimageStderr, AcquisitionProgressWatchdog)
-// 정본 문서: windows_docs/03-process-and-io/timeouts-and-watchdog.md
-//            windows_docs/03-process-and-io/child-process.md §10
+// 정본 문서: docs/03-process-and-io/timeouts-and-watchdog.md
+//            docs/03-process-and-io/child-process.md §10
 //
 // **Win32 를 포함하지 않는다.** 타이머는 `std::condition_variable` 의 시한
 // 대기로 세우고, 죽이는 행위는 콜백으로 밀어낸다. 그래서 이 파일은 실기 없이

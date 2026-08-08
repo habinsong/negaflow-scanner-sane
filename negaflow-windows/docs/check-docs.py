@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""windows_docs 정합성 검사.
+"""Windows 문서 정합성 검사.
 
 문서가 서로 어긋나는 것을 막는다. 의존성 없음, 표준 라이브러리만 쓴다.
 
-    python3 windows_docs/check-docs.py
+    python3 docs/check-docs.py
 
 검사 항목:
   1. 상대 링크가 실제 파일을 가리키는가
@@ -80,7 +80,7 @@ def main():
         for m in re.finditer(r"\]\(([^)#]+\.md)(#[^)]*)?\)", t):
             target = normalized(base, m.group(1))
             linked.add(target)
-            # windows_docs 밖(예: sane-runtime/SOURCES.md)을 가리키는 링크는
+            # 문서 트리 밖(예: sane-runtime/SOURCES.md)을 가리키는 링크는
             # text 에 없다. 그건 깨진 링크가 아니라 이 스크립트의 범위 밖일
             # 뿐이므로, 파일이 실재하는지만 확인한다.
             if target not in text and not os.path.isfile(os.path.join(ROOT, target)):

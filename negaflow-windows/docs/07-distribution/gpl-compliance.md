@@ -292,7 +292,7 @@ D-18  --all-options-json 패치를 v2에서는 도입하지 않는다.
   - negaflow가 libsane 또는 이 플러그인의 코드를 링크
 ```
 
-negaflow 본체 windows_docs의
+negaflow 본체 negaflow-windows/docs의
 `13-build-and-deps/third-party-licenses.md` §12.3이 같은 경계를 정의하며,
 "macOS보다 약하지 않은 분리를 유지한다"고 적는다.
 

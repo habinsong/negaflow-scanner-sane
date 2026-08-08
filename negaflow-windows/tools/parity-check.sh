@@ -54,7 +54,7 @@ swiftc -enable-testing -I "$MODULES" \
 # 올라가지만 **결과가 달라진다.** CMakeLists 는 이미 이 플래그를 걸고 있으므로,
 # 여기서 빠지면 파리티가 실제 빌드와 다른 산술을 검증하게 된다.
 # 실제로 imaging/align 을 붙이자마자 mix()/휘도 가중합에서 1 ULP 차이로 터졌다.
-# 근거: windows_docs/04-imaging/numerical-parity.md §2.2 "컴파일러 최적화"
+# 근거: docs/04-imaging/numerical-parity.md §2.2 "컴파일러 최적화"
 #
 # MSVC 쪽 짝은 `/fp:precise` **가 아니라** `#pragma fp_contract(off)` 다.
 # `/fp:precise` 의 기본 축약이 VS 2019 에서는 켜져 있다(2026-08-05 조사).
@@ -125,7 +125,7 @@ LINES="$(wc -l < "$WORK/cpp.txt" | tr -d ' ')"
 # crlf.depth 는 **의도적으로 다르다.** Swift 는 "\r\n" 을 한 Character 로
 # 보아 줄 분리를 하지 못하고 첫 옵션만 남긴다. C++ 는 바이트 단위로 나눠
 # 정상 파싱한다. 이 divergence 는 문서화돼 있다.
-# 근거: windows_docs/02-frontend-contract/option-dump-parser.md §2.2.1
+# 근거: docs/02-frontend-contract/option-dump-parser.md §2.2.1
 KNOWN_DIVERGENCE="crlf.depth"
 
 if diff -q "$WORK/swift.txt" "$WORK/cpp.txt" >/dev/null; then

@@ -5,9 +5,9 @@
 //
 // **전부 순수 함수이고 전부 부동소수점이다.** 즉 L5 수치 동등성의 주 대상이며
 // 이 파일의 모든 연산 순서가 계약이다.
-// 근거: windows_docs/06-build/porting-map.md §2.5
-//       windows_docs/04-imaging/exposure-merge.md §6
-//       windows_docs/04-imaging/numerical-parity.md §4
+// 근거: docs/06-build/porting-map.md §2.5
+//       docs/04-imaging/exposure-merge.md §6
+//       docs/04-imaging/numerical-parity.md §4
 //
 // 이 헤더는 <windows.h> 도 libtiff 도 포함하지 않는다. 순수 산술뿐이다.
 //
@@ -51,7 +51,7 @@ struct Offset {
 ///
 /// **분기 순서가 계약이다.** raw = 0.99 는 첫 조건에서 0.02 를 받고
 /// 두 번째 조건에 도달하지 않는다.
-/// 근거: windows_docs/04-imaging/exposure-merge.md §4.6
+/// 근거: docs/04-imaging/exposure-merge.md §4.6
 ///
 /// Swift 원본:
 ///     if rawValue >= 0.985 { return 0.02 }
@@ -81,7 +81,7 @@ struct Offset {
 /// 다운샘플 탐색 → 조기 종료 판정 → 풀해상도 미세보정의 3단이다.
 /// **결과는 정수이므로 완전 일치를 요구한다.** 1픽셀만 달라져도 병합 결과가
 /// 전부 달라진다.
-/// 근거: windows_docs/04-imaging/numerical-parity.md §4
+/// 근거: docs/04-imaging/numerical-parity.md §4
 ///
 /// 동률에서는 먼저 탐색한 오프셋이 이긴다(`error < bestError`, 엄격 비교).
 /// 탐색 순서(dy 외부, dx 내부, 음수부터)를 유지한다.
@@ -129,7 +129,7 @@ struct Downsampled {
 ///
 /// **경계를 처리하지 않는다.** 가장자리 한 줄은 블러되지 않은 원본이 남는다.
 /// 이것은 버그처럼 보이지만 그대로 옮긴다 — 고치면 정렬 결과가 달라진다.
-/// 근거: windows_docs/04-imaging/exposure-merge.md §6.2
+/// 근거: docs/04-imaging/exposure-merge.md §6.2
 [[nodiscard]] std::vector<float> boxBlur3(const std::vector<float>& buf, int width, int height);
 
 /// 오프셋 (dx, dy) 에서의 평균 절대 차. 누적은 double 이다(Swift 원본과 같음).

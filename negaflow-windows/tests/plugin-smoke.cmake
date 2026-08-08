@@ -1,8 +1,8 @@
 # negaflow-scanner-sane — Windows adapter
 # plugin-smoke — 실행 파일을 **실제로 돌려** 계약을 확인한다.
 #
-# 정본 문서: windows_docs/03-process-and-io/child-process.md §13
-#            windows_docs/05-protocol/wire-contract.md §3, §4, §5
+# 정본 문서: docs/03-process-and-io/child-process.md §13
+#            docs/05-protocol/wire-contract.md §3, §4, §5
 #
 # 단위 테스트는 순수 판정을 고정한다. 여기서 보는 것은 그 밖의 것이다 —
 # 프로세스가 뜨는가, 파이프가 교착하지 않는가, stdout 에 프로토콜만 나오는가,

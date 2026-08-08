@@ -1,8 +1,8 @@
 # negaflow-scanner-sane — Windows adapter
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
-# 근거 문서: windows_docs/06-build/toolchain-and-layout.md §4
-#            windows_docs/06-build/language-decision.md  (D-13: C++20)
+# 근거 문서: docs/06-build/toolchain-and-layout.md §4
+#            docs/06-build/language-decision.md  (D-13: C++20)
 
 cmake_minimum_required(VERSION 3.25)
 project(negaflow-scanner-sane-windows CXX)
@@ -74,7 +74,7 @@ if(MSVC)
     # 빌드는 통과하고 결과만 조용히 달라진다.
     #
     # 근거: windows/src/util/msvc_fp_contract.h (전체 설명)
-    #       windows_docs/04-imaging/numerical-parity.md §5
+    #       docs/04-imaging/numerical-parity.md §5
     add_compile_options(/FI"${CMAKE_CURRENT_SOURCE_DIR}/src/util/msvc_fp_contract.h")
     # /OPT:REF 와 /OPT:ICF 는 **Debug 에서 제외한다.** Debug 의 기본
     # /INCREMENTAL 과 양립하지 않아 링커가 LNK4075 로 증분 링크를 조용히
@@ -131,7 +131,7 @@ add_library(process_logic STATIC
 # libtiff 가 필요한 imaging/tiff 는 별도 타깃으로 붙인다.
 #
 # **/fp:fast 나 -ffast-math 가 들어가면 이 타깃의 결과가 조용히 달라진다.**
-# 근거: windows_docs/04-imaging/exposure-merge.md §7.4 (D-11)
+# 근거: docs/04-imaging/exposure-merge.md §7.4 (D-11)
 
 add_library(imaging_logic STATIC
     src/imaging/align.cpp
@@ -152,7 +152,7 @@ target_link_libraries(imaging_logic PUBLIC sane_logic)
 #
 # 요청 검증(1단계)은 순수 판정이라 macOS 에서 Swift 원본과 대조할 수 있다.
 # stdout 바이너리 모드·NDJSON 방출·프로세스 실행은 별도 계층(M5 후반)이다.
-# 근거: windows_docs/06-build/porting-map.md §2.12
+# 근거: docs/06-build/porting-map.md §2.12
 
 add_library(wire_logic STATIC
     src/wire/request.cpp
@@ -176,7 +176,7 @@ target_link_libraries(wire_logic PUBLIC sane_logic)
 #
 # **SYSTEM 으로 넣는 것이 중요하다.** 이 프로젝트는 -Werror 로 빌드하는데
 # RapidJSON 1.1.0 헤더가 clang 에서 경고를 낸다(memcpy 캐스트 등).
-# 근거: windows_docs/06-build/language-decision.md §215, toolchain-and-layout.md §3.2
+# 근거: docs/06-build/language-decision.md §215, toolchain-and-layout.md §3.2
 
 find_package(RapidJSON QUIET)
 
@@ -219,7 +219,7 @@ endif()
 #
 # libtiff 는 이미 SANE 런타임 의존으로 배포한다(building-sane §8) — 새 의존이
 # 아니다. 단 CVE 추적 대상이므로 SBOM 에 올린다.
-# 근거: windows_docs/04-imaging/tiff-validation.md §2
+# 근거: docs/04-imaging/tiff-validation.md §2
 
 find_package(TIFF)
 
@@ -288,7 +288,7 @@ if(WIN32 AND TIFF_FOUND AND NEGAFLOW_HAVE_RAPIDJSON)
     )
     # 긴 경로(260자 초과) staging 을 호스트가 줄 수 있다. 매니페스트의
     # long-path 인식이 없으면 CreateFileW 가 그 경로를 열지 못한다.
-    # 근거: windows_docs/03-process-and-io/child-process.md §14
+    # 근거: docs/03-process-and-io/child-process.md §14
     target_sources(negaflow-scanner-sane PRIVATE src/app/long_path.manifest)
 
     # --- 실행 파일을 실제로 돌리는 스모크 -----------------------------------

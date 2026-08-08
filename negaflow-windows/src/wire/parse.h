@@ -4,7 +4,7 @@
 // 이식 원본: Sources/negaflow-scanner-sane/main.swift (`case "scan"` 의 JSONDecoder)
 //            Sources/SANEPluginCore/PluginProtocolV2.swift (PluginScanRequestV2)
 //            Sources/SANEPluginCore/ScannerModel.swift     (ScanArea.init(from:))
-// 정본 문서: windows_docs/05-protocol/encoding-and-json.md §6, §7
+// 정본 문서: docs/05-protocol/encoding-and-json.md §6, §7
 //
 // ## 왜 실패 사유를 돌려주지 않는가
 //

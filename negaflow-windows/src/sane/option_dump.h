@@ -2,7 +2,7 @@
 // sane/option_dump — `scanimage -A` 텍스트 파서.
 //
 // 이식 원본: Sources/SANEPluginCore/SaneOptionDump.swift
-// 정본 문서: windows_docs/02-frontend-contract/option-dump-parser.md
+// 정본 문서: docs/02-frontend-contract/option-dump-parser.md
 //
 // 백엔드마다 옵션 이름·단위·형식이 다르다(genesys=mm, coolscan3=pel,
 // epson2=소스 열거, pieusb=bool clean-image …). **모델명 하드코딩 없이**
@@ -60,7 +60,7 @@ public:
     ///
     /// 앞선 옵션 적용으로 활성화될 옵션을 같은 scanimage 호출 뒤쪽에 배치할 때만 쓴다
     /// (epson2 재덤프). 이 비대칭은 의도된 것이다.
-    /// 근거: windows_docs/10-lessons/driver-option-reference.md §8.3
+    /// 근거: docs/10-lessons/driver-option-reference.md §8.3
     [[nodiscard]] std::vector<std::string> constraintEnumValues(std::string_view name) const;
 
     /// enum 제약 뒤 대괄호에 표시된 현재 선택값. `[inactive]` 같은 상태 표시는 제외된다

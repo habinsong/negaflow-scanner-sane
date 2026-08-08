@@ -1,8 +1,8 @@
 // negaflow-scanner-sane — Windows adapter
 // process/command_line — CreateProcessW 명령줄 조립과 인자 주입 방어.
 //
-// 정본 문서: windows_docs/03-process-and-io/child-process.md §4
-//            windows_docs/99-plan/product-invariants.md I-15
+// 정본 문서: docs/03-process-and-io/child-process.md §4
+//            docs/99-plan/product-invariants.md I-15
 //
 // **Windows 에서 새로 생기는 위험이다.** POSIX `exec` 는 인자를 배열로 받지만
 // `CreateProcessW` 는 **문자열 하나**를 받고 자식이 파싱한다. 따옴표 규칙을

@@ -174,7 +174,7 @@ NAPS2가 Windows에서 SANE 서버에 접근하는 방법으로 SANEWinDS 설치
 
 정리: **SANEWinDS는 우리 플러그인의 대안이 아니라 우리 플러그인의 경쟁자다.**
 Windows에서 원격 SANE가 필요한 사용자는 SANEWinDS를 직접 쓰고 negaflow의
-TWAIN 경로로 들어오는 편이 낫다. 그 경로는 본체 windows_docs의
+TWAIN 경로로 들어오는 편이 낫다. 그 경로는 본체 negaflow-windows/docs의
 `10-scanner/twain-wia.md`가 소유한다.
 
 ## 7. 문서에 남길 사용자 안내

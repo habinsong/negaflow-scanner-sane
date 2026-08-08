@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+ScanExecution.swift
 //            (validatedScannedTIFF)
-// 정본 문서: windows_docs/04-imaging/tiff-validation.md §3
+// 정본 문서: docs/04-imaging/tiff-validation.md §3
 //
 // ## 왜 `imaging/tiff` 가 셋으로 나뉘는가
 //
@@ -25,7 +25,7 @@
 // wire v2 event schema 에 code 필드가 없어서 **메시지 접두사가 유일한
 // 전달 수단이다.** 같은 실패가 두 OS 에서 다른 문구로 보이면 안 된다(I-5).
 // 그래서 macOS 가 검출하는 실패는 Swift 와 **글자까지 같은 문구**를 쓴다.
-// 근거: windows_docs/05-protocol/host-requirements.md §3.3
+// 근거: docs/05-protocol/host-requirements.md §3.3
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -93,7 +93,7 @@ struct TiffTags {
     ///
     /// 그래서 여기 두는 목적은 둘이다: 진단(`diagnose` 서브커맨드)과,
     /// **우리 writer 가 태그를 붙이지 않았음을 테스트가 확인하는 것.**
-    /// 근거: windows_docs/10-lessons/host-pipeline-contract.md §2
+    /// 근거: docs/10-lessons/host-pipeline-contract.md §2
     bool hasIccProfile = false;
     bool hasTransferFunction = false;
 };
@@ -115,7 +115,7 @@ using TiffValidation = std::optional<std::string>;
 ///
 /// macOS 는 `CGColorSpace.model` 만 보므로 MINISWHITE/MINISBLACK 을
 /// 구분하지 않는다. 여기서 나누는 것이 D-10 의 취지다.
-/// 근거: windows_docs/04-imaging/tiff-validation.md §3.3
+/// 근거: docs/04-imaging/tiff-validation.md §3.3
 [[nodiscard]] std::optional<sane::ColorMode> colorModeFromTags(const TiffTags& tags) noexcept;
 
 /// 컨테이너 계층(§3.2). 단일 IFD 인가.
@@ -146,7 +146,7 @@ using TiffValidation = std::optional<std::string>;
 /// EXTRASAMPLES   RGB 에서 spp > 3 이면 명시돼 있어야 한다
 /// ```
 ///
-/// 근거: windows_docs/04-imaging/tiff-validation.md §3.4, §3.5
+/// 근거: docs/04-imaging/tiff-validation.md §3.4, §3.5
 [[nodiscard]] TiffValidation validateStrictTags(const TiffTags& tags);
 
 /// 컨테이너 → 이미지 → 추가 검사를 순서대로. 첫 실패에서 멈춘다.

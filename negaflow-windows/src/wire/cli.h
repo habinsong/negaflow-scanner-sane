@@ -2,8 +2,8 @@
 // wire/cli — 서브커맨드 디스패치 **판정**. 실행은 하지 않는다.
 //
 // 이식 원본: Sources/negaflow-scanner-sane/main.swift (최상위 switch)
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §6
-//            windows_docs/03-process-and-io/environment-and-paths.md §8 (D-05)
+// 정본 문서: docs/05-protocol/wire-contract.md §6
+//            docs/03-process-and-io/environment-and-paths.md §8 (D-05)
 //
 // ## 무엇이 순수한가
 //

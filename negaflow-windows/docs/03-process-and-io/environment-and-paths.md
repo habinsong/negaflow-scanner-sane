@@ -273,7 +273,7 @@ SANE_DEBUG_DLL, SANE_DEBUG_<BACKEND>
     negaflow-scanner-sane-<version>-source.tar.gz
 ```
 
-negaflow 본체 windows_docs의 `10-scanner/plugin-architecture.md` §6이
+negaflow 본체 negaflow-windows/docs의 `10-scanner/plugin-architecture.md` §6이
 `%LOCALAPPDATA%\Negaflow\ScannerPlugins\<plugin-id>\`를 1차 user-scope
 root로 정의한다. 그것을 따른다.
 

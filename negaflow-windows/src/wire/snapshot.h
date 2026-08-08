@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Discovery.swift
 //            (private struct SANECapabilitySnapshot)
-// 정본 문서: windows_docs/02-frontend-contract/capability-model.md
+// 정본 문서: docs/02-frontend-contract/capability-model.md
 //
 // ## 토큰은 **신뢰할 수 없는 입력이다**
 //

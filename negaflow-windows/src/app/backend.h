@@ -4,8 +4,8 @@
 // 이식 원본: Sources/SANEPluginCore/SANEBackend.swift
 //            Sources/SANEPluginCore/SANEBackend+Discovery.swift
 //            Sources/SANEPluginCore/SANEBackend+ScanExecution.swift
-// 정본 문서: windows_docs/02-frontend-contract/*
-//            windows_docs/03-process-and-io/*
+// 정본 문서: docs/02-frontend-contract/*
+//            docs/03-process-and-io/*
 //
 // ## 여기에는 판정이 거의 없다
 //

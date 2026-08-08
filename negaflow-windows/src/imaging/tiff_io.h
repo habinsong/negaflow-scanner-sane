@@ -4,7 +4,7 @@
 // 이식 원본: Sources/SANEPluginCore/TIFFLoader.swift (loadScannerTIFF)
 //            Sources/SANEPluginCore/SANEBackend+TIFFWriting.swift (writeRGB16TIFF)
 //            Sources/SANEPluginCore/SANEBackend+Environment.swift (imageSize)
-// 정본 문서: windows_docs/04-imaging/tiff-validation.md §4, §5, §6
+// 정본 문서: docs/04-imaging/tiff-validation.md §4, §5, §6
 //
 // **이 파일만 <tiffio.h> 를 안다.** `imaging_logic`(align/merge/tiff_contract)은
 // libtiff 를 링크하지 않는다 — 그 분리가 순수 부분을 libtiff 없이 검증할 수
@@ -16,7 +16,7 @@
 // float 를 얻는다. spike N-1 이 그 경로가 `Float(v) / 65535.0` 과 **비트 동일**
 // 임을 증명했으므로, 여기서는 libtiff 로 읽어 그냥 나눈다.
 // `.colorSpace: linearSRGB` 는 **변환이 아니라 재해석**이므로 흉내낼 것이 없다.
-// 근거: windows_docs/04-imaging/numerical-parity.md §0
+// 근거: docs/04-imaging/numerical-parity.md §0
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -50,7 +50,7 @@ struct ScannedTiffMetadata {
 /// 하고, 그렇다고 끄면 "왜 못 읽었는지"가 사라진다 — 지원하지 않는 코덱을
 /// 만났을 때가 대표적이다(vcpkg 에서 `tiff[zip]` 만 켜므로 JPEG-in-TIFF 는
 /// 읽지 못한다). 실패를 조용히 넘기지 않는다.
-/// 근거: windows_docs/10-lessons/field-lessons.md §14
+/// 근거: docs/10-lessons/field-lessons.md §14
 ///
 /// 스레드 지역이며 열기 호출마다 초기화된다. 진단용이지 제어 흐름용이 아니다 —
 /// 검증 메시지는 Swift 와 글자까지 같아야 하므로 여기 내용을 섞지 않는다.
@@ -75,7 +75,7 @@ struct ScannedTiffMetadata {
 /// **파일 계층은 아직 이식 도중이다.** 지금은 `std::filesystem` 으로
 /// regular file / symlink / 크기만 본다. `GetFileInformationByHandle` 기반
 /// 핸들 검증(TOCTOU 방지, reparse point 거부)은 Win32 계층에서 붙인다.
-/// 근거: windows_docs/04-imaging/tiff-validation.md §3.1
+/// 근거: docs/04-imaging/tiff-validation.md §3.1
 [[nodiscard]] TiffValidation validatedScannedTIFF(const std::filesystem::path& path,
                                                   sane::BitDepth expectedBitDepth,
                                                   sane::ColorMode expectedColorMode,
@@ -108,7 +108,7 @@ struct ScannedTiffMetadata {
 ///
 /// 프로파일을 넣으면 본체가 감마 도메인으로 읽어 **색이 무너진다.**
 /// 스캔은 성공하고 검증도 통과하므로 가장 늦게 발견되는 실패다.
-/// 근거: windows_docs/10-lessons/host-pipeline-contract.md §2
+/// 근거: docs/10-lessons/host-pipeline-contract.md §2
 ///
 /// 같은 디렉터리에 임시 이름으로 쓴 뒤 rename 한다(§6.2) — 쓰기 도중
 /// 죽어도 불완전한 파일이 대상 경로에 남지 않는다.
@@ -121,7 +121,7 @@ struct ScannedTiffMetadata {
 ///
 /// IR 패스 결과가 읽히는지 보는 용도이며, 호출자가 (0,0) 을 보고 IR 을
 /// 버린다. IR 실패가 본 스캔을 무효화하지 않는 것이 계약이다(I-10).
-/// 근거: windows_docs/04-imaging/tiff-validation.md §4
+/// 근거: docs/04-imaging/tiff-validation.md §4
 [[nodiscard]] std::pair<int, int> imageSize(const std::filesystem::path& path);
 
 }  // namespace negaflow::imaging::tiffio

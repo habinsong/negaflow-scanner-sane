@@ -118,7 +118,7 @@ D-28  Epson Perfection 사용자에게는 이 플러그인을 권하지 않는�
 ```
 
 **negaflow가 Epson을 지원하려면 WIA/TWAIN 어댑터가 정답이다.**
-그것은 본체 windows_docs의 `10-scanner/twain-wia.md`가 소유한다.
+그것은 본체 negaflow-windows/docs의 `10-scanner/twain-wia.md`가 소유한다.
 
 ### 4.4 Reflecta / PIE — 현재는 무의미
 

@@ -2,7 +2,7 @@
 //
 // 이 파일의 모든 연산 순서는 계약이다. 수학적으로 동등한 재배열이
 // 부동소수점에서는 다른 결과를 낸다.
-// 근거: windows_docs/04-imaging/numerical-parity.md §2.2 "연산 순서"
+// 근거: docs/04-imaging/numerical-parity.md §2.2 "연산 순서"
 
 #include "imaging/align.h"
 

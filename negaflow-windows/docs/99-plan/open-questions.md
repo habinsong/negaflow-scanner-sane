@@ -573,7 +573,7 @@ epson_smoke    Epson 인자 계약 17검사 — 소스별 지오메트리, TPU8x
 ```
 
 **4번을 빠뜨리면 다음 사람이 없는 질문을 찾아간다.**
-`grep -rn "Q-nn" windows_docs/`로 확인한다.
+`grep -rn "Q-nn" docs/`로 확인한다.
 
 ## 3. 답이 나와 닫힌 질문
 

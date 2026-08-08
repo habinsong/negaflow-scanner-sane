@@ -6,12 +6,12 @@
       실기 검증 장치는 아직 0대다.
 언어: C++20 / MSVC (D-13)
 
-**이 작업을 이어받는다면 [handoff](../windows_docs/00-overview/handoff.md)를
+**이 작업을 이어받는다면 [handoff](docs/00-overview/handoff.md)를
 먼저 읽는다.** 현재 상태, 다음 작업, 밟으면 안 되는 함정이 정리돼 있다.
 
-설계 문서는 [`../windows_docs/`](../windows_docs/README.md)에 있다.
+설계 문서는 [`docs/`](docs/README.md)에 있다.
 **코드를 쓰기 전에 그쪽을 읽는다.** 특히
-[field-lessons](../windows_docs/10-lessons/field-lessons.md) — 이미 실패한
+[field-lessons](docs/10-lessons/field-lessons.md) — 이미 실패한
 시도가 정리돼 있다.
 
 ## 지금 무엇이 되어 있나
@@ -174,7 +174,7 @@ diff 한다. macOS에서만 돌아간다(Swift 툴체인 필요).
 현재 결과: **574줄 중 573줄 일치, 1줄은 문서화된 의도적 divergence.**
 
 단 파리티는 **corpus 에 있는 입력만** 본다. 일부러 넣지 않은 차이 둘이
-있다 — [handoff](../windows_docs/00-overview/handoff.md) §4.2a.
+있다 — [handoff](docs/00-overview/handoff.md) §4.2a.
 
 `@testable import SANEPluginCore` 로 **실제 구현을 링크한다.** 소스를 복사하지
 않는 것이 중요하다 — 복사본을 두면 원본이 바뀌어도 파리티가 통과해버린다.
@@ -199,7 +199,7 @@ C++    optionNames == ["mode","depth"] ← 정상
 그대로 베끼면 Windows에서 능력 판정이 통째로 무너진다.
 
 이것은 macOS 쪽 결함이며 I-20(양 플랫폼 동시 적용) 후보다.
-→ [option-dump-parser](../windows_docs/02-frontend-contract/option-dump-parser.md) §2.2
+→ [option-dump-parser](docs/02-frontend-contract/option-dump-parser.md) §2.2
 
 ### 파리티가 실제로 잡은 것
 
@@ -248,7 +248,7 @@ OS 마다 다르게 보인다(I-5).
 
 ## M2 게이트 — 백엔드 분기 16곳
 
-[backend-quirks](../windows_docs/02-frontend-contract/backend-quirks.md) §0 이
+[backend-quirks](docs/02-frontend-contract/backend-quirks.md) §0 이
 이름으로 분기하는 지점 16곳을 나열한다. 그중 **순수 로직 12곳이 전부 이식됐다.**
 
 ```text
@@ -319,7 +319,7 @@ Photometric            RGB
 SampleFormat           unsigned integer
 ```
 
-[host-pipeline-contract](../windows_docs/10-lessons/host-pipeline-contract.md) §2 의
+[host-pipeline-contract](docs/10-lessons/host-pipeline-contract.md) §2 의
 "태그 없는 16-bit linear" 계약을 **macOS 가 실제로 지키고 있다.** 그 절의
 "미검증" 표기를 해제했다.
 
@@ -371,7 +371,7 @@ Swift 짝(`ProtocolV2Emitter`)이 `main.swift` 안의 `private` 클래스이고,
 
 **그래도 적어 둔다.** "여기도 대조되고 있겠지"라고 가정하면 그때부터
 이 모듈은 검증되지 않은 채 자란다.
-→ [handoff](../windows_docs/00-overview/handoff.md) §4.2b
+→ [handoff](docs/00-overview/handoff.md) §4.2b
 
 ### 병합 메모리 — 오버헤드 5.6배 감소 (2026-08-05)
 
@@ -407,7 +407,7 @@ c++ -std=c++20 -O2 -ffp-contract=off -Isrc -o /tmp/bench tools/merge-memory-benc
 
 남은 것은 호출자가 넘기는 입력 N장이다. 없애려면 TIFF 스트리밍이 필요하고
 그것은 M5 조율 계층과 함께 설계해야 한다 —
-[exposure-merge](../windows_docs/04-imaging/exposure-merge.md) §7.2.2.
+[exposure-merge](docs/04-imaging/exposure-merge.md) §7.2.2.
 
 ### N-2 — 양방향 상호운용 (2026-08-05)
 
@@ -513,7 +513,7 @@ sane_logic 은 <windows.h> 도 <tiffio.h> 도 포함하지 않는다
 
 마지막 항목이 이 프로젝트의 성격이다. `containsExactly`가 그 바닥이고,
 `snapResolution` 같은 함수는 **일부러 옮기지 않았다**
-([porting-map](../windows_docs/06-build/porting-map.md) §3.5의 죽은 코드 4개).
+([porting-map](docs/06-build/porting-map.md) §3.5의 죽은 코드 4개).
 
 ## 레이아웃
 

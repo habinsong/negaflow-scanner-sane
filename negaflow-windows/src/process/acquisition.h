@@ -3,8 +3,8 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+ScanExecution.swift
 //            (runSingleAcquisition 의 정책 부분)
-// 정본 문서: windows_docs/02-frontend-contract/backend-quirks.md §1.4, §5.2
-//            windows_docs/03-process-and-io/timeouts-and-watchdog.md §3.5
+// 정본 문서: docs/02-frontend-contract/backend-quirks.md §1.4, §5.2
+//            docs/03-process-and-io/timeouts-and-watchdog.md §3.5
 //
 // `runSingleAcquisition` 은 프로세스를 띄우는 부분과 **"다시 시도할까"를 정하는
 // 부분**이 섞여 있다. 후자는 순수하므로 여기로 분리해 골든으로 검증한다.

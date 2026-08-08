@@ -207,7 +207,7 @@ S/E/N/I/C/T/U/DC/B/D-n  spike. spike-checklist가 소유
 ### 5.1 정합성 검사
 
 ```bash
-python3 windows_docs/check-docs.py
+python3 docs/check-docs.py
 ```
 
 깨진 링크, 없는 섹션 참조(`§N.M`), 등록되지 않은 `D-nn`/`Q-nn`/`I-nn`,
@@ -220,7 +220,7 @@ python3 windows_docs/check-docs.py
 실제로 2026-08-04 감사에서 헤더 합계 두 개가 낡아 있었다
 (백엔드 4,336→4,581, 테스트 3,220→4,460).
 
-**본체 저장소(`../Negaflow/windows_docs`) 인용은 링크 검사가 불가능하다.**
+**본체 저장소(`../negaflow/negaflow-windows/docs`) 인용은 링크 검사가 불가능하다.**
 그래서 최소한 파일명을 적도록 강제한다 — 본체 README에도 §6이 있고
 `10-scanner/plugin-architecture.md`에도 §6이 있어서, 파일을 안 적으면
 독자가 엉뚱한 곳으로 간다.

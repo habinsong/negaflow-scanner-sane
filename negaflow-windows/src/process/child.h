@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Process.swift
 //            (runScanimage, runScanimageTo)
-// 정본 문서: windows_docs/03-process-and-io/child-process.md
+// 정본 문서: docs/03-process-and-io/child-process.md
 //
 // ## 두 가지 실행 형태를 그대로 유지한다 (§2)
 //

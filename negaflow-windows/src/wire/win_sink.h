@@ -1,8 +1,8 @@
 // negaflow-scanner-sane — Windows adapter
 // wire/win_sink — `ByteSink` 의 Win32 구현. **부분 쓰기 루프는 여기 없다.**
 //
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §7
-//            windows_docs/05-protocol/encoding-and-json.md §9
+// 정본 문서: docs/05-protocol/wire-contract.md §7
+//            docs/05-protocol/encoding-and-json.md §9
 //
 // 재개 루프는 `wire/writer` 의 `writeAll` 이 갖는다. 여기서 루프를 돌면
 // 그쪽 테스트가 검증하는 것이 실제로 쓰이지 않게 된다 — `writeSome` 은

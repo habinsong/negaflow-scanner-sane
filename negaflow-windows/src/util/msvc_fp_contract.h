@@ -5,8 +5,8 @@
 // 직접 `#include` 하지 않아도 된다 — 오히려 하지 않는 편이 낫다.
 // 어느 파일이 "부동소수점에 민감한가"를 사람이 판단하게 두면 언젠가 틀린다.
 //
-// 정본 문서: windows_docs/04-imaging/numerical-parity.md §5
-//            windows_docs/04-imaging/exposure-merge.md §7.4 (D-11)
+// 정본 문서: docs/04-imaging/numerical-parity.md §5
+//            docs/04-imaging/exposure-merge.md §7.4 (D-11)
 //
 // ## 왜 `/fp:precise` 만으로는 부족한가 — 2026-08-05 조사 결과
 //
@@ -34,7 +34,7 @@
 //
 // 이것은 새로운 함정이 아니라 **이미 한 번 밟은 함정의 반대편이다.**
 // 파리티 스크립트가 `-ffp-contract=off` 없이 컴파일해 1 ULP 로 터진 적이 있다
-// ([field-lessons](../../../windows_docs/10-lessons/field-lessons.md) §9b.2).
+// ([field-lessons](../../docs/10-lessons/field-lessons.md) §9b.2).
 // 그때는 clang 이었고 이번엔 MSVC 다.
 //
 // ## 왜 `#pragma fp_contract(off)` 인가

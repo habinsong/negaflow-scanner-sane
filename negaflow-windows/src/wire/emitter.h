@@ -2,8 +2,8 @@
 // wire/emitter — 이벤트 줄을 만든다. **쓰지는 않는다.**
 //
 // 이식 원본: Sources/negaflow-scanner-sane/main.swift (ProtocolV2Emitter)
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §5.3, §5.4
-//            windows_docs/05-protocol/encoding-and-json.md §4
+// 정본 문서: docs/05-protocol/wire-contract.md §5.3, §5.4
+//            docs/05-protocol/encoding-and-json.md §4
 //
 // ## 이 모듈에는 **파리티가 없다** — 이유를 적어 둔다
 //
@@ -84,7 +84,7 @@ private:
 /// **error 이벤트는 5개 키가 전부다.** `type` / `protocolVersion` /
 /// `requestID` / `sequence` / `message`. 나머지 옵셔널은 전부 nil 이므로
 /// 생략된다. 여기에 필드를 더하면 macOS 와 다른 JSON 이 된다.
-/// 근거: windows_docs/05-protocol/wire-contract.md §5.7
+/// 근거: docs/05-protocol/wire-contract.md §5.7
 [[nodiscard]] ScanEventV2 makeErrorEvent(std::string message);
 
 }  // namespace negaflow::wire

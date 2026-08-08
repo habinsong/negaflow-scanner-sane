@@ -84,7 +84,7 @@ E1~E4는 서로 다른 증거다. 특히:
 | 하드웨어 랩 OS | Windows 11 현행 지원 빌드 |
 | 고객 지원 OS | 출시 시점에 지원 중인 소비자 릴리스 |
 
-**네 축을 분리해서 기록한다.** negaflow 본체 windows_docs README §3.8이
+**네 축을 분리해서 기록한다.** negaflow 본체 negaflow-windows/docs README §3.8이
 같은 원칙을 정한다. Windows 10 지원 여부는 기술적 실행 가능성과
 제품 지원을 구분해 결정한다.
 

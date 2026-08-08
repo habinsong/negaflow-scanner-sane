@@ -5,7 +5,7 @@
 // 같은 key=value 줄을 내는 Swift 짝과 출력을 diff 한다.
 // 골든 픽스처 corpus(M1)가 생기기 전까지의 임시 수단이며,
 // corpus 가 생기면 이 파일은 러너로 대체된다.
-// 근거: windows_docs/05-protocol/conformance-fixtures.md
+// 근거: docs/05-protocol/conformance-fixtures.md
 
 #include <cstdint>
 #include <cstdio>
@@ -259,7 +259,7 @@ int main() {
     // CRLF — **의도적 divergence.** Swift 는 "\r\n" 을 한 Character 로 보아
     // 줄 분리 자체가 일어나지 않는다(첫 옵션만 남는다). C++ 는 바이트 단위로
     // 나누므로 정상 파싱한다. 아래 두 줄은 Swift 와 일치하지 않는 것이 정답이다.
-    // 근거: windows_docs/02-frontend-contract/option-dump-parser.md §2.2
+    // 근거: docs/02-frontend-contract/option-dump-parser.md §2.2
     const OptionDump crlf{"    --mode Color|Gray [Color]\r\n    --depth 8|16 [16]\r\n"};
     emit("crlf.mode", join(crlf.enumValues("mode"), "|"));
     emit("crlf.depth", joinInts(crlf.intTokens("depth"), ","));
@@ -1047,7 +1047,7 @@ int main() {
 
     // =====================================================================
     // imaging/align — 정렬. 전부 Float 이므로 비트 패턴으로 비교한다.
-    // 근거: windows_docs/04-imaging/numerical-parity.md §4
+    // 근거: docs/04-imaging/numerical-parity.md §4
     // =====================================================================
     {
         using namespace negaflow::imaging;
@@ -1165,7 +1165,7 @@ int main() {
     //
     // float 결과와 UInt16 결과를 **둘 다** 비교한다. 양자화가 절삭이라
     // 1 ULP 차이는 대개 같은 UInt16 으로 떨어져 UInt16 만 보면 놓친다.
-    // 근거: windows_docs/04-imaging/numerical-parity.md §3.1, §3.4
+    // 근거: docs/04-imaging/numerical-parity.md §3.1, §3.4
     // =====================================================================
     {
         using namespace negaflow::imaging;
@@ -1281,7 +1281,7 @@ int main() {
     // 여기서 비교하는 것은 파일 바이트가 아니라 **디코드된 픽셀**이다.
     // 바이트 순서(II vs MM)는 달라도 되고 실제로 다르다 — 호스트가
     // libtiff/WIC 로 읽으므로 순서는 투명하다.
-    // 근거: windows_docs/04-imaging/numerical-parity.md §5 (N-2)
+    // 근거: docs/04-imaging/numerical-parity.md §5 (N-2)
     //
     //   tiff.roundtrip.*  Swift 가 쓴 파일 → 우리가 읽는다
     //   tiff.cross.*      우리가 쓴 파일   → Swift 가 읽는다

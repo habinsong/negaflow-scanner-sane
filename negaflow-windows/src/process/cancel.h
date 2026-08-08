@@ -5,8 +5,8 @@
 //            (beginScanSession, launchOwnedScanProcess, cancelScan …)
 //            Sources/negaflow-scanner-sane/main.swift
 //            (installScanCancellationForwarders)
-// 정본 문서: windows_docs/03-process-and-io/cancellation.md §5, §7
-//            windows_docs/03-process-and-io/child-process.md §8
+// 정본 문서: docs/03-process-and-io/cancellation.md §5, §7
+//            docs/03-process-and-io/child-process.md §8
 //
 // ## 두 개의 취소가 있다
 //

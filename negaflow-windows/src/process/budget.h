@@ -1,8 +1,8 @@
 // negaflow-scanner-sane — Windows adapter
 // process/budget — 명령별 wall-time 예산. **D-32.**
 //
-// 정본 문서: windows_docs/05-protocol/host-requirements.md §2
-//            windows_docs/03-process-and-io/timeouts-and-watchdog.md
+// 정본 문서: docs/05-protocol/host-requirements.md §2
+//            docs/03-process-and-io/timeouts-and-watchdog.md
 //
 // 이식 원본이 **없다.** macOS 구현에는 이 개념이 없고, 그것이 문제다.
 //

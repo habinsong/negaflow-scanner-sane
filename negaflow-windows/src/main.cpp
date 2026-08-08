@@ -2,7 +2,7 @@
 // main — 서브커맨드 디스패치와 wire 방출. **판정은 하지 않는다.**
 //
 // 이식 원본: Sources/negaflow-scanner-sane/main.swift
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §6, §7
+// 정본 문서: docs/05-protocol/wire-contract.md §6, §7
 //
 // `wire/cli` 가 무엇을 할지 정하고, 이 파일은 그 판정을 받아 **실행만** 한다.
 // 요청 검증은 `wire/request`, 옵션 해석은 `sane/media`, 실행 순서는

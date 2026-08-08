@@ -2,7 +2,7 @@
 //
 // 최소 테스트 러너. 외부 프레임워크 의존 없음.
 // 골든 픽스처 corpus 가 생기면(M1) 이 러너가 그것을 읽도록 확장한다.
-// 근거: windows_docs/05-protocol/conformance-fixtures.md
+// 근거: docs/05-protocol/conformance-fixtures.md
 
 #include <charconv>
 #include <chrono>
@@ -749,9 +749,10 @@ void testMediaEpson2() {
         CHECK(m.gammaCorrection->find("1.0") != std::string::npos);
     }
 
-    // 투과 소스를 고르고, 8x10 을 우선한다
+    // 투과 소스를 고르고, 필름 홀더용(`Transparency Unit`)을 우선한다.
+    // 8x10 은 유리면에 초점을 두는 다른 렌즈라 필름이 흐려진다.
     CHECK(m.source.has_value());
-    if (m.source) CHECK_EQ(*m.source, std::string("TPU8x10"));
+    if (m.source) CHECK_EQ(*m.source, std::string("Transparency Unit"));
 
     // 네거티브 요청 → "Negative Film"
     CHECK(m.filmType.has_value());
@@ -1348,7 +1349,7 @@ void testBoxBlur3LeavesBorder() {
 
     // **경계 미처리가 계약이다.** 가장자리 한 줄은 원본이 남는다.
     // 이것을 "고치면" 정렬 결과가 달라진다.
-    // 근거: windows_docs/04-imaging/exposure-merge.md §6.2
+    // 근거: docs/04-imaging/exposure-merge.md §6.2
     std::vector<float> buf(25, 0.0f);
     buf[12] = 9.0f;  // 5x5 의 정중앙
     const auto out = boxBlur3(buf, 5, 5);
@@ -1598,7 +1599,7 @@ void testNormalizeExposureFormulaIsExact() {
     // **이 항등식이 지연 정규화의 근거다.** 병합 루프는 정규화 배열을 만들지
     // 않고 `raw * scale` 을 그때그때 계산하는데, 그것이 비트 단위로 같다는
     // 보장이 여기 있다. 식이 갈리면 메모리는 줄고 결과가 조용히 달라진다.
-    // 근거: windows_docs/04-imaging/exposure-merge.md §7.2
+    // 근거: docs/04-imaging/exposure-merge.md §7.2
     const std::vector<int> pairs[] = {{11000, 14000}, {30000, 14000}, {14000, 14000},
                                       {1, 65535},     {7, 3}};
     const float samples[] = {0.0f,      1.0f,     0.5f,      0.006f, 0.985f,

@@ -23,7 +23,7 @@ std::string_view commandName(Command c) noexcept {
 }
 
 Duration hostCeiling(Command c) noexcept {
-    // 본체 windows_docs `10-scanner/plugin-architecture.md` §11.
+    // 본체 negaflow-windows/docs `10-scanner/plugin-architecture.md` §11.
     switch (c) {
         case Command::Detect: return ms{90'000};
         case Command::Capabilities: return ms{180'000};

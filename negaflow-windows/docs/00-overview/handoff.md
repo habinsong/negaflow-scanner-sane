@@ -21,7 +21,7 @@ VueScan 이 계속 동작한다. 600~7200 dpi 전부, 연속 스캔 8/8, 취소�
 Windows(정식 대상):
 
 ```bash
-python windows_docs/check-docs.py           # 문서 정합성
+python docs/check-docs.py           # 문서 정합성
 cmake -S windows -B build -A x64 \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_TARGET_TRIPLET=x64-windows-static
@@ -61,7 +61,7 @@ negaflow 본체(Apache-2.0)와 **프로세스로 분리**돼 GPL 경계를 유�
 산출물 셋:
 
 ```text
-windows_docs/                     44개 문서 — 설계 정본
+docs/                     44개 문서 — 설계 정본
 windows/                          C++20 소스 — 구현
 .github/workflows/windows.yml     MSVC 빌드 CI (아직 한 번도 돌지 않았다)
 ```
@@ -702,7 +702,7 @@ timeouts-and-watchdog §3.5가 승인한 개선이다.
 ## 6. 문서에서 먼저 읽을 것
 
 ```text
-1. windows_docs/README.md                       전체 지도
+1. docs/README.md                       전체 지도
 2. 10-lessons/field-lessons.md                  이미 실패한 시도들
 3. 99-plan/product-invariants.md                절대 깨면 안 되는 것 20개
 4. 06-build/porting-map.md                      어느 함수가 어느 모듈로

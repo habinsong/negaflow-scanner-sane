@@ -117,5 +117,5 @@ _?= 제거        UninstallString 을 `_?=` 와 함께 부르면 uninstall.exe �
 ```
 
 기술 요건표는
-[packaging-and-install](../../windows_docs/07-distribution/packaging-and-install.md)
+[packaging-and-install](../../../negaflow-windows/docs/07-distribution/packaging-and-install.md)
 §5.2 에 있다. 서명(6)과 아키텍처별 패키지(2, x64 만)를 뺀 나머지를 만족한다.

@@ -1,8 +1,8 @@
 // negaflow-scanner-sane — Windows adapter
 // wire/json — JSON **방출**. 파싱은 여기 없다.
 //
-// 정본 문서: windows_docs/05-protocol/encoding-and-json.md §2.3, §3
-//            windows_docs/05-protocol/wire-contract.md §4.2.1, §4.2.3
+// 정본 문서: docs/05-protocol/encoding-and-json.md §2.3, §3
+//            docs/05-protocol/wire-contract.md §4.2.1, §4.2.3
 //
 // ## 왜 라이브러리를 쓰지 않고 직접 쓰는가
 //

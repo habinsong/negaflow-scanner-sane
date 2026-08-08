@@ -437,7 +437,7 @@ MediaSelection resolveMedia(const OptionDump& opts,
     // **별도 파일로 검증할 수 있는 source/mode 만 쓴다.** coolscan3 의 --infrared 는
     // RGBI 한 프레임이고 stock scanimage 가 별도 IR TIFF 로 직렬화하지 못한다.
     // IRStrategy::CleanImage 는 여기서 **만들지 않는다** — 도달 불가 상태를 유지한다.
-    // 근거: windows_docs/06-build/porting-map.md §3.5
+    // 근거: docs/06-build/porting-map.md §3.5
     if (options.infraredEnabled) {
         std::optional<std::string> infraredSource;
         for (const auto& s : sources) {
@@ -463,7 +463,7 @@ MediaSelection resolveMedia(const OptionDump& opts,
     // --- 톤 조정 ---
     // genesys 16-bit 에서는 밝기/대비를 없는 것으로 취급한다.
     // **근거가 코드에 기록되지 않았다**(실기 관측 추정). 근거 없이 제거하지 않는다.
-    // 근거: windows_docs/02-frontend-contract/backend-quirks.md §1.3, Q-6
+    // 근거: docs/02-frontend-contract/backend-quirks.md §1.3, Q-6
     const bool supportsHardwareToneAdjustments =
         !(backend == "genesys" && options.bitDepth == BitDepth::Sixteen);
 

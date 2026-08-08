@@ -46,7 +46,7 @@ WIC는 **교차 검증용**으로 쓴다. libtiff가 통과시킨 파일을 WIC�
 확인하면, Windows 생태계의 다른 소비자(호스트 포함)가 그 파일을 읽을 수
 있음을 보장할 수 있다.
 
-negaflow 본체 windows_docs의 `05-image-io/libtiff.md`와
+negaflow 본체 negaflow-windows/docs의 `05-image-io/libtiff.md`와
 `10-scanner/protocol-contract.md` §10.2가 호스트 쪽 같은 결정을 다룬다.
 어댑터와 호스트가 같은 판정을 내려야 한다.
 

@@ -216,7 +216,7 @@ negaflow-scanner-sane/
     THIRD_PARTY_NOTICES.md     플랫폼별 섹션 추가
     PROVENANCE.md              플랫폼별 섹션 추가
     README*.md                 플랫폼별 섹션 추가
-    windows_docs/              이 문서들
+    docs/              이 문서들
 ```
 
 **장점**:
@@ -256,7 +256,7 @@ jobs:
   docs:
     runs-on: ubuntu-latest      # 파이썬만 필요하다
     steps:
-      - python3 windows_docs/check-docs.py
+      - python3 docs/check-docs.py
 
   macos:
     runs-on: macos-26

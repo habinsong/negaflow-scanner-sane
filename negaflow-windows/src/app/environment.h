@@ -2,7 +2,7 @@
 // app/environment — `scanimage` 를 찾고 자식 환경을 만든다.
 //
 // 이식 원본: Sources/SANEPluginCore/SANEBackend+Environment.swift
-// 정본 문서: windows_docs/03-process-and-io/environment-and-paths.md
+// 정본 문서: docs/03-process-and-io/environment-and-paths.md
 //
 // ## macOS 의 절반이 여기서 사라진다
 //

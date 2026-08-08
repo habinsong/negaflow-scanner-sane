@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 //
 // 이 파일의 연산 순서·분기 순서·누적 순서가 전부 계약이다.
-// 근거: windows_docs/04-imaging/exposure-merge.md §4
-//       windows_docs/04-imaging/numerical-parity.md §3
+// 근거: docs/04-imaging/exposure-merge.md §4
+//       docs/04-imaging/numerical-parity.md §3
 
 #include "imaging/merge.h"
 
@@ -35,7 +35,7 @@ namespace {
 /// **비트 동일이 성립하는 이유**: `normalizeExposure` 도 `out[i] *= scale` 을
 /// 한 번 할 뿐이다. 같은 피연산자로 같은 연산을 하므로 반올림까지 같다.
 /// 알파를 1 로 덮어쓰는 것까지 그대로 재현한다.
-/// 근거: windows_docs/04-imaging/exposure-merge.md §7.2
+/// 근거: docs/04-imaging/exposure-merge.md §7.2
 struct NormalizedView {
     std::span<const float> raw;
     float scale = 1.0f;
@@ -72,7 +72,7 @@ enum class Match {
 ///
 /// **가중치는 정규화 전(raw) 값으로, 합산은 정규화 후 값으로** 한다.
 /// 이 비대칭이 핵심이다 — 신뢰도는 센서 원시값이 결정하고, 값은 노출 보정된
-/// 것을 써야 한다. 근거: windows_docs/04-imaging/exposure-merge.md §4.5
+/// 것을 써야 한다. 근거: docs/04-imaging/exposure-merge.md §4.5
 [[nodiscard]] std::optional<float> alternateExposureValue(
     int x,
     int y,
@@ -104,7 +104,7 @@ enum class Match {
 /// 한 픽셀·한 채널의 병합값.
 ///
 /// 짧은 노출 혼합의 **결과에** 긴 노출을 섞는다. 순차 적용이며 순서를 바꾸면
-/// 결과가 달라진다. 근거: windows_docs/04-imaging/exposure-merge.md §4.4
+/// 결과가 달라진다. 근거: docs/04-imaging/exposure-merge.md §4.4
 [[nodiscard]] float mergedHardwareExposureValue(
     int x,
     int y,
@@ -154,7 +154,7 @@ enum class Match {
 /// NaN 방어를 넣는다. Swift 는 이 지점에서 런타임 트랩이고 C++ 는 UB 라
 /// 어느 쪽도 정상 동작이 아니다. clamp 가 선행하므로 정상 입력에서는
 /// 도달하지 않으며, **파리티에 NaN 을 넣지 않으므로 divergence 가 되지 않는다.**
-/// 근거: windows_docs/04-imaging/numerical-parity.md §3.4
+/// 근거: docs/04-imaging/numerical-parity.md §3.4
 [[nodiscard]] std::uint16_t quantizeChannel(float v) noexcept {
     const float clamped = std::isnan(v) ? 0.0f : std::min(std::max(v, 0.0f), 1.0f);
     return static_cast<std::uint16_t>(clamped * 65535.0f);

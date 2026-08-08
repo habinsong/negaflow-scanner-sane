@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 //
 // 검사 순서와 메시지 문구를 바꾸지 않는다.
-// 근거: windows_docs/02-frontend-contract/exact-option-contract.md §3
+// 근거: docs/02-frontend-contract/exact-option-contract.md §3
 
 #include "wire/request.h"
 

@@ -55,7 +55,7 @@ constexpr std::array<std::string_view, 13> kDeviceTypeSuffixes{
 /// 개행으로 나눈다. 빈 줄은 버린다(Swift split 기본이 omittingEmptySubsequences).
 /// '\r' 은 trim 이 처리하므로 CRLF 입력도 정상 동작한다 —
 /// Swift 가 못 하는 부분이며 의도적 divergence 다.
-/// 근거: windows_docs/02-frontend-contract/option-dump-parser.md §2.2.1
+/// 근거: docs/02-frontend-contract/option-dump-parser.md §2.2.1
 [[nodiscard]] std::vector<std::string_view> splitLines(std::string_view s, bool keepEmpty) {
     std::vector<std::string_view> out;
     size_t pos = 0;

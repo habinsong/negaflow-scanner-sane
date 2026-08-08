@@ -1,7 +1,7 @@
 {
   "$comment": [
     "negaflow-scanner-sane Windows adapter — 의존성 매니페스트.",
-    "근거: windows_docs/06-build/toolchain-and-layout.md §3.2, language-decision.md §8",
+    "근거: docs/06-build/toolchain-and-layout.md §3.2, language-decision.md §8",
     "",
     "sane_logic / process_logic / imaging_logic 은 의존이 0이다.",
     "libtiff 를 링크하는 것은 imaging_tiff 하나뿐이다.",

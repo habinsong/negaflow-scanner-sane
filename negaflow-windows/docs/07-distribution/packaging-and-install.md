@@ -87,7 +87,7 @@ spike E-1 결과에 따라 `bin\`이 될 수도 `lib\sane\`이 될 수도 있다
 macOS는 **사용자 범위 전용**이다(`~/Library/Application Support`).
 설치 프로그램이 root로 시작해 콘솔 사용자로 강등한 뒤 설치한다.
 
-negaflow 본체 windows_docs `10-scanner/plugin-architecture.md` §6(설치와 발견)이
+negaflow 본체 negaflow-windows/docs `10-scanner/plugin-architecture.md` §6(설치와 발견)이
 두 root를 정의한다:
 
 ```text
@@ -124,7 +124,7 @@ D-19  1차 릴리스는 사용자 범위만 지원한다.
 | NSIS | zlib-like | EXE 설치 프로그램 |
 | MSIX | — | 패키지 identity, 제약 많음 |
 
-negaflow 본체 windows_docs README §3.7이 WiX에 대해 같은 우려를 기록한다:
+negaflow 본체 negaflow-windows/docs README §3.7이 WiX에 대해 같은 우려를 기록한다:
 
 > WiX Toolset는 구현상 후보일 뿐 비용·사용 조건 승인이 끝난 무료 전제로
 > 취급하지 않는다.
@@ -375,7 +375,7 @@ D-22  1차 릴리스에 자동 업데이트를 넣지 않는다.
 macOS의 `install-plugin-user.sh`가 `chmod go-w`를 하는 것에 대응한다.
 
 **중요**: 호스트가 이 디렉터리의 ACL을 검사한다
-(negaflow 본체 windows_docs `10-scanner/plugin-security-and-lifecycle.md`).
+(negaflow 본체 negaflow-windows/docs `10-scanner/plugin-security-and-lifecycle.md`).
 쓰기 권한이 넓으면 플러그인을 거부한다.
 
 MSI가 기본으로 `%LOCALAPPDATA%`의 상속 ACL을 쓰면 적절하지만,

@@ -4,7 +4,7 @@
 상태: 이식 정본 — 미충족 항목이 하나 있다
 목적: negaflow 본체 Windows 문서의 요구사항을 이 플러그인 계획과 **한 줄씩 대조**한다
 
-대조 대상(본체 저장소, `../Negaflow/windows_docs`):
+대조 대상(본체 저장소, `../negaflow/negaflow-windows/docs`):
 
 - `10-scanner/plugin-architecture.md` (769행)
 - `10-scanner/protocol-contract.md` (1,078행)

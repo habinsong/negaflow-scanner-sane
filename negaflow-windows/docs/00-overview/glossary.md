@@ -90,7 +90,8 @@ Windows 시스템            WinUSB, Job Object, reparse point, Authenticode
 **TPU / Transparency Unit / Transparency Adapter**
 : 투과 원고(필름) 스캔용 광원 유닛. 평판 스캐너에서는 뚜껑에 들어 있다.
   `--source` 값으로 노출되며, 이 플러그인은 **투과 소스를 자동 선택**한다.
-  `TPU8x10`은 더 큰 투과 영역이라 우선한다.
+  `TPU8x10`은 영역이 더 넓지만 초점면이 유리면이라, 필름 홀더용인
+  `Transparency Unit`을 우선한다.
 
 **Lineart**
 : 1비트 흑백 모드. 우리는 쓰지 않지만 **일부 epson2 기기의 기본 모드**이고,

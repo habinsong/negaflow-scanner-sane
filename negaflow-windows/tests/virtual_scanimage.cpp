@@ -1,7 +1,7 @@
 // negaflow-scanner-sane — Windows adapter
 // virtual_scanimage — 실기 없이 어댑터 전체를 돌리기 위한 가짜 `scanimage`.
 //
-// 정본 문서: windows_docs/03-process-and-io/child-process.md §13.1
+// 정본 문서: docs/03-process-and-io/child-process.md §13.1
 //
 // **libtiff 도 우리 코드도 링크하지 않는다.** TIFF 를 손으로 쓴다 — 우리
 // writer 로 만들면 "우리가 쓴 것을 우리가 읽는다"가 되어 검증이 자기 자신을

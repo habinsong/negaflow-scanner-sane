@@ -67,7 +67,7 @@ A는 두 신호를 모두 받는다(`[SIGTERM, SIGINT]`). SIGINT는 사용자가
 비활성화된 신호만 관측한다. 이 순서를 바꾸면 첫 SIGTERM에 프로세스가
 그냥 죽는다.
 
-A는 호스트 계약이며 negaflow 본체 windows_docs의
+A는 호스트 계약이며 negaflow 본체 negaflow-windows/docs의
 `10-scanner/plugin-architecture.md` §11이 소유한다. 거기서는
 "adapter별 graceful cancel 신호 또는 control channel 사용"이라고만
 정하고 구체적 수단은 열어두었다.
@@ -564,5 +564,5 @@ graceful   취소 요청 → 종료        6,890 ms
 - MinGW `scanimage`가 signal 핸들러를 설치하는가 (C-1)
 - `sane_cancel()`이 백엔드별로 얼마나 걸리는가 (C-3)
 - 강제 종료 후 램프가 켜진 채 남는 백엔드가 있는가 (C-2)
-- 호스트가 어떤 취소 수단을 쓸지 (본체 windows_docs 결정 대기)
+- 호스트가 어떤 취소 수단을 쓸지 (본체 negaflow-windows/docs 결정 대기)
 - v3에서 명시적 제어 채널을 도입할 가치가 있는가

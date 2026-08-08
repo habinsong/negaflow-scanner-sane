@@ -86,12 +86,12 @@ string(FIND "${caps_out}" "\"transparencyModes\":[\"Transparency Unit\",\"TPU8x1
 expect("투과 소스 둘을 모두 인식한다" found_tpu GREATER -1)
 
 # 여기가 이 계열의 함정이다. 소스를 적용하지 않은 덤프는 평판 한계
-# (215.9 x 297.18mm)를 내고, TPU8x10 을 적용한 덤프가 8x10 인치
-# (203.2 x 254mm)를 낸다. 어댑터가 소스를 적용해 다시 읽지 않으면
-# 사용자에게 존재하지 않는 스캔 영역을 제시하게 된다.
-string(FIND "${caps_out}" "\"scanWidthRange\":{\"minimum\":0,\"maximum\":203.2}" found_w)
+# (215.9 x 297.18mm)를 내고, 필름 홀더 소스(`Transparency Unit`)를 적용한
+# 덤프가 홀더 창 크기(101.6 x 228.6mm)를 낸다. 어댑터가 소스를 적용해 다시
+# 읽지 않으면 사용자에게 존재하지 않는 스캔 영역을 제시하게 된다.
+string(FIND "${caps_out}" "\"scanWidthRange\":{\"minimum\":0,\"maximum\":101.6}" found_w)
 expect("소스를 적용한 덤프에서 TPU 폭 한계를 읽는다" found_w GREATER -1)
-string(FIND "${caps_out}" "\"scanHeightRange\":{\"minimum\":0,\"maximum\":254}" found_h)
+string(FIND "${caps_out}" "\"scanHeightRange\":{\"minimum\":0,\"maximum\":228.6}" found_h)
 expect("소스를 적용한 덤프에서 TPU 높이 한계를 읽는다" found_h GREATER -1)
 
 string(FIND "${caps_out}" "\"supportsPositionedScanArea\":true" found_pos)
@@ -163,7 +163,7 @@ if(NOT EXISTS "${WORKDIR}/args.log")
 endif()
 file(READ "${WORKDIR}/args.log" args)
 
-string(FIND "${args}" "-A -d epson2:usbscan:091 --source TPU8x10 --mode Color" found_a_source)
+string(FIND "${args}" "-A -d epson2:usbscan:091 --source Transparency Unit --mode Color" found_a_source)
 expect("옵션 조회를 소스와 모드를 적용해 다시 한다" found_a_source GREATER -1)
 
 string(FIND "${args}" "--film-type Negative Film" found_film)
@@ -256,7 +256,7 @@ string(FIND "${preview_args}" "--resolution" found_preview_res)
 expect("프리뷰에 --resolution 을 보내지 않는다" found_preview_res EQUAL -1)
 
 # 프리뷰라도 소스는 투과여야 한다. 평판으로 훑으면 필름이 안 보인다.
-string(FIND "${preview_args}" "--source TPU8x10" found_preview_source)
+string(FIND "${preview_args}" "--source Transparency Unit" found_preview_source)
 expect("프리뷰도 투과 소스로 한다" found_preview_source GREATER -1)
 
 # 프리뷰는 옵션을 다시 읽지 않는다 — 이미 읽은 것을 쓴다.
@@ -336,7 +336,7 @@ file(READ "${ARGLOG_IR}" ir_args)
 string(FIND "${ir_args}" "--mode Infrared" found_ir_mode)
 expect("IR 패스를 --mode Infrared 로 돈다 (소스가 아니라 모드다)" found_ir_mode GREATER -1)
 # 소스는 그대로여야 한다. epson2 에는 IR 소스가 없다.
-string(FIND "${ir_args}" "--source TPU8x10 --mode Infrared" found_ir_keeps_source)
+string(FIND "${ir_args}" "--source Transparency Unit --mode Infrared" found_ir_keeps_source)
 expect("IR 패스도 같은 투과 소스를 쓴다" found_ir_keeps_source GREATER -1)
 string(FIND "${ir_args}" "--resolution 2400" found_ir_res)
 expect("IR 패스가 본스캔과 같은 해상도로 돈다" found_ir_res GREATER -1)

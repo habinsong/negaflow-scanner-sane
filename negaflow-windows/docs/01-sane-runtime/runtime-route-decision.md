@@ -32,7 +32,7 @@ Windows에는 Homebrew가 없고, 공식 SANE 배포도 없고, USB 드라이버
 | D | SANEWinDS/TWAIN 전환 | **없음** | 낮음 | **전면 재작성** |
 
 D는 이 저장소의 이식이 아니다. TWAIN 어댑터를 새로 만드는 별개 제품이며
-negaflow 본체 windows_docs의 `10-scanner/twain-wia.md`가 소유한다.
+negaflow 본체 negaflow-windows/docs의 `10-scanner/twain-wia.md`가 소유한다.
 여기서는 A·B·C만 다룬다.
 
 ## 3. 각 경로의 실체

@@ -48,7 +48,7 @@ std::string saneNumber(double value) {
     std::string out(buf, ptr);
 
     // 지수 표기를 내지 않는다(scanimage 가 파싱하지 못한다).
-    // 근거: windows_docs/02-frontend-contract/scanimage-invocation.md
+    // 근거: docs/02-frontend-contract/scanimage-invocation.md
     if (out.find('e') != std::string::npos || out.find('E') != std::string::npos) {
         char fixed[128];
         auto [fptr, fec] =

@@ -76,7 +76,7 @@ Azure Trusted Signing은 개인 개발자 계정을 지원하지만
 - 사용자가 "추가 정보 → 실행"을 눌러야 한다
 - **negaflow 호스트가 서명을 요구할 수 있다**
 
-마지막이 결정적이다. negaflow 본체 windows_docs
+마지막이 결정적이다. negaflow 본체 negaflow-windows/docs
 `10-scanner/plugin-security-and-lifecycle.md`가 Authenticode signer
 thumbprint를 신뢰 identity에 포함할 수 있다고 적는다.
 
@@ -199,7 +199,7 @@ Authenticode 서명이 있어도 **평판이 축적되기 전에는 경고가 �
 
 ## 7. 호스트의 신뢰 모델
 
-negaflow 본체 windows_docs가 정의하는 identity:
+negaflow 본체 negaflow-windows/docs가 정의하는 identity:
 
 ```text
 plugin ID

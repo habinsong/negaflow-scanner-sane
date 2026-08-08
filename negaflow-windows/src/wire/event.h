@@ -3,7 +3,7 @@
 //
 // 이식 원본: Sources/SANEPluginCore/PluginProtocolV2.swift
 //            (PluginScanEventV2, PluginAppliedScanOptionsV2)
-// 정본 문서: windows_docs/05-protocol/wire-contract.md §4.2.1, §5
+// 정본 문서: docs/05-protocol/wire-contract.md §4.2.1, §5
 //
 // ## 이 파일이 존재하는 이유 — 생략과 null 이 갈린다
 //

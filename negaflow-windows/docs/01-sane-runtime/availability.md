@@ -218,7 +218,7 @@ Windows를 스캐너 서버로 쓸 수는 없다는 뜻이다.
 **이 플러그인에 대한 함의**: SANEWinDS를 쓰면 전송 계층 전체를 다시 써야 한다
 (TWAIN 또는 .NET DLL). "실행 파일 경로만 바꾸면 되는" 이식이 아니다.
 그렇게 할 거라면 SANE 대신 WIA/TWAIN 어댑터를 직접 만드는 편이 낫고,
-그것은 negaflow 본체 windows_docs의 `10-scanner/twain-wia.md`가 이미 소유한
+그것은 negaflow 본체 negaflow-windows/docs의 `10-scanner/twain-wia.md`가 이미 소유한
 별개 제품이다.
 
 ### 5.2 SaneTwain — 폐기됨
