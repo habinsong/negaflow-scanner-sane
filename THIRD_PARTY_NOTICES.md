@@ -88,7 +88,7 @@ plugin's own source is this repository, which is GPL-2.0-or-later.
 
 The runtime links libusb-1.0 (LGPL-2.1-or-later) dynamically, so the user can
 substitute their own build. See
-[`windows_docs/07-distribution/gpl-compliance.md`](windows_docs/07-distribution/gpl-compliance.md).
+[`windows_docs/07-distribution/gpl-compliance.md`](negaflow-windows/docs/07-distribution/gpl-compliance.md).
 
 ### The Windows installer carries NSIS
 
@@ -100,7 +100,7 @@ The single-file installer is built with NSIS, so the shipped
   Licence covers some plug-ins (none of which this installer uses)
 - Version: whatever `mingw-w64-ucrt-x86_64-nsis` provides in the build
   environment; the tested build is 3.12
-- Installer script: [`Installer/windows/negaflow-scanner-sane.nsi`](Installer/windows/negaflow-scanner-sane.nsi)
+- Installer script: [`Installer/windows/negaflow-scanner-sane.nsi`](negaflow-mac/Installer/windows/negaflow-scanner-sane.nsi)
 
 The GPL binaries sit inside that executable as data and are extracted unchanged.
 That is aggregation, not a combined work, so the NSIS stub's licence and the

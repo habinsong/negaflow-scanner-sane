@@ -76,16 +76,16 @@ jobs:
           rm -f "$APP_P12" "$INSTALLER_P12" "$API_KEY"
       - name: Run release-quality gate
         run: |
-          python3 scripts/verify-provenance.py
+          python3 negaflow-mac/scripts/verify-provenance.py
           swift test -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
-          bash scripts/install-patched-sane.sh
+          bash negaflow-mac/scripts/install-patched-sane.sh
       - name: Build signed and notarized plug-in release
         env:
           NEGAFLOW_RELEASE_MODE: distribution
           NEGAFLOW_OVERWRITE_RELEASE: 1
           NEGAFLOW_CODESIGN_IDENTITY: ${{ secrets.NEGAFLOW_CODESIGN_IDENTITY }}
           NEGAFLOW_NOTARY_KEYCHAIN_PROFILE: negaflow-sane-ci
-        run: bash scripts/build-release.sh
+        run: bash negaflow-mac/scripts/build-release.sh
       - name: Build signed and notarized installer
         env:
           NEGAFLOW_INSTALLER_MODE: distribution
@@ -94,30 +94,30 @@ jobs:
           NEGAFLOW_INSTALLER_IDENTITY: ${{ secrets.NEGAFLOW_INSTALLER_SIGN_IDENTITY }}
           NEGAFLOW_NOTARY_KEYCHAIN_PROFILE: negaflow-sane-ci
           NEGAFLOW_INSTALLER_VARIANT: all
-        run: bash scripts/build-installer.sh
+        run: bash negaflow-mac/scripts/build-installer.sh
       - name: Verify final artifacts
         run: |
           (
             cd .build/release-artifacts
             shasum -a 256 -c *-SHA256SUMS.txt
           )
-          bash scripts/verify-release.sh .build/release-artifacts
-          NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
+          bash negaflow-mac/scripts/verify-release.sh .build/release-artifacts
+          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.pkg \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg \
             arm64 \
             standard
-          NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
+          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.pkg \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg \
             universal \
             standard
-          NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
+          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.pkg \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg \
             arm64 \
             coolscan
-          NEGAFLOW_INSTALLER_MODE=distribution bash scripts/verify-installer.sh \
+          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.pkg \
             .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg \
             universal \

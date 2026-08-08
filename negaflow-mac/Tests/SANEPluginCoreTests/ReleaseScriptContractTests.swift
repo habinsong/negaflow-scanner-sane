@@ -40,7 +40,7 @@ final class ReleaseScriptContractTests: XCTestCase {
     }
 
     func testSourceArchiveIsReproducible() throws {
-        let root = repositoryRoot
+        let root = packageRoot
         let temporary = FileManager.default.temporaryDirectory
             .appendingPathComponent("negaflow-source-repro-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
@@ -79,7 +79,7 @@ final class ReleaseScriptContractTests: XCTestCase {
         ] {
             let workflow = try source(named: path)
             XCTAssertTrue(workflow.contains("runs-on: macos-26"), path)
-            XCTAssertTrue(workflow.contains("bash scripts/install-patched-sane.sh"), path)
+            XCTAssertTrue(workflow.contains("bash negaflow-mac/scripts/install-patched-sane.sh"), path)
         }
     }
 
@@ -109,16 +109,22 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(verifier.contains(#"EXPECTED_MIN_OS="26.0""#))
     }
 
-    private var repositoryRoot: URL {
+    /// Swift 패키지 루트(negaflow-mac). 스크립트와 소스가 여기에 있다.
+    private var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
     }
 
+    /// 저장소 루트. 워크플로처럼 플랫폼 트리 밖에 있는 것은 여기서 찾는다.
+    private var repositoryRoot: URL { packageRoot.deletingLastPathComponent() }
+
     private func source(named relativePath: String) throws -> String {
+        // `.github/` 는 저장소 루트, 나머지는 패키지 루트 기준이다.
+        let base = relativePath.hasPrefix(".github/") ? repositoryRoot : packageRoot
         return try String(
-            contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+            contentsOf: base.appendingPathComponent(relativePath),
             encoding: .utf8
         )
     }

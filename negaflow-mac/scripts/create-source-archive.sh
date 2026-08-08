@@ -7,6 +7,8 @@ if [[ "$#" -ne 1 ]]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 워크플로와 라이선스·README 는 플랫폼 트리 밖 저장소 루트에 있다.
+REPO_ROOT="$(cd "$ROOT/.." && pwd)"
 VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
 for command in plutil tar gzip; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -23,7 +25,7 @@ trap 'rm -rf "$WORK"' EXIT
 SOURCE_ROOT="$WORK/negaflow-scanner-sane-$VERSION"
 mkdir -p "$SOURCE_ROOT"
 cp -pR \
-  "$ROOT/.github" \
+  "$REPO_ROOT/.github" \
   "$ROOT/Config" \
   "$ROOT/Formula" \
   "$ROOT/Installer" \
@@ -35,16 +37,16 @@ cp -p \
   "$ROOT/Package.swift" \
   "$ROOT/manifest.json" \
   "$ROOT/install.sh" \
-  "$ROOT/LICENSE" \
-  "$ROOT/COPYING" \
-  "$ROOT/THIRD_PARTY_NOTICES.md" \
-  "$ROOT/PROVENANCE.md" \
-  "$ROOT/README.md" \
-  "$ROOT/README_ko.md" \
-  "$ROOT/README_ja.md" \
-  "$ROOT/README_zh-Hans.md" \
-  "$ROOT/README_fr.md" \
-  "$ROOT/README_de.md" \
+  "$REPO_ROOT/LICENSE" \
+  "$REPO_ROOT/COPYING" \
+  "$REPO_ROOT/THIRD_PARTY_NOTICES.md" \
+  "$REPO_ROOT/PROVENANCE.md" \
+  "$REPO_ROOT/README.md" \
+  "$REPO_ROOT/README_ko.md" \
+  "$REPO_ROOT/README_ja.md" \
+  "$REPO_ROOT/README_zh-Hans.md" \
+  "$REPO_ROOT/README_fr.md" \
+  "$REPO_ROOT/README_de.md" \
   "$SOURCE_ROOT/"
 find "$SOURCE_ROOT" \
   \( -name '.DS_Store' -o -name '__pycache__' -o -name '*.pyc' \) \

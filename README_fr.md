@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/fr/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="site web"></a>
   <a href="#prérequis"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 ou version ultérieure"></a>
-  <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 ou version ultérieure"></a>
+  <a href="negaflow-mac/Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 ou version ultérieure"></a>
   <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Protocole scanner negaflow v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 ou ultérieure"></a>
 </p>

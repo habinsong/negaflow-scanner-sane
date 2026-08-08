@@ -10,12 +10,12 @@
 # capabilities → scan 을 끝까지 돌리므로, 프로세스 생성·파이프 교착·
 # stdout 오염·토큰 연결이 전부 여기서 드러난다.
 #
-# `paths:` 로 막아 두었으므로 `windows/` 가 바뀌지 않으면 돌지 않는다.
+# `paths:` 로 막아 두었으므로 `negaflow-windows/` 가 바뀌지 않으면 돌지 않는다.
 #
 # 근거(전부 2026-08-05 확인):
 #   windows-latest = Windows Server 2025 + Visual Studio 2026(toolset v145),
 #                    CMake 4.4.0, vcpkg 사전 설치(VCPKG_INSTALLATION_ROOT=C:\vcpkg)
-#   vcpkg 매니페스트는 CMAKE_SOURCE_DIR 기준으로 찾는다 → `-S windows` 면 자동
+#   vcpkg 매니페스트는 CMAKE_SOURCE_DIR 기준으로 찾는다 → `-S negaflow-windows` 면 자동
 #   VCPKG_TARGET_TRIPLET 을 안 주면 기본이 x64-windows(동적 CRT)라 LNK2038
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -25,9 +25,9 @@ name: Windows adapter
 on:
   push:
     branches: [main]
-    paths: ['windows/**', '.github/workflows/windows.yml']
+    paths: ['negaflow-windows/**', '.github/workflows/windows.yml']
   pull_request:
-    paths: ['windows/**', '.github/workflows/windows.yml']
+    paths: ['negaflow-windows/**', '.github/workflows/windows.yml']
   workflow_dispatch:
 
 permissions:
@@ -60,7 +60,7 @@ jobs:
           "vcpkg: $env:VCPKG_INSTALLATION_ROOT"
           & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" version
 
-      # vcpkg.json 은 windows/ 에 있다. `-S windows` 가 CMAKE_SOURCE_DIR 을
+      # vcpkg.json 은 negaflow-windows/ 에 있다. `-S negaflow-windows` 가 CMAKE_SOURCE_DIR 을
       # <repo>/windows 로 만들고 vcpkg 툴체인이 거기서 매니페스트를 자동
       # 발견한다 — VCPKG_MANIFEST_DIR 은 필요 없다.
       #
@@ -73,7 +73,7 @@ jobs:
       - name: Configure
         shell: pwsh
         run: >
-          cmake -S windows -B build
+          cmake -S negaflow-windows -B build
           -A x64
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_TARGET_TRIPLET=x64-windows-static
