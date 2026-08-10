@@ -65,7 +65,11 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(workflow.contains("NEGAFLOW_NOTARY_PRIVATE_KEY_BASE64"))
         XCTAssertTrue(workflow.contains("scripts/verify-release.sh"))
         XCTAssertTrue(workflow.contains("scripts/verify-installer.sh"))
-        XCTAssertTrue(workflow.contains("cd .build/release-artifacts"))
+        // 산출물은 macOS 트리 안에 쌓인다. 저장소 루트 기준 경로를 남겨 두면 태그를 밀
+        // 때에만 도는 이 잡이 릴리즈 당일에 빈손으로 실패한다(v1.0.4에서 실제로 겪었다).
+        XCTAssertTrue(workflow.contains("ARTIFACTS=negaflow-mac/.build/release-artifacts"))
+        XCTAssertTrue(workflow.contains(#"cd "$ARTIFACTS""#))
+        XCTAssertFalse(workflow.contains(" .build/release-artifacts"))
         XCTAssertTrue(workflow.contains("shasum -a 256 -c *-SHA256SUMS.txt"))
         XCTAssertTrue(workflow.contains("actions/upload-artifact@v7"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_RELEASE_MODE: local"))

@@ -96,36 +96,32 @@ jobs:
           NEGAFLOW_INSTALLER_VARIANT: all
         run: bash negaflow-mac/scripts/build-installer.sh
       - name: Verify final artifacts
+        # 버전과 변형 이름을 손으로 적지 않는다. 적어 두면 릴리즈마다 낡고, 이 잡은 태그를
+        # 밀 때만 도는 탓에 낡은 것을 릴리즈 당일에야 알게 된다.
         run: |
+          ARTIFACTS=negaflow-mac/.build/release-artifacts
+          VERSION="$(plutil -extract pluginVersion raw negaflow-mac/manifest.json)"
           (
-            cd .build/release-artifacts
+            cd "$ARTIFACTS"
             shasum -a 256 -c *-SHA256SUMS.txt
           )
-          bash negaflow-mac/scripts/verify-release.sh .build/release-artifacts
-          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg \
-            arm64 \
-            standard
-          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg \
-            universal \
-            standard
-          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg \
-            arm64 \
-            coolscan
-          NEGAFLOW_INSTALLER_MODE=distribution bash negaflow-mac/scripts/verify-installer.sh \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.pkg \
-            .build/release-artifacts/negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg \
-            universal \
-            coolscan
+          bash negaflow-mac/scripts/verify-release.sh "$ARTIFACTS"
+          verify_installer() {
+            NEGAFLOW_INSTALLER_MODE=distribution \
+              bash negaflow-mac/scripts/verify-installer.sh \
+              "$ARTIFACTS/negaflow-scanner-sane-$VERSION-$1-installer.pkg" \
+              "$ARTIFACTS/negaflow-scanner-sane-$VERSION-$1-installer.dmg" \
+              "$2" \
+              "$3"
+          }
+          verify_installer opticfilm-macos14-arm64 arm64 standard
+          verify_installer opticfilm-macos14-universal universal standard
+          verify_installer macos26-arm64 arm64 coolscan
+          verify_installer macos26-universal universal coolscan
       - name: Upload notarized artifacts
         uses: actions/upload-artifact@v7
         with:
           name: negaflow-scanner-sane-notarized-${{ github.sha }}
-          path: .build/release-artifacts/*
+          path: negaflow-mac/.build/release-artifacts/*
           if-no-files-found: error
           retention-days: 30
