@@ -17,7 +17,7 @@ final class PluginProtocolV2Tests: XCTestCase {
 
         XCTAssertEqual(manifest["schemaVersion"] as? Int, 1)
         XCTAssertEqual(manifest["protocolVersion"] as? Int, 2)
-        XCTAssertEqual(manifest["pluginVersion"] as? String, "1.0.3")
+        XCTAssertEqual(manifest["pluginVersion"] as? String, "1.0.4")
     }
 
     func testHostV2RequestDecodesWithoutGuessingAndPreservesExactOptions() throws {

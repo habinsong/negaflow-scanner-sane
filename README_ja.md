@@ -76,10 +76,10 @@ Nikon Coolscanでは専用版を使用します。
 
 | インストーラー | SANE経路 | プラグインバイナリ |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.3-macos-arm64-installer.dmg` | 標準版、macOS 14以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.3-macos-universal-installer.dmg` | 標準版、macOS 14以降 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.3-coolscan-macos26-arm64-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.3-coolscan-macos26-universal-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | 標準版、macOS 14以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | 標準版、macOS 14以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64` + `x86_64` |
 
 標準DMGでは`Install negaflow Scanner.pkg`、Coolscan DMGでは
 `Install negaflow Scanner for Coolscan.pkg`を実行します。

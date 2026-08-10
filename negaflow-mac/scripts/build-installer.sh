@@ -23,23 +23,27 @@ case "$INSTALLER_VARIANT" in
     done
     exit 0
     ;;
+  # 변형 키(standard/coolscan)는 설치 패키지 식별자와 postinstall 파일명이 매여 있어 그대로
+  # 둔다. 배포 파일명과 설치 화면 문구만 지금의 역할에 맞춘다.
+  #   standard = 시스템 SANE, OpticFilm 전용, macOS 14+
+  #   coolscan = 패치 SANE 동봉(쿨스캔 + epson2 적외선/스캔높이), macOS 26+ — 기본 배포본
   standard)
     MIN_OS_VERSION="14.0"
-    INSTALLER_TITLE="negaflow SANE Scanner"
+    INSTALLER_TITLE="negaflow SANE Scanner for OpticFilm"
     INSTALLER_DESCRIPTION="Installs the standard Homebrew SANE backends and the negaflow scanner plug-in."
     SANE_PACKAGE_NAME="sane-backends"
     SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.setup"
     POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall"
-    ARTIFACT_PLATFORM="macos"
+    ARTIFACT_PLATFORM="opticfilm-macos14"
     ;;
   coolscan)
     MIN_OS_VERSION="26.0"
-    INSTALLER_TITLE="negaflow SANE Scanner for Nikon Coolscan"
-    INSTALLER_DESCRIPTION="Installs the patched SANE 1.4.0 Coolscan backends and the negaflow scanner plug-in."
+    INSTALLER_TITLE="negaflow SANE Scanner"
+    INSTALLER_DESCRIPTION="Installs the patched SANE 1.4.0 backends (Coolscan and Epson infrared) and the negaflow scanner plug-in."
     SANE_PACKAGE_NAME="sane-backends-negaflow"
     SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.coolscan.setup"
     POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall-coolscan"
-    ARTIFACT_PLATFORM="coolscan-macos26"
+    ARTIFACT_PLATFORM="macos26"
     ;;
   *)
     echo "[build-installer] ERROR: NEGAFLOW_INSTALLER_VARIANT must be standard, coolscan, or all." >&2

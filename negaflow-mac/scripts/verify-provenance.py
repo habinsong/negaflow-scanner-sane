@@ -143,16 +143,18 @@ def verify_distribution_policy() -> None:
             fail(f"required release notice is missing: {required}")
 
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("pluginVersion") != "1.0.3":
-        fail("manifest pluginVersion must be 1.0.3")
+    if manifest.get("pluginVersion") != "1.0.4":
+        fail("manifest pluginVersion must be 1.0.4")
 
+    # 접미사 없는 쪽이 기본 배포본(패치 SANE 동봉, macOS 26+)이고, OpticFilm 전용이
+    # 시스템 SANE을 쓰는 macOS 14+ 빌드다.
     standard_installer_names = tuple(
-        f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos-{architecture}-installer.dmg"
+        "negaflow-scanner-sane-"
+        f"{manifest['pluginVersion']}-opticfilm-macos14-{architecture}-installer.dmg"
         for architecture in ("arm64", "universal")
     )
     coolscan_installer_names = tuple(
-        "negaflow-scanner-sane-"
-        f"{manifest['pluginVersion']}-coolscan-macos26-{architecture}-installer.dmg"
+        f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos26-{architecture}-installer.dmg"
         for architecture in ("arm64", "universal")
     )
     for readme_name in (
