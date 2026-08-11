@@ -82,17 +82,24 @@ Nikon Coolscanでは専用版を使用します。
 | `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64`のみ |
 | `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64` + `x86_64` |
 
-標準DMGでは`Install negaflow Scanner.pkg`、Coolscan DMGでは
-`Install negaflow Scanner for Coolscan.pkg`を実行します。
+`macos26` DMGでは`Install negaflow Scanner.pkg`、`opticfilm-macos14` DMGでは
+`Install negaflow Scanner for OpticFilm.pkg`を実行します。
 
-標準版はHomebrewの`sane-backends`をインストールします。Coolscan版は公式SANE 1.4.0に
-upstreamの`coolscan2`/`coolscan3`割り当て修正と`epson2`スキャン高さ修正を適用した
-`sane-backends-negaflow`をビルドします。<br>
+`macos26`版は公式SANE 1.4.0のソースを`sane-backends-negaflow`としてビルドし、同じプラグインを
+インストールします。当てるパッチは三つです。
+
+| パッチ | 変わること |
+|---|---|
+| Coolscan深度リスト | upstreamの`coolscan2`/`coolscan3`割り当て修正 |
+| `epson2`スキャン高さ | Epsonフラットベッドが報告するスキャン高さを正します |
+| `epson2`赤外線 | `SANE_FRAME_IR`の封じを解き、Epsonフィルムフラットベッドが別の赤外線パスを返せるようにします |
+
+`opticfilm-macos14`版はHomebrewの`sane-backends`をインストールし、上のパッチは入りません。<br>
 インターネット接続と管理者パスワードが必要です。<br>
 既存のHomebrewがある場合はそのまま使用します。
 
-標準版やmacOS 26未満でもCoolscanを強制的にブロックしません。stock SANEで動く可能性は
-ありますが割り当て修正は含まれず、サポート対象の修正経路はmacOS 26以降の専用版です。
+どちらの版もmacOS 14・15でCoolscanを強制的にブロックはしません。stock SANEで動く可能性は
+ありますが割り当て修正は含まれず、サポート対象の修正経路は`macos26`版です。
 
 その後のupstreamには、少なくともLS-5000 firmware 1.03で必要なCoolscan3の
 load/eject/resetパラメータ初期化も追加されています。この変更は意図的に最小パッチの
@@ -257,8 +264,8 @@ USB product IDを確認してください。
 | OpticFilm 7200、7200 v2、7300、7400、8100 | 使用不可 | IRソースを公開しない機種 | なし |
 | OpticFilm 7200i、7500i、7600i、8200i `07b3:130d` | `scanimage -A`にIRソースが出る場合に使用可 | `Transparency Adapter Infrared`の別パス | あり |
 | OpticFilm 8200i `07b3:1825` | 使用不可 | SANE 1.4非対応の仕様 | なし |
-| 標準`epson2`のEpson V700/V750/V800/V850 | 使用不可 | 標準ビルドは独立したIRモードを公開しない | なし |
-| `SANE_FRAME_IR`を有効にしたカスタムEpson経路 | 条件付き | 実際に報告された場合だけ`Infrared`モードで別パス | あり |
+| 標準`epson2`のEpson V700/V750/V800/V850 | 使用不可 | 標準ビルドは`SANE_FRAME_IR`が外れたままコンパイルされる | なし |
+| `macos26`版のEpson V700/V750/V800/V850 | `scanimage -A`が赤外線モードを報告すれば利用可能 | パッチ済み`epson2`の`Infrared`モードで別パス | あり |
 | `--infrared`を公開するNikon `coolscan3` | 標準`scanimage`経路では使用不可 | `coolscan3`は1つの`SANE_FRAME_RGBI`を返しますが、`scanimage` 1.4はRGBとIRのTIFFへ分離できません | なし |
 | `--clean-image`だけを公開するReflecta/PIE | IRチャンネルとしては使用不可 | ゴミ取りはバックエンド内で完結 | なし |
 | その他のスキャナー | 条件付き | `scanimage -A`が有効な独立IR sourceまたはmodeを返す場合だけ | 寸法・形式確認後にあり |

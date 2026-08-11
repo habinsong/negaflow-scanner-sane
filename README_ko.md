@@ -81,17 +81,23 @@ Coolscan을 쓰는 경우에는 별도 Coolscan판을 받습니다.
 | `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` 전용 |
 | `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` + `x86_64` |
 
-일반판 DMG에서는 `Install negaflow Scanner.pkg`, Coolscan판 DMG에서는
-`Install negaflow Scanner for Coolscan.pkg`를 실행합니다.
+`macos26` DMG에서는 `Install negaflow Scanner.pkg`, `opticfilm-macos14` DMG에서는
+`Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.
 
-일반판은 Homebrew 기본 `sane-backends`를 설치합니다. Coolscan판은 공식 SANE 1.4.0
-소스에 upstream `coolscan2`/`coolscan3` 할당 수정과 `epson2` 스캔 높이 수정을 적용한
-`sane-backends-negaflow`를 빌드한 뒤 같은 플러그인을 설치합니다.<br>
+`macos26` 판은 공식 SANE 1.4.0 소스를 `sane-backends-negaflow`로 빌드한 뒤 같은 플러그인을
+설치합니다. 적용되는 패치는 셋입니다.
+
+| 패치 | 바뀌는 것 |
+|---|---|
+| Coolscan 깊이 목록 | upstream `coolscan2`/`coolscan3` 할당 수정 |
+| `epson2` 스캔 높이 | Epson 평판이 보고하는 스캔 높이를 바로잡습니다 |
+| `epson2` 적외선 | `SANE_FRAME_IR` 차단을 풀어, Epson 필름 평판이 별도 적외선 패스를 낼 수 있게 합니다 |
+
+`opticfilm-macos14` 판은 Homebrew 기본 `sane-backends`를 설치하며 위 패치는 들어가지 않습니다.<br>
 설치에는 인터넷 연결과 관리자 암호가 필요하며, 기존 Homebrew가 있으면 그대로 사용합니다.
 
-일반판이나 macOS 26 미만에서 Coolscan을 강제로 차단하지는 않습니다. stock SANE으로
-동작할 수도 있지만 해당 할당 수정은 없으므로, 지원하는 패치 경로는 macOS 26 이상
-Coolscan판입니다.
+두 설치본 모두 macOS 14·15에서 Coolscan을 강제로 차단하지는 않습니다. stock SANE으로 동작할 수도
+있지만 할당 수정이 없으므로, 지원하는 패치 경로는 `macos26` 설치본입니다.
 
 이후 upstream에는 적어도 LS-5000 펌웨어 1.03에서 필요한 Coolscan3
 load/eject/reset 매개변수 초기화도 반영됐습니다. 이 변경은 의도적으로 최소 패치 범위에
@@ -258,8 +264,8 @@ OpticFilm 8100과 8200i는 각각 같은 제품명 아래 USB 변형이 적어�
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | 사용 불가 | IR 소스를 제공하지 않는 기종 | 없음 |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | `scanimage -A`에 IR 소스가 나오면 사용 가능 | `Transparency Adapter Infrared` 별도 패스 | 있음 |
 | OpticFilm 8200i `07b3:1825` | 사용 불가 | SANE 1.4 미지원 변형 | 없음 |
-| 기본 `epson2`의 Epson V700/V750/V800/V850 | 사용 불가 | 기본 빌드는 별도 IR 모드를 제공하지 않음 | 없음 |
-| `SANE_FRAME_IR`을 적용한 커스텀 Epson 경로 | 조건부 | 실제로 보고될 때만 `Infrared` 모드 별도 패스 | 있음 |
+| `macos26` 설치본의 Epson V700/V750/V800/V850 | `scanimage -A`가 적외선 모드를 보고하면 사용 가능 | 패치된 `epson2`의 `Infrared` 모드 별도 패스 | 있음 |
+| 기본 `epson2`의 Epson V700/V750/V800/V850 | 사용 불가 | 기본 빌드는 `SANE_FRAME_IR`이 빠진 채 컴파일됨 | 없음 |
 | `--infrared`를 제공하는 Nikon `coolscan3` | 기본 `scanimage` 경로에서는 사용 불가 | `coolscan3`는 `SANE_FRAME_RGBI` 한 프레임을 반환하지만 `scanimage` 1.4는 이를 RGB와 IR TIFF로 분리하지 못함 | 없음 |
 | `--clean-image`만 제공하는 Reflecta/PIE | IR 채널로는 사용 불가 | 먼지 제거가 백엔드 내부에서 끝남 | 없음 |
 | 그 밖의 스캐너 | 조건부 | `scanimage -A`에 활성 상태의 별도 IR source 또는 mode가 있을 때만 | 크기·형식 확인 후 있음 |

@@ -82,15 +82,22 @@ xcode-select --install
 | `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan 修补版，macOS 26+ | 仅 `arm64` |
 | `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan 修补版，macOS 26+ | `arm64` + `x86_64` |
 
-标准 DMG 内运行 `Install negaflow Scanner.pkg`；Coolscan DMG 内运行
-`Install negaflow Scanner for Coolscan.pkg`。
+`macos26` DMG 内运行 `Install negaflow Scanner.pkg`；`opticfilm-macos14` DMG 内运行
+`Install negaflow Scanner for OpticFilm.pkg`。
 
-标准版安装 Homebrew 的 `sane-backends`。Coolscan 版从官方 SANE 1.4.0 源码构建
-`sane-backends-negaflow`，应用 upstream 的 `coolscan2`/`coolscan3` 分配修复与 `epson2` 扫描高度修复。<br>
+`macos26` 版从官方 SANE 1.4.0 源码构建 `sane-backends-negaflow`，然后安装同一个插件。共应用三个补丁：
+
+| 补丁 | 改变了什么 |
+|---|---|
+| Coolscan 深度列表 | upstream 的 `coolscan2`/`coolscan3` 分配修复 |
+| `epson2` 扫描高度 | 修正 Epson 平板报告的扫描高度 |
+| `epson2` 红外 | 解除 `SANE_FRAME_IR` 的屏蔽，使 Epson 胶片平板可以返回独立的红外通道 |
+
+`opticfilm-macos14` 版安装 Homebrew 的 `sane-backends`，不含上述补丁。<br>
 安装需要互联网连接和管理员密码；若已安装 Homebrew，则直接复用现有安装。
 
-标准版和 macOS 26 以下系统不会主动阻止 Coolscan。stock SANE 可能适用于某些设备，
-但不含该分配修复；受支持的修补路径是 macOS 26 以上 Coolscan 版。
+两个安装包在 macOS 14、15 上都不会主动阻止 Coolscan。stock SANE 可能适用于某些设备，但不含该分配
+修复；受支持的修补路径是 `macos26` 安装包。
 
 后续 upstream 还加入了至少 LS-5000 firmware 1.03 所需的 Coolscan3
 load/eject/reset 参数块初始化。该修改有意不包含在这组最小补丁中，因此即使使用 Coolscan
@@ -251,8 +258,8 @@ Genesys 芯片，目前没有任何后端能驱动。<br>
 | OpticFilm 7200、7200 v2、7300、7400、8100 | 不可用 | 这些型号不提供 IR 源 | 无 |
 | OpticFilm 7200i、7500i、7600i、8200i `07b3:130d` | `scanimage -A` 报告 IR 源时可用 | 单独执行 `Transparency Adapter Infrared` 扫描 | 有 |
 | OpticFilm 8200i `07b3:1825` | 不可用 | 该硬件版本不受 SANE 1.4 支持 | 无 |
-| 使用标准 `epson2` 的 Epson V700/V750/V800/V850 | 不可用 | 标准构建不提供独立 IR 模式 | 无 |
-| 启用 `SANE_FRAME_IR` 的自定义 Epson 路径 | 有条件 | 仅在实际报告时单独执行 `Infrared` 模式 | 有 |
+| 使用 `macos26` 安装包的 Epson V700/V750/V800/V850 | `scanimage -A` 报告红外模式时可用 | 打过补丁的 `epson2` 以 `Infrared` 模式单独扫描一遍 | 有 |
+| 使用标准 `epson2` 的 Epson V700/V750/V800/V850 | 不可用 | 标准构建把 `SANE_FRAME_IR` 编译在外 | 无 |
 | 提供 `--infrared` 的 Nikon `coolscan3` | 标准 `scanimage` 路径不可用 | `coolscan3` 返回单个 `SANE_FRAME_RGBI`，但 `scanimage` 1.4 无法将其拆分为 RGB 与 IR TIFF | 无 |
 | 只提供 `--clean-image` 的 Reflecta/PIE | 不作为 IR 通道使用 | 除尘在后端内部完成 | 无 |
 | 其他扫描仪 | 有条件 | 仅当 `scanimage -A` 报告处于活动状态的独立 IR source 或 mode 时 | 通过尺寸和格式检查后提供 |

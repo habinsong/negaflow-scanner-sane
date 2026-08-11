@@ -83,12 +83,19 @@ SANE ordinaires et la version Coolscan séparée pour Nikon Coolscan sous macOS 
 | `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` uniquement |
 | `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` + `x86_64` |
 
-Le DMG standard contient `Install negaflow Scanner.pkg`; le DMG Coolscan contient
-`Install negaflow Scanner for Coolscan.pkg`.
+Le DMG `macos26` contient `Install negaflow Scanner.pkg` ; le DMG `opticfilm-macos14` contient
+`Install negaflow Scanner for OpticFilm.pkg`.
 
-La version standard installe `sane-backends` de Homebrew. La version Coolscan compile
-`sane-backends-negaflow` depuis SANE 1.4.0 officiel avec uniquement le correctif upstream
-d'allocation `coolscan2`/`coolscan3` ainsi qu'un correctif de hauteur de numérisation `epson2`.<br>
+La version `macos26` compile `sane-backends-negaflow` depuis les sources officielles de SANE 1.4.0,
+puis installe le même plug-in. Trois correctifs sont appliqués :
+
+| Correctif | Ce qu'il change |
+|---|---|
+| Liste de profondeurs Coolscan | Le correctif d'allocation upstream `coolscan2`/`coolscan3` |
+| Hauteur de numérisation `epson2` | Corrige la hauteur qu'un scanner à plat Epson annonce |
+| Infrarouge `epson2` | Lève le verrou sur `SANE_FRAME_IR`, un scanner à plat Epson peut alors renvoyer un passage infrarouge séparé |
+
+La version `opticfilm-macos14` installe `sane-backends` de Homebrew, sans aucun de ces correctifs.<br>
 Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br>
 Une installation Homebrew existante est réutilisée.
 
@@ -261,8 +268,8 @@ Une correction de poussière interne au backend n'est pas annoncée comme canal 
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | Indisponible | Ces modèles n'exposent pas de source IR | Non |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | Disponible si `scanimage -A` publie la source IR | Passage séparé `Transparency Adapter Infrared` | Oui |
 | OpticFilm 8200i `07b3:1825` | Indisponible | Variante non prise en charge par SANE 1.4 | Non |
-| Epson V700/V750/V800/V850 avec `epson2` standard | Indisponible | La version standard ne publie pas de mode IR séparé | Non |
-| Chemin Epson personnalisé avec `SANE_FRAME_IR` | Conditionnel | Passage séparé en mode `Infrared`, uniquement s'il est signalé | Oui |
+| Epson V700/V750/V800/V850 avec l'installeur `macos26` | Disponible quand `scanimage -A` signale le mode infrarouge | Passage séparé en mode `Infrared` de l'`epson2` corrigé | Oui |
+| Epson V700/V750/V800/V850 avec `epson2` standard | Indisponible | Les versions standard laissent `SANE_FRAME_IR` hors compilation | Non |
 | Nikon `coolscan3` publiant `--infrared` | Indisponible avec le `scanimage` standard | `coolscan3` renvoie une seule trame `SANE_FRAME_RGBI`, que `scanimage` 1.4 ne sépare pas en TIFF RGB et IR | Non |
 | Reflecta/PIE ne publiant que `--clean-image` | Indisponible comme canal IR | La correction s'effectue dans le backend | Non |
 | Tout autre scanner | Conditionnel | Seulement si `scanimage -A` publie une source ou un mode IR distinct et actif | Oui, après contrôle du format et des dimensions |

@@ -72,8 +72,10 @@ Install Xcode Command Line Tools first if they are not already present:
 xcode-select --install
 ```
 
-Four installers are published. Use the standard variant for ordinary SANE scanners. Nikon
-Coolscan users on macOS 26 or later should use the separate Coolscan variant.
+Four installers are published. The `macos26` pair is the one to take unless macOS 26 is out of
+reach: it carries the patched SANE build, which is what enables Nikon Coolscan and the Epson
+infrared channel. The `opticfilm-macos14` pair exists for macOS 14 and 15, where that build cannot
+be installed.
 
 | Installer | SANE path | Plug-in binary |
 |---|---|---|
@@ -82,19 +84,24 @@ Coolscan users on macOS 26 or later should use the separate Coolscan variant.
 | `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` only |
 | `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
 
-The standard DMG contains `Install negaflow Scanner.pkg`; the Coolscan DMG contains
-`Install negaflow Scanner for Coolscan.pkg`.
+The `macos26` DMG contains `Install negaflow Scanner.pkg`; the `opticfilm-macos14` DMG contains
+`Install negaflow Scanner for OpticFilm.pkg`.
 
-The standard package installs stock Homebrew `sane-backends`. The Coolscan package builds the
-pinned official SANE 1.4.0 source as `sane-backends-negaflow` with the upstream
-`coolscan2`/`coolscan3` allocation fix and an `epson2` scan-height fix, then installs the same
-plug-in.<br>
+The `macos26` package builds the pinned official SANE 1.4.0 source as `sane-backends-negaflow`, then
+installs the same plug-in. Three patches are applied:
+
+| Patch | What it changes |
+|---|---|
+| Coolscan depth list | The upstream `coolscan2`/`coolscan3` allocation fix |
+| `epson2` scan height | Corrects the scan height an Epson flatbed reports |
+| `epson2` infrared | Un-gates `SANE_FRAME_IR`, so an Epson film flatbed can return a separate infrared pass |
+
+The `opticfilm-macos14` package installs stock Homebrew `sane-backends` and none of the above.<br>
 An internet connection and an administrator password are required.<br>
 Existing Homebrew installations are reused.
 
-The standard installer and macOS versions below 26 do not proactively block Coolscan. Stock SANE
-may work on a particular unit, but it does not include this allocation fix; the macOS 26 Coolscan
-installer is the supported patched path.
+Neither installer blocks a Coolscan on macOS 14 or 15. Stock SANE may work on a particular unit, but
+it lacks the allocation fix; the `macos26` installer is the supported patched path.
 
 A later upstream change also initializes the Coolscan3 load/eject/reset parameter blocks required
 by at least LS-5000 firmware 1.03. It is intentionally outside this minimal patch set, so LS-5000
@@ -258,8 +265,8 @@ A backend's private dust-removal switch is not reported as an IR channel.
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | Not available | These models do not expose an IR source | No |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | Available when `scanimage -A` reports the infrared source | Separate `Transparency Adapter Infrared` pass | Yes |
 | OpticFilm 8200i `07b3:1825` | Not available | The device variant is unsupported by SANE 1.4 | No |
-| Epson V700/V750/V800/V850 with stock `epson2` | Not available | Stock builds do not expose a separate IR mode | No |
-| Epson path with a custom `SANE_FRAME_IR` build | Conditional | Separate `Infrared` mode pass, only when reported | Yes |
+| Epson V700/V750/V800/V850 with the `macos26` installer | Available when `scanimage -A` reports the infrared mode | Separate `Infrared` mode pass from the patched `epson2` | Yes |
+| Epson V700/V750/V800/V850 with stock `epson2` | Not available | Stock builds keep `SANE_FRAME_IR` compiled out | No |
 | Nikon `coolscan3` with `--infrared` | Not available through stock `scanimage` | `coolscan3` returns one `SANE_FRAME_RGBI` frame, which `scanimage` 1.4 does not split into RGB and IR TIFF files | No |
 | Reflecta/PIE with `--clean-image` only | Not available as an IR channel | Dust removal happens inside the backend | No |
 | Any other scanner | Conditional | Only when `scanimage -A` reports an active, separate IR source or mode | Yes, after size and format checks |
