@@ -827,20 +827,42 @@ extension SANEBackend {
         if let source { args += ["--source", source] }
         if let mode { args += ["--mode", mode] }
 
+        let backend = Self.backendName(
+            of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+
+        // 감마 테이블과 초점은 **두 패스 모두** 같아야 한다. IR 채널은 그림이 아니라 측정값이다.
+        //
+        // 감마: GT-X900 실측에서 IR 패스를 장치 기본 감마로 찍으면 신호가 전부 흰쪽 끝에
+        // 몰린다 — 프레임의 2~3.4%가 65535 에 그대로 잘리고 21~55%가 65000 위에 뭉친다.
+        // 결함 신호는 필름 베이스 바로 아래에 있는데 그 구간이 압축·절단되는 것이다.
+        // 같은 자리를 선형 테이블로 찍으면 필름 베이스가 0.81 에 앉고 잘림이 없다.
+        //
+        // 초점: 두 패스의 초점면이 다르면 배율이 달라져 결함 지도가 결함에서 몇 px 옆에
+        // 놓인다. 그러면 복원이 멀쩡한 필름을 덮고 결함은 남는다.
+        if backend == "epson2", media.hasGammaCorrectionOption,
+           let gammaCorrection = media.gammaCorrection {
+            args += ["--gamma-correction", gammaCorrection]
+        }
+        // 초점은 요청이 있을 때만 보낸다. 지정하지 않으면 장치 기본값이 그대로 쓰인다.
+        // autofocus와 focus를 함께 보내면 장치가 어느 쪽을 따르는지 보장할 수 없어 갈라 둔다.
+        switch options.focus {
+        case .auto where media.hasAutofocusOption:
+            args += ["--autofocus=yes"]
+        case .manual(let position) where media.focusRange != nil:
+            args += ["--focus=\(position)"]
+            if media.hasAutofocusOption { args += ["--autofocus=no"] }
+        case .auto, .manual, .none:
+            break
+        }
+
         if pass == .main {
-            let backend = Self.backendName(
-                of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
-            )
             if backend == "pieusb", media.hasAdvanceOption {
                 args += ["--advance=no"]
             }
-            if backend == "epson2" {
-                if media.hasColorCorrectionOption, let colorCorrection = media.colorCorrection {
-                    args += ["--color-correction", colorCorrection]
-                }
-                if media.hasGammaCorrectionOption, let gammaCorrection = media.gammaCorrection {
-                    args += ["--gamma-correction", gammaCorrection]
-                }
+            if backend == "epson2",
+               media.hasColorCorrectionOption, let colorCorrection = media.colorCorrection {
+                args += ["--color-correction", colorCorrection]
             }
             if let filmType = media.filmType,
                let optionName = media.filmTypeOptionName {
@@ -862,17 +884,6 @@ extension SANEBackend {
             }
             if media.hasScanExposureOption, let exposureTime = options.hardwareExposureTime {
                 args += ["--scan-exposure-time=\(exposureTime)"]
-            }
-            // 초점은 요청이 있을 때만 보낸다. 지정하지 않으면 장치 기본값이 그대로 쓰인다.
-            // autofocus와 focus를 함께 보내면 장치가 어느 쪽을 따르는지 보장할 수 없어 갈라 둔다.
-            switch options.focus {
-            case .auto where media.hasAutofocusOption:
-                args += ["--autofocus=yes"]
-            case .manual(let position) where media.focusRange != nil:
-                args += ["--focus=\(position)"]
-                if media.hasAutofocusOption { args += ["--autofocus=no"] }
-            case .auto, .manual, .none:
-                break
             }
             if case .cleanImage(let optionName) = media.irStrategy {
                 args += ["--\(optionName)=yes"]

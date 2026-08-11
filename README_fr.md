@@ -45,6 +45,7 @@ negaflow, sous Apache-2.0, ne communique avec lui que par un processus séparé,
 - Contrôle de la résolution, du mode couleur, de la profondeur, des dimensions et du format TIFF
 - Zone en millimètres uniquement lorsque le backend en fournit les plages nécessaires
 - Acquisition d'un canal infrarouge séparé uniquement lorsque le backend peut réellement le produire
+- La passe infrarouge reçoit la même table gamma et la même mise au point que le scan principal : la base du film n'est pas écrêtée et les deux passes partagent un plan de netteté
 - Multi-exposition matérielle uniquement si `--scan-exposure-time` couvre le plan d'exposition requis
 - Arrêt du seul processus `scanimage` lancé par l'instance courante du module
 

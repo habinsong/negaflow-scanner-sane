@@ -45,6 +45,7 @@ Das unter Apache-2.0 stehende negaflow kommuniziert damit nur über einen separa
 - Prüfung von Auflösung, Farbmodus, Bittiefe, Abmessungen und TIFF-Format vor der Rückgabe
 - Scanbereich in Millimetern nur dann, wenn das Backend die erforderlichen Bereiche meldet
 - Separater Infrarotkanal nur dann, wenn das Backend ihn tatsächlich liefern kann
+- Der Infrarotdurchgang erhält dieselbe Gammatabelle und denselben Fokus wie der Hauptscan, so bleibt die Filmbasis unbeschnitten und beide Durchgänge teilen eine Schärfeebene
 - Hardware-Mehrfachbelichtung nur, wenn `--scan-exposure-time` den benötigten Belichtungsplan abdeckt
 - Beenden ausschließlich des `scanimage`-Prozesses der aktuellen Plug-in-Instanz
 

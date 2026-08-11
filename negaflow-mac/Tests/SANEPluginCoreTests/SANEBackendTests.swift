@@ -877,4 +877,89 @@ final class SANEBackendCapabilityTests: XCTestCase {
         XCTAssertEqual(SaneOptionDump.snapResolution(3600, to: spec), 3600)
         XCTAssertEqual(SaneOptionDump.snapResolution(10, to: spec), 50)
     }
+
+    /// IR 패스는 그림이 아니라 측정값이다. 장치 기본 감마로 찍히면 신호가 흰쪽 끝에 몰려
+    /// 잘리고(GT-X900 실측: 프레임의 2~3.4%가 65535 에 고정), 초점면이 다르면 결함 지도가
+    /// 결함 옆에 놓인다. 두 값은 본 스캔과 반드시 같아야 한다.
+    func testInfraredPassInheritsGammaTableAndFocusFromMainPass() {
+        let dump = """
+        All options specific to device `epson2:libusb:000:010':
+            --mode Lineart|Gray|Color|Infrared [Lineart]
+            --depth 8|12|14|16bit [16]
+            --gamma-correction Default|User defined|High density printing [Default]
+            --color-correction None|Built in CCT profile|User defined CCT profile [Built in CCT profile]
+            --resolution 50|100|1200|2400|3200|4800|6400dpi [25]
+            --focus 0..254 [89]
+            --autofocus[=(yes|no)] [no]
+            --source Flatbed|Transparency Unit|TPU8x10 [Transparency Unit]
+            --film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]
+            -l 0..215.9mm [0]
+            -t 0..297.18mm [0]
+            -x 0..215.9mm [215.9]
+            -y 0..297.18mm [297.18]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:000:010")
+        options.filmType = .colorNegative
+        options.resolution = Resolution(2400)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        options.infraredEnabled = true
+        options.focus = .manual(72)
+        let media = SANEBackend.resolveMedia(
+            dump: dump, options: options, deviceTypeHint: "flatbed"
+        )
+        XCTAssertEqual(media.irStrategy, .separateMode("Infrared"))
+
+        let backend = SANEBackend(scanimagePath: "/tmp/scanimage")
+        let main = backend.makeScanimageArgs(
+            devname: "epson2:libusb:000:010", options: options, media: media, pass: .main
+        )
+        let infrared = backend.makeScanimageArgs(
+            devname: "epson2:libusb:000:010", options: options, media: media, pass: .infrared
+        )
+
+        XCTAssertEqual(argValue(main, "--mode"), "Color")
+        XCTAssertEqual(argValue(infrared, "--mode"), "Infrared")
+        // 같아야 하는 것: 감마 테이블, 초점, 지오메트리/해상도/깊이.
+        XCTAssertEqual(argValue(infrared, "--gamma-correction"), "User defined")
+        XCTAssertEqual(argValue(infrared, "--gamma-correction"),
+                       argValue(main, "--gamma-correction"))
+        XCTAssertTrue(infrared.contains("--focus=72"))
+        XCTAssertTrue(infrared.contains("--autofocus=no"))
+        XCTAssertEqual(argValue(infrared, "--resolution"), argValue(main, "--resolution"))
+        XCTAssertEqual(argValue(infrared, "--depth"), argValue(main, "--depth"))
+        for flag in ["-l", "-t", "-x", "-y"] {
+            XCTAssertEqual(argValue(infrared, flag), argValue(main, flag), "\(flag) 불일치")
+        }
+        // 달라야 하는 것: 그림 쪽 보정은 IR 측정에 얹지 않는다.
+        XCTAssertNil(argValue(infrared, "--color-correction"))
+        XCTAssertNil(argValue(infrared, "--film-type"))
+    }
+
+    func testAutofocusRequestReachesBothPasses() {
+        let dump = """
+            --mode Gray|Color|Infrared [Color]
+            --depth 16 [16]
+            --gamma-correction Default|User defined [Default]
+            --resolution 2400|3200dpi [2400]
+            --focus 0..254 [89]
+            --autofocus[=(yes|no)] [no]
+            --source Flatbed|Transparency Unit [Transparency Unit]
+            -l 0..215.9mm [0]
+            -t 0..297.18mm [0]
+            -x 0..215.9mm [215.9]
+            -y 0..297.18mm [297.18]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:000:010")
+        options.resolution = Resolution(2400)
+        options.scanArea = ScanArea(widthMM: 36, heightMM: 24)
+        options.infraredEnabled = true
+        options.focus = .auto
+        let media = SANEBackend.resolveMedia(
+            dump: dump, options: options, deviceTypeHint: "flatbed"
+        )
+        let infrared = SANEBackend(scanimagePath: "/tmp/scanimage").makeScanimageArgs(
+            devname: "epson2:libusb:000:010", options: options, media: media, pass: .infrared
+        )
+        XCTAssertTrue(infrared.contains("--autofocus=yes"))
+    }
 }

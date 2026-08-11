@@ -44,6 +44,7 @@ All SANE-specific code stays in this GPL-2.0-or-later repository; negaflow is Ap
 - Checks resolution, color mode, bit depth, dimensions, and TIFF format before returning a result
 - Uses a millimetre scan area only when the backend reports the required ranges
 - Captures a separate infrared channel when the backend can actually deliver one
+- Gives the infrared pass the same gamma table and focus as the main scan, so the film base is not clipped and both passes share one focal plane
 - Enables hardware multi-exposure only when `--scan-exposure-time` covers the required exposure plan
 - Stops only the `scanimage` process started by the current plug-in instance
 
