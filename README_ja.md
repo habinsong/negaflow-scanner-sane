@@ -56,7 +56,7 @@ SANE固有のコードはすべてGPL-2.0-or-laterのこのリポジトリに置
 - 現行negaflowとHomebrewによるインストールではmacOS 14.0以降
 - negaflow
 - 通常のスキャナーではHomebrew標準の`sane-backends`
-- Nikon Coolscan専用の修正版はmacOS 26以降のみ
+- SANE修正版はmacOS 26以降のみ
 - ソースからビルドする場合のみSwift 5.9以降
 
 単体実行ファイルのdeployment targetは`Package.swift`でmacOS 13のままです。<br>
@@ -72,15 +72,17 @@ Xcode Command Line Toolsが入っていない場合は、先にインストー�
 xcode-select --install
 ```
 
-インストーラーは4種類あります。通常のSANEスキャナーでは標準版を、macOS 26以降の
-Nikon Coolscanでは専用版を使用します。
+インストーラーは4種類あります。macOS 26が使えない場合を除き、`macos26`の方を使用します。
+修正版SANEビルドが入っているのはこちらで、Nikon CoolscanとEpsonの赤外線チャンネルを
+使えるようにするのがそのビルドです。`opticfilm-macos14`は、そのビルドを導入できない
+macOS 14・15のためのものです。
 
 | インストーラー | SANE経路 | プラグインバイナリ |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | 標準版、macOS 14以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | 標準版、macOS 14以降 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan修正版、macOS 26以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm、macOS 14以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm、macOS 14以降 | `arm64` + `x86_64` |
 
 `macos26` DMGでは`Install negaflow Scanner.pkg`、`opticfilm-macos14` DMGでは
 `Install negaflow Scanner for OpticFilm.pkg`を実行します。
@@ -132,7 +134,7 @@ macOS 14以降の標準経路：
 brew install sane-backends
 ```
 
-macOS 26以降のCoolscan修正経路：
+macOS 26以降のSANE修正経路：
 
 ```bash
 bash scripts/install-patched-sane.sh
@@ -197,7 +199,7 @@ cd negaflow-scanner-sane
 ```
 
 配布版のインストールにSwiftツールチェーンは不要です。`install.sh`はプラグインだけを
-インストールするため、先に標準SANEまたはmacOS 26用Coolscan修正版を導入します。
+インストールするため、先に標準SANEまたはmacOS 26用の修正版を導入します。
 
 ### 5. negaflowで承認して確認
 
@@ -274,6 +276,43 @@ IRパスにはRGBと同じ要求解像度とスキャン領域を使います。
 返す前に、両方の画像のピクセル寸法も一致しているか確認します。<br>
 negaflowはこのIR画像をGrainMend IRで利用できます。
 
+## トラブルシューティング: インストールに失敗する
+
+失敗画面には「インストールに失敗しました」としか出ません。macOSインストーラーはパッケージ
+スクリプトを終了コードだけで判定し、スクリプトの出力を画面に出しません。インストーラーが
+開いている間に⌘Lを押すか、後からログを読みます。
+
+```bash
+sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
+```
+
+| ログ | 原因 |
+|---|---|
+| `Your Command Line Tools are too outdated` | `macos26`版はSANEをコンパイルするが、実行中のmacOSより古いCommand Line ToolsはHomebrewが拒否する |
+| `Homebrew was not installed at the supported prefix` | `/opt/homebrew`または`/usr/local`に`brew`がない |
+| `no supported logged-in user was found` | コンソールユーザーがいない。SSHやログインウインドウから実行した場合 |
+| `patched scanimage was not installed` | SANEのビルド失敗。Homebrewのエラーがこの行の上にある |
+
+Command Line Toolsが古い場合:
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+```
+
+```bash
+xcode-select --install
+```
+
+古い環境にも`git`は残るため、ファイルの有無だけでは導入済みと判定されます。インストーラーは
+代わりに実行中のmacOSのSDKを探し、無ければ何も入れる前に停止します。
+
+Homebrewは事前に入れておく必要はありません。パッケージに公式署名済みのHomebrewインストーラーが
+含まれ、`brew`が無いときだけ実行します。既存のHomebrewはそのまま使い、置き換えもアップグレードも
+しません。
+
+`macos26`版はSANE 1.4.0をソースからビルドするため数分かかり、進行バーはビルドの進行を表示
+できません。`opticfilm-macos14`版はビルド済みbottleを入れるのですぐ終わります。
+
 ## トラブルシューティング: スキャナーが見つからない
 
 negaflowの**承認済み**は、プラグインの実行ファイルを実行してよいという意味です。<br>
@@ -311,7 +350,7 @@ scanimage -L
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| `scanimage: command not found` | SANEが未インストール、またはその`bin`が現在の`PATH`にない | 通常は`brew install sane-backends`を実行し、Coolscanでは上記の修正済みヘルパーと`export`を使用 |
+| `scanimage: command not found` | SANEが未インストール、またはその`bin`が現在の`PATH`にない | 通常は`brew install sane-backends`を実行し、修正版経路では上記のヘルパーと`export`を使用 |
 | USB一覧にスキャナーが出ない | ハブ、ドック、変換アダプタ、ケーブル、電源 | ハブを外してMacへ直結し、別のポートも試します。USB 2.0のフィルムスキャナーはUSB-C変換で失敗しやすいです |
 | `sane-find-scanner`では見えるのに`no SANE devices found` | この機種を担当する有効なバックエンドがない | [SANE対応機器一覧](https://www.sane-project.org/sane-supported-devices.html)を確認し、3のログを読みます |
 | USB一覧にはあり、`scanimage -L`が空で、`repair-sane-config`が`notNeeded` | SANEが知らないハードウェアリビジョン | USB product IDを[対応スキャナー](#対応スキャナー)の表と照合します。旧来の製品名で売られる新しいリビジョンはこちらでは解決できません |

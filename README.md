@@ -56,7 +56,7 @@ A control appears only when the connected device and its active SANE backend rep
 - macOS 14.0 or later for the current negaflow and Homebrew installation path
 - negaflow
 - Stock Homebrew `sane-backends` for the standard scanner path
-- macOS 26 or later only for the separate patched Nikon Coolscan path
+- macOS 26 or later only for the separate patched SANE path
 - Swift 5.9 or later only when building from source
 
 `Package.swift` keeps a macOS 13 deployment target for the standalone executable.<br>
@@ -133,7 +133,7 @@ For the standard macOS 14+ path:
 brew install sane-backends
 ```
 
-For the patched Coolscan path on macOS 26 or later:
+For the patched SANE path on macOS 26 or later:
 
 ```bash
 bash scripts/install-patched-sane.sh
@@ -198,7 +198,7 @@ Extract the release ZIP and run the included installer:
 ```
 
 The packaged installer does not need a Swift toolchain. `install.sh` installs only the plug-in;
-install stock SANE or run the macOS 26 Coolscan helper first as described above.
+install stock SANE or run the macOS 26 patched SANE helper first as described above.
 
 ### 5. Approve and verify it in negaflow
 
@@ -275,6 +275,42 @@ The IR pass uses the same requested resolution and scan area as the RGB pass.<br
 The plug-in also checks that both images have the same pixel dimensions before returning them.<br>
 negaflow can then use the IR image for GrainMend IR.
 
+## Troubleshooting: the installer fails
+
+The failure screen always reads "The installation failed" and nothing else. macOS Installer judges a
+package script by its exit code and never shows what the script printed. Press ⌘L while the
+installer is open, or read the log afterwards:
+
+```bash
+sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
+```
+
+| Log line | Cause |
+|---|---|
+| `Your Command Line Tools are too outdated` | The `macos26` package compiles SANE, and Homebrew rejects Command Line Tools older than the running macOS |
+| `Homebrew was not installed at the supported prefix` | No `brew` at `/opt/homebrew` or `/usr/local` |
+| `no supported logged-in user was found` | No console user, for example over SSH or at the login window |
+| `patched scanimage was not installed` | The SANE build failed; the Homebrew error is above this line |
+
+For outdated Command Line Tools:
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+```
+
+```bash
+xcode-select --install
+```
+
+An outdated installation keeps `git`, so a file check treats it as present. The installer looks for
+the SDK of the running macOS instead and stops before installing anything.
+
+Homebrew is not a prerequisite. The package carries the official signed Homebrew installer and runs
+it only when `brew` is missing. An existing installation is used as is, never replaced or upgraded.
+
+The `macos26` package builds SANE 1.4.0 from source, so it takes minutes and the progress bar cannot
+show build progress. The `opticfilm-macos14` package installs a prebuilt bottle and is quick.
+
 ## Troubleshooting: no scanner found
 
 **Approved** in negaflow means the plug-in executable is allowed to run.<br>
@@ -311,7 +347,7 @@ scanimage -L
 
 | Symptom | Cause | What to do |
 |---|---|---|
-| `scanimage: command not found` | SANE is not installed or its `bin` is outside the current `PATH` | Install stock `sane-backends`; for Coolscan use the patched helper and export shown above |
+| `scanimage: command not found` | SANE is not installed or its `bin` is outside the current `PATH` | Install stock `sane-backends`; for the patched path use the helper and export shown above |
 | The scanner is not in the USB list | Hub, dock, adapter, cable, or power | Connect it directly, try another port, and avoid hubs. USB 2.0 film scanners often fail through USB-C adapters |
 | `no SANE devices found` while `sane-find-scanner` sees the device | No enabled backend claims this model | Check the [SANE device list](https://www.sane-project.org/sane-supported-devices.html), then read the log in step 3 |
 | The scanner is in the USB list, `scanimage -L` is empty, and `repair-sane-config` reports `notNeeded` | The unit is a hardware revision SANE does not know | Compare the USB product ID against [Scanner support](#scanner-support). A newer revision sold under an older product name cannot be fixed from this side |

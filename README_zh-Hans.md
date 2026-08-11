@@ -56,7 +56,7 @@ negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 - 按当前 negaflow 与 Homebrew 安装方式，需要 macOS 14.0 或更高版本
 - negaflow
 - 普通扫描仪使用 Homebrew 标准 `sane-backends`
-- Nikon Coolscan 专用修补路径仅支持 macOS 26 或更高版本
+- SANE 修补路径仅支持 macOS 26 或更高版本
 - 仅从源码构建时需要 Swift 5.9 或更高版本
 
 独立可执行文件在 `Package.swift` 中仍以 macOS 13 为 deployment target。<br>
@@ -72,15 +72,16 @@ negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 xcode-select --install
 ```
 
-安装包有四种。普通 SANE 扫描仪使用标准版；macOS 26 或更高版本上的 Nikon Coolscan
-使用单独的 Coolscan 版。
+安装包有四种。除非无法使用 macOS 26，否则选择 `macos26` 一组。修补版 SANE 构建在这一组里，
+Nikon Coolscan 和 Epson 红外通道靠的就是该构建。`opticfilm-macos14` 一组供无法安装该构建的
+macOS 14、15 使用。
 
 | 安装包 | SANE 路径 | 插件二进制 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | 标准版，macOS 14+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | 标准版，macOS 14+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan 修补版，macOS 26+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan 修补版，macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | 修补版 SANE，macOS 26+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | 修补版 SANE，macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm，macOS 14+ | 仅 `arm64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm，macOS 14+ | `arm64` + `x86_64` |
 
 `macos26` DMG 内运行 `Install negaflow Scanner.pkg`；`opticfilm-macos14` DMG 内运行
 `Install negaflow Scanner for OpticFilm.pkg`。
@@ -129,7 +130,7 @@ macOS 14 以上标准路径：
 brew install sane-backends
 ```
 
-macOS 26 以上 Coolscan 修补路径：
+macOS 26 以上 SANE 修补路径：
 
 ```bash
 bash scripts/install-patched-sane.sh
@@ -192,7 +193,7 @@ cd negaflow-scanner-sane
 ```
 
 安装已打包版本不需要 Swift 工具链。`install.sh` 只安装插件，因此请先安装标准 SANE
-或 macOS 26 Coolscan 修补版。
+或 macOS 26 修补版。
 
 ### 5. 在 negaflow 中批准并验证
 
@@ -268,6 +269,41 @@ IR 扫描使用与 RGB 相同的请求分辨率和扫描区域。<br>
 返回前还会检查两张图像的像素尺寸是否一致。<br>
 negaflow 随后可将 IR 图像用于 GrainMend IR。
 
+## 故障排查：安装失败
+
+失败界面只显示"安装失败"。macOS 安装器仅按包脚本的退出码判定，不显示脚本的输出。安装器打开
+时按 ⌘L，或事后读取日志：
+
+```bash
+sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
+```
+
+| 日志 | 原因 |
+|---|---|
+| `Your Command Line Tools are too outdated` | `macos26` 版编译 SANE，而 Homebrew 拒绝比当前 macOS 更旧的 Command Line Tools |
+| `Homebrew was not installed at the supported prefix` | `/opt/homebrew` 或 `/usr/local` 下没有 `brew` |
+| `no supported logged-in user was found` | 没有控制台用户，例如通过 SSH 或在登录窗口执行 |
+| `patched scanimage was not installed` | SANE 构建失败，Homebrew 的报错在该行上方 |
+
+Command Line Tools 过旧时：
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+```
+
+```bash
+xcode-select --install
+```
+
+过旧的安装仍保留 `git`，因此只查文件会判定为已安装。安装器改为查找当前 macOS 的 SDK，
+若不存在则在安装任何内容之前停止。
+
+Homebrew 无需预先安装。安装包内含官方签名的 Homebrew 安装器，仅在没有 `brew` 时运行。
+已有的 Homebrew 按原样使用，不会替换或升级。
+
+`macos26` 版从源码构建 SANE 1.4.0，需要数分钟，进度条无法显示构建进度。
+`opticfilm-macos14` 版安装预编译 bottle，很快完成。
+
 ## 故障排查：找不到扫描仪
 
 negaflow 中的**已批准**表示允许运行插件可执行文件。<br>
@@ -304,7 +340,7 @@ scanimage -L
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `scanimage: command not found` | 未安装 SANE，或其 `bin` 不在当前 shell 的 `PATH` 中 | 普通扫描仪安装 `sane-backends`；Coolscan 使用上面的修补助手与 `export` |
+| `scanimage: command not found` | 未安装 SANE，或其 `bin` 不在当前 shell 的 `PATH` 中 | 普通扫描仪安装 `sane-backends`；修补路径使用上面的助手与 `export` |
 | USB 列表中没有扫描仪 | 集线器、扩展坞、转接头、线缆或供电 | 去掉集线器直连 Mac，并换一个端口。USB 2.0 胶片扫描仪经过 USB-C 转接常常失败 |
 | `sane-find-scanner` 能看到，但提示 `no SANE devices found` | 没有已启用的后端支持该型号 | 查看 [SANE 支持设备列表](https://www.sane-project.org/sane-supported-devices.html)，再阅读第 3 步的日志 |
 | USB 列表中有，`scanimage -L` 为空，且 `repair-sane-config` 返回 `notNeeded` | SANE 不认识的硬件版本 | 将 USB product ID 与[扫描仪支持](#扫描仪支持)表对照。沿用旧产品名销售的新版本无法从这一侧解决 |

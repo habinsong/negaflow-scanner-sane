@@ -57,7 +57,7 @@ negaflow n'affiche que les options signalées par l'appareil connecté et son ba
 - macOS 14.0 ou version ultérieure pour l'installation actuelle de negaflow et Homebrew
 - negaflow
 - `sane-backends` standard de Homebrew pour les scanners ordinaires
-- macOS 26 ou version ultérieure uniquement pour le parcours Nikon Coolscan corrigé
+- macOS 26 ou version ultérieure uniquement pour le parcours SANE corrigé
 - Swift 5.9 ou version ultérieure uniquement pour compiler les sources
 
 `Package.swift` conserve une cible de déploiement macOS 13 pour l'exécutable seul.<br>
@@ -73,15 +73,17 @@ Si les Xcode Command Line Tools ne sont pas encore présents, installez-les d'ab
 xcode-select --install
 ```
 
-Quatre programmes d'installation sont publiés. Utilisez la version standard pour les scanners
-SANE ordinaires et la version Coolscan séparée pour Nikon Coolscan sous macOS 26 ou ultérieur.
+Quatre programmes d'installation sont publiés. Prenez la paire `macos26` sauf si macOS 26 est hors
+de portée : elle contient la version corrigée de SANE, celle qui rend possibles Nikon Coolscan et le
+canal infrarouge Epson. La paire `opticfilm-macos14` existe pour macOS 14 et 15, où cette version ne
+peut pas être installée.
 
 | Programme d'installation | Parcours SANE | Binaire du module |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | Standard, macOS 14+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | Standard, macOS 14+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan corrigé, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
 
 Le DMG `macos26` contient `Install negaflow Scanner.pkg` ; le DMG `opticfilm-macos14` contient
 `Install negaflow Scanner for OpticFilm.pkg`.
@@ -100,8 +102,8 @@ Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br
 Une installation Homebrew existante est réutilisée.
 
 La version standard et macOS antérieur à 26 ne bloquent pas Coolscan. Stock SANE peut fonctionner
-sur certains appareils, mais sans ce correctif ; la version Coolscan macOS 26 est le parcours
-corrigé pris en charge.
+sur certains appareils, mais sans ce correctif ; la version macOS 26 est le parcours corrigé pris
+en charge.
 
 Une modification upstream ultérieure initialise aussi les blocs de paramètres load/eject/reset
 de Coolscan3, nécessaires au moins au firmware 1.03 du LS-5000. Elle est volontairement exclue
@@ -134,7 +136,7 @@ Parcours standard sous macOS 14 ou ultérieur :
 brew install sane-backends
 ```
 
-Parcours Coolscan corrigé sous macOS 26 ou ultérieur :
+Parcours SANE corrigé sous macOS 26 ou ultérieur :
 
 ```bash
 bash scripts/install-patched-sane.sh
@@ -199,7 +201,7 @@ Décompressez l'archive ZIP, puis lancez l'installateur fourni :
 ```
 
 L'installation de l'archive ne demande pas la chaîne d'outils Swift. `install.sh` installe
-uniquement le module ; installez d'abord SANE standard ou la version Coolscan macOS 26.
+uniquement le module ; installez d'abord SANE standard ou la version corrigée macOS 26.
 
 ### 5. Approuver et vérifier dans negaflow
 
@@ -278,6 +280,45 @@ Le passage IR utilise la même résolution et la même zone demandées que le pa
 Le module vérifie aussi que les deux images ont les mêmes dimensions en pixels.<br>
 negaflow peut ensuite utiliser l'image infrarouge avec GrainMend IR.
 
+## Dépannage : l'installation échoue
+
+L'écran d'échec n'affiche que « L'installation a échoué ». macOS Installer juge un script de paquet
+sur son seul code de sortie et n'affiche jamais ce que le script a écrit. Appuyez sur ⌘L pendant que
+l'installateur est ouvert, ou lisez le journal ensuite :
+
+```bash
+sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
+```
+
+| Journal | Cause |
+|---|---|
+| `Your Command Line Tools are too outdated` | La version `macos26` compile SANE, et Homebrew refuse des Command Line Tools plus anciens que le macOS en cours |
+| `Homebrew was not installed at the supported prefix` | Pas de `brew` dans `/opt/homebrew` ni `/usr/local` |
+| `no supported logged-in user was found` | Aucun utilisateur en console, par exemple via SSH ou depuis la fenêtre de connexion |
+| `patched scanimage was not installed` | Échec de la compilation de SANE ; l'erreur Homebrew se trouve au-dessus de cette ligne |
+
+Si les Command Line Tools sont trop anciens :
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+```
+
+```bash
+xcode-select --install
+```
+
+Une installation obsolète conserve `git` : une simple vérification de fichier la considère donc
+présente. L'installateur cherche à la place le SDK du macOS en cours et s'arrête avant d'installer
+quoi que ce soit.
+
+Homebrew n'est pas un prérequis. Le paquet embarque l'installateur Homebrew officiel signé et ne
+l'exécute que si `brew` est absent. Une installation existante est utilisée telle quelle, jamais
+remplacée ni mise à niveau.
+
+La version `macos26` compile SANE 1.4.0 depuis les sources : cela prend plusieurs minutes et la
+barre de progression ne peut pas refléter la compilation. La version `opticfilm-macos14` installe un
+bottle précompilé et se termine rapidement.
+
 ## Dépannage : aucun scanner détecté
 
 Dans negaflow, **approuvé** signifie que l'exécutable du module est autorisé à s'exécuter.<br>
@@ -315,7 +356,7 @@ scanimage -L
 
 | Symptôme | Cause | Que faire |
 |---|---|---|
-| `scanimage: command not found` | SANE n'est pas installé ou son répertoire `bin` est absent du `PATH` courant | Installez `sane-backends` standard ; pour Coolscan, utilisez l'assistant corrigé et l'`export` ci-dessus |
+| `scanimage: command not found` | SANE n'est pas installé ou son répertoire `bin` est absent du `PATH` courant | Installez `sane-backends` standard ; pour le parcours corrigé, utilisez l'assistant et l'`export` ci-dessus |
 | Le scanner n'apparaît pas dans la liste USB | Hub, station d'accueil, adaptateur, câble ou alimentation | Branchez-le directement sur le Mac, essayez un autre port et évitez les hubs. Les scanners de film USB 2.0 échouent souvent via un adaptateur USB-C |
 | `no SANE devices found` alors que `sane-find-scanner` voit l'appareil | Aucun backend actif ne prend en charge ce modèle | Consultez la [liste des appareils SANE](https://www.sane-project.org/sane-supported-devices.html), puis lisez le journal de l'étape 3 |
 | Le scanner est dans la liste USB, `scanimage -L` reste vide et `repair-sane-config` renvoie `notNeeded` | Une révision matérielle que SANE ne connaît pas | Comparez l'USB product ID au tableau [Scanners pris en charge](#scanners-pris-en-charge). Une révision récente vendue sous un ancien nom ne se corrige pas de ce côté |

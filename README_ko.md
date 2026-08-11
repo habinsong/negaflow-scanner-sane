@@ -56,7 +56,7 @@ Apache-2.0인 **negaflow** 와는 다른 별도 프로세스, CLI 인자, 파이
 - 현재 negaflow와 Homebrew 설치 경로 기준 macOS 14.0 이상
 - negaflow
 - 일반 스캐너 경로는 Homebrew 기본 `sane-backends`
-- 별도 Nikon Coolscan 패치 경로만 macOS 26 이상
+- 별도 SANE 패치 경로만 macOS 26 이상
 - 소스에서 빌드할 때만 Swift 5.9 이상
 
 설치 안내는 현재 negaflow와 Homebrew가 함께 지원되는 macOS 14 이상을 기준으로 합니다.
@@ -71,15 +71,16 @@ Xcode Command Line Tools가 없다면 먼저 설치합니다.
 xcode-select --install
 ```
 
-설치 파일은 네 가지입니다. 일반 SANE 스캐너는 일반판을, macOS 26 이상에서 Nikon
-Coolscan을 쓰는 경우에는 별도 Coolscan판을 받습니다.
+설치 파일은 네 가지입니다. macOS 26을 쓸 수 없는 경우가 아니라면 `macos26` 쪽을 받습니다.
+패치판 SANE 빌드가 여기에 들어 있고, Nikon Coolscan과 Epson 적외선 채널을 쓰게 해 주는 것이
+그 빌드입니다. `opticfilm-macos14` 쪽은 그 빌드를 설치할 수 없는 macOS 14·15를 위한 것입니다.
 
 | 설치 파일 | SANE 경로 | 플러그인 바이너리 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | 일반판, macOS 14 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | 일반판, macOS 14 이상 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Coolscan 패치판, macOS 26 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` + `x86_64` |
 
 `macos26` DMG에서는 `Install negaflow Scanner.pkg`, `opticfilm-macos14` DMG에서는
 `Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.
@@ -132,7 +133,7 @@ brew --version
 brew install sane-backends
 ```
 
-macOS 26 이상 Coolscan 패치 경로는 저장소에 포함된 도우미를 실행합니다.
+macOS 26 이상 SANE 패치 경로는 저장소에 포함된 도우미를 실행합니다.
 
 ```bash
 bash scripts/install-patched-sane.sh
@@ -197,7 +198,7 @@ cd negaflow-scanner-sane
 ```
 
 배포 ZIP 설치에는 Swift 도구체인이 필요하지 않습니다. `install.sh`는 플러그인만
-설치하므로, 위 설명에 따라 일반 SANE 또는 macOS 26 Coolscan 패치판을 먼저 설치합니다.
+설치하므로, 위 설명에 따라 일반 SANE 또는 macOS 26 패치판을 먼저 설치합니다.
 
 ### 5. negaflow에서 승인하고 확인
 
@@ -272,6 +273,43 @@ OpticFilm 8100과 8200i는 각각 같은 제품명 아래 USB 변형이 적어�
 
 IR 패스에는 RGB와 같은 요청 해상도와 스캔 영역을 사용합니다. <br>두 파일의 실제 픽셀 크기가 같은지도 확인한 뒤 반환합니다. <br>negaflow는 이 IR 이미지를 GrainMend IR에 사용할 수 있습니다.
 
+## 문제 해결: 설치가 실패할 때
+
+실패 화면에는 "설치에 실패했습니다"만 뜹니다. macOS 설치 관리자는 패키지 스크립트를 종료
+코드로만 판정하고, 스크립트가 출력한 내용은 화면에 띄우지 않습니다. 설치 창이 열려 있는
+동안 ⌘L을 누르거나, 나중에 로그를 읽습니다.
+
+```bash
+sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
+```
+
+| 로그 | 원인 |
+|---|---|
+| `Your Command Line Tools are too outdated` | `macos26` 판은 SANE을 컴파일하는데, 실행 중인 macOS보다 낡은 Command Line Tools는 Homebrew가 거부함 |
+| `Homebrew was not installed at the supported prefix` | `/opt/homebrew` 또는 `/usr/local`에 `brew`가 없음 |
+| `no supported logged-in user was found` | 콘솔 사용자가 없음. SSH나 로그인 창에서 실행한 경우 |
+| `patched scanimage was not installed` | SANE 빌드 실패. Homebrew 오류가 이 줄 위에 있음 |
+
+Command Line Tools가 낡은 경우:
+
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+```
+
+```bash
+xcode-select --install
+```
+
+낡은 설치본에도 `git`은 남아 있어서 파일 확인만으로는 설치된 것으로 잡힙니다. 설치 관리자는
+대신 실행 중인 macOS의 SDK를 찾고, 없으면 아무것도 설치하기 전에 멈춥니다.
+
+Homebrew는 미리 깔아둘 필요가 없습니다. 패키지에 공식 서명된 Homebrew 설치본이 들어 있고
+`brew`가 없을 때만 실행합니다. 이미 설치된 Homebrew는 그대로 쓰며 교체하거나 업그레이드하지
+않습니다.
+
+`macos26` 판은 SANE 1.4.0을 소스에서 빌드하므로 몇 분이 걸리고, 진행 막대는 빌드 진행 상황을
+보여주지 못합니다. `opticfilm-macos14` 판은 미리 빌드된 bottle을 설치하므로 금방 끝납니다.
+
 ## 문제 해결: 스캐너가 보이지 않을 때
 
 negaflow의 **승인됨**은 플러그인 실행 파일을 실행해도 된다는 뜻입니다.<br>
@@ -308,7 +346,7 @@ scanimage -L
 
 | 증상 | 원인 | 조치 |
 |---|---|---|
-| `scanimage: command not found` | SANE이 없거나 해당 `bin`이 현재 `PATH` 밖에 있음 | 일반 `sane-backends`를 설치하고, Coolscan이면 위 패치 도우미와 `export` 실행 |
+| `scanimage: command not found` | SANE이 없거나 해당 `bin`이 현재 `PATH` 밖에 있음 | 일반 `sane-backends`를 설치하고, 패치 경로면 위 도우미와 `export` 실행 |
 | USB 목록에 스캐너가 없음 | 허브, 도크, 젠더, 케이블, 전원 | 허브를 빼고 Mac에 직접 연결하고 다른 포트도 시도. USB 2.0 필름 스캐너는 USB-C 젠더에서 자주 실패 |
 | `sane-find-scanner`에는 보이는데 `no SANE devices found` | 이 모델을 맡는 활성 백엔드가 없음 | [SANE 지원 목록](https://www.sane-project.org/sane-supported-devices.html)을 확인한 뒤 3번 로그 확인 |
 | USB 목록에는 있고 `scanimage -L`은 비었으며 `repair-sane-config`가 `notNeeded` | SANE이 모르는 하드웨어 리비전 | USB product ID를 [지원 스캐너](#지원-스캐너) 표와 대조. 옛 제품명으로 판매되는 새 리비전은 이쪽에서 해결 불가 |
