@@ -6,6 +6,7 @@ if [[ "$#" -ne 4 ]]; then
   exit 2
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG="$1"
 DMG="$2"
 EXPECTED_ARCHITECTURE="$3"
@@ -22,12 +23,12 @@ case "$EXPECTED_VARIANT" in
   standard)
     EXPECTED_MIN_OS="14.0"
     EXPECTED_SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.setup"
-    DMG_PKG_NAME="Install negaflow Scanner.pkg"
+    DMG_PKG_NAME="Install negaflow Scanner for OpticFilm.pkg"
     ;;
   coolscan)
     EXPECTED_MIN_OS="26.0"
     EXPECTED_SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.coolscan.setup"
-    DMG_PKG_NAME="Install negaflow Scanner for Coolscan.pkg"
+    DMG_PKG_NAME="Install negaflow Scanner.pkg"
     ;;
   *)
     echo "[verify-installer] ERROR: expected variant must be standard or coolscan." >&2
@@ -73,7 +74,10 @@ if [[ -z "$homebrew_line" || -z "$setup_line" || "$homebrew_line" -ge "$setup_li
 fi
 grep -Fq 'homebrew_required()' "$DISTRIBUTION"
 grep -Fq 'installation_check()' "$DISTRIBUTION"
+grep -Fq 'command_line_tools_ready()' "$DISTRIBUTION"
+grep -Fq '/Library/Developer/CommandLineTools/SDKs/' "$DISTRIBUTION"
 grep -Fq "min=\"$EXPECTED_MIN_OS\"" "$DISTRIBUTION"
+bash "$SCRIPT_DIR/verify-distribution-script.sh" "$DISTRIBUTION"
 
 HOMEBREW_PACKAGE_INFO="$(find "$EXPANDED" -path '*HomebrewComponent.pkg/PackageInfo' -print -quit)"
 SETUP_PACKAGE_INFO="$(find "$EXPANDED" -path '*negaflowScannerSetup.pkg/PackageInfo' -print -quit)"

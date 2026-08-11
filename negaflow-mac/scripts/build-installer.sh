@@ -273,10 +273,13 @@ fi
 
 DMG_ROOT="$WORK/dmg"
 mkdir -p "$DMG_ROOT"
+# coolscan 변형은 쿨스캔 전용이 아니다. epson2 의 적외선·스캔 높이 수정도 같이 들어가고
+# 이쪽이 기본 배포본이라, 배포 이름은 파일명 체계(macos26 / opticfilm-macos14)와 같은
+# 기준으로 둔다. 기본은 수식어 없이, OpticFilm 판만 용도를 밝힌다.
 if [[ "$INSTALLER_VARIANT" == "coolscan" ]]; then
-  DMG_PKG_NAME="Install negaflow Scanner for Coolscan.pkg"
-else
   DMG_PKG_NAME="Install negaflow Scanner.pkg"
+else
+  DMG_PKG_NAME="Install negaflow Scanner for OpticFilm.pkg"
 fi
 cp "$BUILT_PKG" "$DMG_ROOT/$DMG_PKG_NAME"
 cp "$SOURCE_ARCHIVE" "$DMG_ROOT/"

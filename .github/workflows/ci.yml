@@ -28,6 +28,10 @@ jobs:
           echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
       - name: Verify provenance
         run: python3 negaflow-mac/scripts/verify-provenance.py
+      - name: Verify installer pre-flight check
+        # 설치 관리자의 installation_check() 는 설치 전에 도는 JS 다. 여기서 터지거나
+        # 조건을 놓치면 사용자는 원인 없는 실패 화면만 보게 되므로 실기 엔진으로 돌려 본다.
+        run: bash negaflow-mac/scripts/verify-distribution-script.sh
       - name: Test
         run: swift test --package-path negaflow-mac -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
       - name: Remove unused runner tap

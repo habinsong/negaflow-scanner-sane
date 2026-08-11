@@ -56,11 +56,41 @@
             return !system.files.fileExistsAtPath("/usr/local/bin/brew");
         }
 
+        function macos_major_version() {
+            var version = system.version.ProductVersion;
+            if (!version) {
+                return "";
+            }
+            return String(version).split(".")[0];
+        }
+
+        // git 이 있는지만 보면 낡은 Command Line Tools 를 놓친다. 낡은 설치본은 git 을
+        // 그대로 둔 채 현재 macOS 의 SDK 만 빠져 있고, Homebrew 는 그 상태에서
+        // "Your Command Line Tools are too outdated." 로 빌드를 거부한다. 그러면
+        // postinstall 이 죽고 사용자는 원인 없는 실패 화면만 본다.
+        function command_line_tools_ready() {
+            var major = macos_major_version();
+            if (major == "") {
+                return true;
+            }
+            var sdk = "MacOSX" + major + ".sdk";
+            return system.files.fileExistsAtPath("/Library/Developer/CommandLineTools/SDKs/" + sdk)
+                || system.files.fileExistsAtPath(
+                    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/" + sdk);
+        }
+
         function installation_check() {
             if (!system.files.fileExistsAtPath("/Library/Developer/CommandLineTools/usr/bin/git")
                 &amp;&amp; !system.files.fileExistsAtPath("/Applications/Xcode.app/Contents/Developer/usr/bin/git")) {
                 my.result.title = "Xcode Command Line Tools are required";
                 my.result.message = "Install Xcode or run xcode-select --install, finish that installation, and then open this package again.";
+                my.result.type = "Fatal";
+                return false;
+            }
+            if (!command_line_tools_ready()) {
+                my.result.title = "Xcode Command Line Tools are out of date";
+                my.result.message = "This package builds the SANE backends on your Mac, and Homebrew refuses to build with Command Line Tools that predate macOS "
+                    + macos_major_version() + ".\n\nIn Terminal run:\n\nsudo rm -rf /Library/Developer/CommandLineTools\nxcode-select --install\n\nFinish that installation, then open this package again.";
                 my.result.type = "Fatal";
                 return false;
             }
