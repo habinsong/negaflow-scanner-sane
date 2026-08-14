@@ -1,0 +1,84 @@
+Expose SANE_FRAME_IR so epson2 can offer its infrared mode
+
+The infrared channel on a GT-X700/X800/X900/X980 is fully implemented in the
+epson2 backend and has been for years.  `esci_enable_infrared` is called on scan
+start, `MODE_INFRARED` is in the mode enum, and the backend names the exact four
+models it applies to.  None of it is reachable, because the mode list entry sits
+behind
+
+    #ifdef SANE_FRAME_IR
+
+and `include/sane/sane.h` keeps that constant inside an `#if 0` marked "to be
+exposed in a later version of SANE".  That version has not come.  Measured on a
+Perfection V700 (GT-X900, epson2):
+
+    --mode Lineart|Gray|Color
+
+No infrared, so a front end that wants a separate defect map cannot ask for one.
+The hardware has the lamp; the header hides the constant.
+
+Two hunks.
+
+The first defines the three infrared frame formats outside the disabled block,
+using upstream's own values (0x0F, 0x10, 0x11), so a backend built with this
+patch and a front end built without it still agree on what the numbers mean.
+`SANE_FRAME_TEXT`, `JPEG`, `G31D`, `G32D`, `G42D` and `XML` stay disabled:
+nothing here asks for them, and each is a format a front end would have to learn
+to read.
+
+The second is the one that is easy to miss.  `scanimage`'s format switch handles
+RED/GREEN/BLUE, RGB and GRAY, and everything else falls to `default: break;` —
+which skips writing the header entirely and then streams pixels into a file with
+no header at all.  A silent corruption, not an error.  `sanei_write_tiff_header`
+already does the right thing (its own `default` writes a grey header), so the
+fix is only to let infrared take the same path as gray: one channel, same depths.
+
+Scoped this way, a front end that never selects infrared sees no change.  The
+OpticFilm is unaffected either way — genesys reaches infrared through a separate
+source, not through this constant.
+
+--- a/include/sane/sane.h
++++ b/include/sane/sane.h
+@@ -179,6 +179,17 @@
+ }
+ SANE_Frame;
+
++/* Infrared frame formats.
++
++   Upstream keeps these in the disabled block below, so epson2 compiles its
++   infrared support out and a GT-X700/X800/X900/X980 reports only Lineart, Gray
++   and Color.  The backend code is complete; the constant is what is missing.
++
++   The values match the disabled block exactly, so this does not fork the
++   numbering. */
++#define SANE_FRAME_IR    0x0F  /* bare infrared channel */
++#define SANE_FRAME_RGBI  0x10  /* red+green+blue+infrared */
++#define SANE_FRAME_GRAYI 0x11  /* gray+infrared */
++
+ /* push remaining types down to match existing backends */
+ /* these are to be exposed in a later version of SANE */
+ /* most front-ends will require updates to understand them */
+@@ -189,9 +200,6 @@
+ #define SANE_FRAME_G32D  0x0D  /* CCITT Group 3 2-D Compressed (MR) */
+ #define SANE_FRAME_G42D  0x0E  /* CCITT Group 4 2-D Compressed (MMR) */
+
+-#define SANE_FRAME_IR    0x0F  /* bare infrared channel */
+-#define SANE_FRAME_RGBI  0x10  /* red+green+blue+infrared */
+-#define SANE_FRAME_GRAYI 0x11  /* gray+infrared */
+ #define SANE_FRAME_XML   0x12  /* undefined schema */
+ #endif
+
+--- a/frontend/scanimage.c
++++ b/frontend/scanimage.c
+@@ -1453,6 +1453,11 @@
+ 	    case SANE_FRAME_RGB:
+ 	      assert ((parm.depth == 8) || (parm.depth == 16));
+ 	    case SANE_FRAME_GRAY:
++	    /* A bare infrared frame is one channel, exactly like gray, and
++	       sanei_write_tiff_header already writes a grey header for it.
++	       Without this case it falls to `default: break;` below, which
++	       skips the header and writes pixels into a headerless file. */
++	    case SANE_FRAME_IR:
+ 	      assert ((parm.depth == 1) || (parm.depth == 8)
+ 		      || (parm.depth == 16));
+ 	      if (parm.lines < 0)
