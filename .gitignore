@@ -31,3 +31,6 @@ CODEX.md
 # Windows 배포물은 빌드 산출물이다 (15 MB). make-payload.sh 가 만든다.
 Installer/windows/payload/
 Installer/windows/*-setup.exe
+
+# 카탈로그는 install.ps1 이 기기마다 자체 서명으로 만든다. 저장소에 담지 않는다.
+negaflow-windows/tools/usbscan-bind/*.cat
