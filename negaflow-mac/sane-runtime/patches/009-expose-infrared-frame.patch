@@ -39,10 +39,10 @@ source, not through this constant.
 
 --- a/include/sane/sane.h
 +++ b/include/sane/sane.h
-@@ -179,6 +179,17 @@
- }
+@@ -179,6 +179,18 @@
+   }
  SANE_Frame;
-
+ 
 +/* Infrared frame formats.
 +
 +   Upstream keeps these in the disabled block below, so epson2 compiles its
@@ -58,16 +58,16 @@ source, not through this constant.
  /* push remaining types down to match existing backends */
  /* these are to be exposed in a later version of SANE */
  /* most front-ends will require updates to understand them */
-@@ -189,9 +200,6 @@
+@@ -189,9 +201,6 @@
  #define SANE_FRAME_G32D  0x0D  /* CCITT Group 3 2-D Compressed (MR) */
  #define SANE_FRAME_G42D  0x0E  /* CCITT Group 4 2-D Compressed (MMR) */
-
+ 
 -#define SANE_FRAME_IR    0x0F  /* bare infrared channel */
 -#define SANE_FRAME_RGBI  0x10  /* red+green+blue+infrared */
 -#define SANE_FRAME_GRAYI 0x11  /* gray+infrared */
  #define SANE_FRAME_XML   0x12  /* undefined schema */
  #endif
-
+ 
 --- a/frontend/scanimage.c
 +++ b/frontend/scanimage.c
 @@ -1453,6 +1453,11 @@
@@ -76,7 +76,7 @@ source, not through this constant.
  	    case SANE_FRAME_GRAY:
 +	    /* A bare infrared frame is one channel, exactly like gray, and
 +	       sanei_write_tiff_header already writes a grey header for it.
-+	       Without this case it falls to `default: break;` below, which
++	       Without this case it falls to 'default: break;' below, which
 +	       skips the header and writes pixels into a headerless file. */
 +	    case SANE_FRAME_IR:
  	      assert ((parm.depth == 1) || (parm.depth == 8)
