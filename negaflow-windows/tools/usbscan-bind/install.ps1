@@ -47,8 +47,11 @@ function Show-ScannerState {
                 -KeyName 'DEVPKEY_Device_Service' -ErrorAction SilentlyContinue).Data
             $infName = (Get-PnpDeviceProperty -InstanceId $_.InstanceId `
                 -KeyName 'DEVPKEY_Device_DriverInfPath' -ErrorAction SilentlyContinue).Data
+            # Windows PowerShell 5.1 에는 `??` 가 없다. 이 스크립트는 5.1 에서 돌아야 한다.
+            if (-not $service) { $service = '-' }
+            if (-not $infName) { $infName = '-' }
             "  {0,-8} service={1,-10} inf={2,-16} {3}" -f `
-                $_.Status, ($service ?? '-'), ($infName ?? '-'), $_.FriendlyName
+                $_.Status, $service, $infName, $_.FriendlyName
         }
 }
 
