@@ -3,18 +3,26 @@
 ; 왜 필요한가
 ;   sanei_usb 의 Windows 경로(patch 005)는 still-image 클래스 드라이버 usbscan.sys 가
 ;   열어주는 raw USB 통로로 장치와 이야기한다. 그 통로가 생기려면 장치가 usbscan 서비스에
-;   묶여 있어야 한다.
+;   묶여 있어야 하는데, **묶는 일은 INF 만 할 수 있다.**
 ;
-;   Plustek OpticFilm 8100 은 이미 묶여 있다 — SilverFast 가 깔아 둔 INF 가 같은 일을 한다.
-;   Epson Perfection V700(VID_04B8&PID_012C)은 벤더 클래스(Class_FF) 장치라 Windows 인박스
-;   INF 가 맞물리지 않고, 그래서 아무 드라이버도 붙지 않는다(CM_PROB_FAILED_INSTALL, 코드 28).
-;   장치가 열리지 않으니 SANE 은 "스캐너 없음" 이라고만 말한다.
+;   개발 기기에서는 SilverFast 가 깔아 둔 INF(oem113.inf)가 OpticFilm 8100 을 이미 묶어
+;   놓아서 플러그인이 그냥 동작하는 것처럼 보였다. **그것은 이 플러그인의 공이 아니다.**
+;   벤더 소프트웨어가 없는 기기에서는 OpticFilm 도 Epson Perfection 과 똑같이
+;   CM_PROB_FAILED_INSTALL(코드 28) 로 남고, SANE 은 "스캐너 없음" 이라고만 말한다.
+;
+;   그래서 이 파일이 플러그인 배포물에 들어간다. **negaflow-scanner-sane 만 깔아도
+;   스캔이 되어야 하고, SilverFast 나 EPSON Scan 에 기대지 않는다.**
 ;
 ; 무엇을 설치하는가
 ;   **아무 바이너리도 설치하지 않는다.** `Include=sti.inf` / `Needs=STI.USBSection` 으로
-;   Windows 가 이미 갖고 있는 usbscan.sys 를 가리킬 뿐이다. Epson 소프트웨어도, 서드파티
-;   드라이버도, Zadig/WinUSB 재바인딩도 없다. 벤더 소프트웨어를 밀어내지 않으므로
-;   EPSON Scan 이나 VueScan 을 나중에 깔아도 그대로 동작한다.
+;   Windows 가 이미 갖고 있는 usbscan.sys 를 가리킬 뿐이다. 벤더 드라이버도, Zadig/WinUSB
+;   재바인딩도 없다. 벤더 스택을 밀어내지 않으므로 SilverFast 나 VueScan 이 이미 있으면
+;   그대로 동작하고, 나중에 깔아도 된다.
+;
+; 장치 목록을 늘릴 때
+;   `USB\VID_xxxx&PID_xxxx` 한 줄이면 된다. 판형·해상도·초점 같은 장치 성질은 전부 SANE
+;   백엔드가 갖는다 — 여기서 여는 것은 통로뿐이다. **확인하지 않은 ID 는 넣지 않는다.**
+;   틀린 ID 는 조용히 아무 데도 맞물리지 않아, 없는 지원을 있는 것처럼 보이게 만든다.
 ;
 ; 되돌리기
 ;   pnputil /delete-driver <게시된 이름> /uninstall
@@ -27,9 +35,23 @@ Provider    = %Provider%
 DriverVer   = 08/14/2026,1.0.0.0
 
 [Manufacturer]
-%Epson% = Epson.Models, NTamd64, NTarm64
+%Plustek% = Plustek.Models, NTamd64, NTarm64
+%Epson%   = Epson.Models, NTamd64, NTarm64
 
-; 판형·해상도·초점 같은 장치 성질은 SANE 백엔드가 갖는다. 여기서는 통로만 연다.
+; Plustek — genesys 백엔드. 130C 는 이 저장소가 실기로 스캔까지 확인한 장치다.
+[Plustek.Models.NTamd64]
+%OpticFilm8100.DeviceDesc%  = Negaflow.UsbScan, USB\VID_07B3&PID_130C
+%OpticFilm8200.DeviceDesc%  = Negaflow.UsbScan, USB\VID_07B3&PID_130D
+%OpticFilm8100b.DeviceDesc% = Negaflow.UsbScan, USB\VID_07B3&PID_1824
+%OpticFilm8200b.DeviceDesc% = Negaflow.UsbScan, USB\VID_07B3&PID_1825
+
+[Plustek.Models.NTarm64]
+%OpticFilm8100.DeviceDesc%  = Negaflow.UsbScan, USB\VID_07B3&PID_130C
+%OpticFilm8200.DeviceDesc%  = Negaflow.UsbScan, USB\VID_07B3&PID_130D
+%OpticFilm8100b.DeviceDesc% = Negaflow.UsbScan, USB\VID_07B3&PID_1824
+%OpticFilm8200b.DeviceDesc% = Negaflow.UsbScan, USB\VID_07B3&PID_1825
+
+; Epson — epson2 백엔드.
 [Epson.Models.NTamd64]
 %V700.DeviceDesc% = Negaflow.UsbScan, USB\VID_04B8&PID_012C
 %V750.DeviceDesc% = Negaflow.UsbScan, USB\VID_04B8&PID_012B
@@ -43,21 +65,26 @@ DriverVer   = 08/14/2026,1.0.0.0
 %V850.DeviceDesc% = Negaflow.UsbScan, USB\VID_04B8&PID_013B
 
 [Negaflow.UsbScan]
-Include     = sti.inf
-Needs       = STI.USBSection
-SubClass    = StillImage
-DeviceType  = 1
+Include       = sti.inf
+Needs         = STI.USBSection
+SubClass      = StillImage
+DeviceType    = 1
 DeviceSubType = 0x0
 Capabilities  = 0x00000031
 
 [Negaflow.UsbScan.Services]
-Include     = sti.inf
-Needs       = STI.USBSection.Services
+Include = sti.inf
+Needs   = STI.USBSection.Services
 
 [Strings]
-Provider          = "negaflow-scanner-sane"
-Epson             = "Epson"
-V700.DeviceDesc   = "Epson Perfection V700 Photo (negaflow)"
-V750.DeviceDesc   = "Epson Perfection V750 Pro (negaflow)"
-V800.DeviceDesc   = "Epson Perfection V800 Photo (negaflow)"
-V850.DeviceDesc   = "Epson Perfection V850 Pro (negaflow)"
+Provider                  = "negaflow-scanner-sane"
+Plustek                   = "Plustek"
+Epson                     = "Epson"
+OpticFilm8100.DeviceDesc  = "Plustek OpticFilm 8100 (negaflow)"
+OpticFilm8200.DeviceDesc  = "Plustek OpticFilm 8200i (negaflow)"
+OpticFilm8100b.DeviceDesc = "Plustek OpticFilm 8100 (negaflow)"
+OpticFilm8200b.DeviceDesc = "Plustek OpticFilm 8200i (negaflow)"
+V700.DeviceDesc           = "Epson Perfection V700 Photo (negaflow)"
+V750.DeviceDesc           = "Epson Perfection V750 Pro (negaflow)"
+V800.DeviceDesc           = "Epson Perfection V800 Photo (negaflow)"
+V850.DeviceDesc           = "Epson Perfection V850 Pro (negaflow)"
