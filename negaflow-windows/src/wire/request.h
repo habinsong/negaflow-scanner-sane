@@ -72,6 +72,10 @@ struct ScanRequestV2 {
     sane::ScanArea scanArea{};
     std::optional<int> hardwareExposureTime;
     bool outputRawTIFF = true;
+    /// 스캔 직전 장치 오토포커스. `focusPosition` 과 동시에 지정할 수 없다.
+    std::optional<bool> autofocus;
+    /// 수동 초점 위치. 음수는 거부한다.
+    std::optional<int> focusPosition;
     std::optional<std::string> capabilityToken;
     std::string outputPath;
 };

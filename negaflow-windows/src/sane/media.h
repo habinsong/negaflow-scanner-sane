@@ -61,6 +61,10 @@ struct ScanOptions {
     std::optional<double> brightnessAdjustment;
     std::optional<double> contrastAdjustment;
     bool outputRawTIFF = true;
+    /// 스캔 직전 장치 오토포커스. `focusPosition` 과 동시에 지정할 수 없다.
+    std::optional<bool> autofocus;
+    /// 수동 초점 위치. 장치가 `--focus` 를 활성으로 노출할 때만 보낸다.
+    std::optional<int> focusPosition;
 };
 
 /// 장치가 실제 노출하는 옵션으로 해석한 결과.
@@ -97,6 +101,9 @@ struct MediaSelection {
     std::optional<std::string> gammaCorrection;
     bool hasColorCorrectionOption = false;
     bool hasGammaCorrectionOption = false;
+    /// `--autofocus` 가 활성인가. `--focus` 범위가 있으면 수동 위치를 보낼 수 있다.
+    bool hasAutofocusOption = false;
+    std::optional<util::OptionRange> focusRange;
 
     std::optional<util::OptionRange> brightnessRange;
     std::optional<util::OptionRange> contrastRange;

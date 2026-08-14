@@ -474,6 +474,8 @@ MediaSelection resolveMedia(const OptionDump& opts,
     media.hasModeOption = opts.isActive("mode");
     media.hasDepthOption = opts.isActive("depth");
     media.hasAdvanceOption = opts.isActive("advance");
+    media.hasAutofocusOption = opts.isActive("autofocus");
+    media.focusRange = opts.isActive("focus") ? opts.numericRange("focus") : std::nullopt;
     media.hasColorCorrectionOption = opts.isActive("color-correction");
     media.hasGammaCorrectionOption = opts.isActive("gamma-correction");
     media.brightnessRange =

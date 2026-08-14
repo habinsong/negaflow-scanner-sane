@@ -446,6 +446,17 @@ bool decodeRequest(const Node& root, ParseError& error, ScanRequestV2& out) {
 
     REQUIRE_FIELD(root, "outputRawTIFF", error, Bool, request.outputRawTIFF);
 
+    if (const Node* n = optionalMember(root, "autofocus")) {
+        bool v = false;
+        if (!requireBool(*n, error, v)) return false;
+        request.autofocus = v;
+    }
+    if (const Node* n = optionalMember(root, "focusPosition")) {
+        int v = 0;
+        if (!requireInt32(*n, error, v)) return false;
+        request.focusPosition = v;
+    }
+
     if (const Node* n = optionalMember(root, "capabilityToken")) {
         std::string v;
         if (!requireString(*n, error, v)) return false;

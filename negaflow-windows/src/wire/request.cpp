@@ -187,6 +187,14 @@ sane::ValidationResult validateScanRequest(const ScanRequestV2& request,
         (request.contrastAdjustment && !isFinite(*request.contrastAdjustment))) {
         return rejected("brightness/contrast 값이 유효하지 않습니다.");
     }
+    // ⑧-1 초점 — 오토포커스와 수동 위치는 함께 올 수 없다. 둘 다 보내면 장치가 어느 쪽을
+    // 따르는지 보장할 수 없어, 요청을 조용히 한쪽으로 해석하지 않고 거부한다.
+    if (request.autofocus.value_or(false) && request.focusPosition) {
+        return rejected("autofocus와 focusPosition을 동시에 지정할 수 없습니다.");
+    }
+    if (request.focusPosition && *request.focusPosition < 0) {
+        return rejected("focusPosition이 유효하지 않습니다.");
+    }
     // ⑨ outputPath — **여기만 플랫폼별로 판정이 갈린다.** 문구는 같다.
     if (!isAcceptableOutputPath(request.outputPath, policy)) {
         return rejected("outputPath는 정규화된 절대 경로여야 합니다.");
@@ -226,6 +234,8 @@ sane::ValidationResult validateScanRequest(const ScanRequestV2& request,
         out->brightnessAdjustment = request.brightnessAdjustment;
         out->contrastAdjustment = request.contrastAdjustment;
         out->outputRawTIFF = request.outputRawTIFF;
+        out->autofocus = request.autofocus;
+        out->focusPosition = request.focusPosition;
     }
     return std::nullopt;
 }

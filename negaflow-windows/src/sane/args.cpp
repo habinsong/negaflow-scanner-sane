@@ -42,10 +42,35 @@ std::vector<std::string> makeScanimageArgs(std::string_view devname,
         args.push_back(*mode);
     }
 
+    std::string scannerID = options.scannerID;
+    if (scannerID.rfind("sane-", 0) == 0) scannerID.erase(0, 5);
+    const std::string backend = backendName(scannerID);
+
+    // 감마 테이블과 초점은 **두 패스 모두** 같아야 한다. IR 채널은 그림이 아니라 측정값이다.
+    //
+    // 감마: GT-X900 실측에서 IR 패스를 장치 기본 감마로 찍으면 신호가 전부 흰쪽 끝에 몰린다 —
+    // 프레임의 2~3.4% 가 65535 에 그대로 잘리고 21~55% 가 65000 위에 뭉친다. 결함 신호는 필름
+    // 베이스 바로 아래에 있는데 그 구간이 압축·절단되는 것이다. 같은 자리를 선형 테이블로 찍으면
+    // 필름 베이스가 0.81 에 앉고 잘림이 없다.
+    //
+    // 초점: 두 패스의 초점면이 다르면 배율이 달라져 결함 지도가 결함에서 몇 px 옆에 놓인다.
+    // 그러면 복원이 멀쩡한 필름을 덮고 결함은 남는다.
+    if (backend == "epson2" && media.hasGammaCorrectionOption &&
+        media.gammaCorrection.has_value()) {
+        args.emplace_back("--gamma-correction");
+        args.push_back(*media.gammaCorrection);
+    }
+
+    // 초점은 요청이 있을 때만 보낸다. 지정하지 않으면 장치 기본값이 그대로 쓰인다.
+    // autofocus 와 focus 를 함께 보내면 장치가 어느 쪽을 따르는지 보장할 수 없어 갈라 둔다.
+    if (options.autofocus.value_or(false) && media.hasAutofocusOption) {
+        args.emplace_back("--autofocus=yes");
+    } else if (options.focusPosition.has_value() && media.focusRange.has_value()) {
+        args.emplace_back("--focus=" + std::to_string(*options.focusPosition));
+        if (media.hasAutofocusOption) args.emplace_back("--autofocus=no");
+    }
+
     if (pass == AcquisitionPass::Main) {
-        std::string scannerID = options.scannerID;
-        if (scannerID.rfind("sane-", 0) == 0) scannerID.erase(0, 5);
-        const std::string backend = backendName(scannerID);
 
         // pieusb: full scan 뒤 다음 슬라이드로 이동하는 --advance 기본값이 yes 다.
         // 앱이 배치 이동을 요청한 적이 없으므로 확인되면 **항상 no**.
@@ -53,16 +78,12 @@ std::vector<std::string> makeScanimageArgs(std::string_view devname,
             args.emplace_back("--advance=no");
         }
 
-        // epson2: 장치 내부 색·감마 처리를 끈다. negaflow 가 원본 밀도를 현상한다.
-        if (backend == "epson2") {
-            if (media.hasColorCorrectionOption && media.colorCorrection.has_value()) {
-                args.emplace_back("--color-correction");
-                args.push_back(*media.colorCorrection);
-            }
-            if (media.hasGammaCorrectionOption && media.gammaCorrection.has_value()) {
-                args.emplace_back("--gamma-correction");
-                args.push_back(*media.gammaCorrection);
-            }
+        // epson2: 장치 내부 색 처리를 끈다. negaflow 가 원본 밀도를 현상한다.
+        // 감마는 위에서 두 패스 모두에 이미 붙였다 — 그림 쪽 제어만 여기 남는다.
+        if (backend == "epson2" && media.hasColorCorrectionOption &&
+            media.colorCorrection.has_value()) {
+            args.emplace_back("--color-correction");
+            args.push_back(*media.colorCorrection);
         }
 
         // 필름 극성. bool 옵션(--negative)은 `=값` 형태, enum 은 분리 인자.

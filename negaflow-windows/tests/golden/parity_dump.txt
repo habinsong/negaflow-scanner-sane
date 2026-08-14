@@ -164,7 +164,7 @@ A[genesys.ir]=-d genesys:libusb:001:002 -p --source Transparency Adapter Infrare
 A[genesys.preview]=-d genesys:libusb:001:002 -p --source Transparency Adapter --mode Color --preview=yes --depth 16 -l 0 -t 0 -x 36 -y 24 --format=tiff
 A[genesys.brightOverride]=-d genesys:libusb:001:002 -p --source Transparency Adapter --mode Color --brightness=7 --resolution 1200 --depth 8 -l 0 -t 0 -x 36 -y 24 --format=tiff
 A[genesys.brightDouble]=-d genesys:libusb:001:002 -p --source Transparency Adapter --mode Color --brightness=-12.5 --resolution 1200 --depth 8 -l 0 -t 0 -x 36 -y 24 --format=tiff
-A[epson2.main]=-d epson2:libusb:001:005 -p --source Transparency Unit --mode Color --color-correction None --gamma-correction User defined (Gamma=1.0) --film-type Negative Film --resolution 1200 --depth 16 -l 0 -t 0 -x 36 -y 24 --format=tiff
+A[epson2.main]=-d epson2:libusb:001:005 -p --source Transparency Unit --mode Color --gamma-correction User defined (Gamma=1.0) --color-correction None --film-type Negative Film --resolution 1200 --depth 16 -l 0 -t 0 -x 36 -y 24 --format=tiff
 A[coolscan3.main]=-d coolscan3:usb:libusb:001:002 -p --negative=no --resolution 4000 --depth 14 -x 5669 -y 3780 --format=tiff
 A[pieusb.main]=-d pieusb:libusb:002:004 -p --mode Color --advance=no --resolution 3600 --depth 16 -x 36 -y 24 --format=tiff
 A[corner.main]=-d x:libusb:001:001 -p --mode Color --resolution 4000 --depth 16 --tl-x 0 --tl-y 0 --br-x 5668 --br-y 3779 --format=tiff
