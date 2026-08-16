@@ -44,7 +44,8 @@ execute_process(
     COMMAND "${PLUGIN}" detect
     OUTPUT_VARIABLE detect_out
     ERROR_VARIABLE detect_err
-    RESULT_VARIABLE detect_code)
+    RESULT_VARIABLE detect_code
+    ENCODING UTF-8)
 
 if(NOT detect_code EQUAL 0)
     message(FATAL_ERROR "detect 가 ${detect_code} 로 끝났다.\nstderr: ${detect_err}")
@@ -70,7 +71,8 @@ execute_process(
     COMMAND "${PLUGIN}" capabilities "sane-genesys:libusb:001:002"
     OUTPUT_VARIABLE caps_out
     ERROR_VARIABLE caps_err
-    RESULT_VARIABLE caps_code)
+    RESULT_VARIABLE caps_code
+    ENCODING UTF-8)
 
 if(NOT caps_code EQUAL 0)
     message(FATAL_ERROR "capabilities 가 ${caps_code} 로 끝났다.\nstderr: ${caps_err}")
@@ -122,7 +124,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/request.json"
     OUTPUT_VARIABLE scan_out
     ERROR_VARIABLE scan_err
-    RESULT_VARIABLE scan_code)
+    RESULT_VARIABLE scan_code
+    ENCODING UTF-8)
 
 if(NOT scan_code EQUAL 0)
     message(FATAL_ERROR "scan 이 ${scan_code} 로 끝났다.\nstdout: ${scan_out}\nstderr: ${scan_err}")
@@ -176,7 +179,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/ir-request.json"
     OUTPUT_VARIABLE ir_out
     ERROR_VARIABLE ir_err
-    RESULT_VARIABLE ir_code)
+    RESULT_VARIABLE ir_code
+    ENCODING UTF-8)
 
 expect("IR 스캔이 성공한다" ir_code EQUAL 0)
 string(FIND "${ir_out}" "\"hasInfrared\":true" found_ir_flag)
@@ -203,7 +207,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/mx-request.json"
     OUTPUT_VARIABLE mx_out
     ERROR_VARIABLE mx_err
-    RESULT_VARIABLE mx_code)
+    RESULT_VARIABLE mx_code
+    ENCODING UTF-8)
 
 expect("다중 노출 스캔이 성공한다" mx_code EQUAL 0)
 # `/` 가 `\/` 로 이스케이프된 채 나온다. Swift `JSONEncoder` 의 기본이 그렇고
@@ -229,7 +234,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/bad.json"
     OUTPUT_VARIABLE bad_out
     ERROR_VARIABLE bad_err
-    RESULT_VARIABLE bad_code)
+    RESULT_VARIABLE bad_code
+    ENCODING UTF-8)
 
 expect("깨진 요청은 exit 1 이다" bad_code EQUAL 1)
 string(FIND "${bad_err}" "scan 옵션 JSON 파싱 실패" found_parse_fail)
@@ -244,7 +250,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/envelope.json"
     OUTPUT_VARIABLE env_out
     ERROR_VARIABLE env_err
-    RESULT_VARIABLE env_code)
+    RESULT_VARIABLE env_code
+    ENCODING UTF-8)
 
 expect("봉투만 있는 요청은 exit 1 이다" env_code EQUAL 1)
 string(FIND "${env_out}" "\"type\":\"error\"" found_error_event)
@@ -259,7 +266,8 @@ execute_process(
     OUTPUT_VARIABLE big_out
     ERROR_VARIABLE big_err
     RESULT_VARIABLE big_code
-    TIMEOUT 120)
+    TIMEOUT 120
+    ENCODING UTF-8)
 set(ENV{NEGAFLOW_VSCAN_SCENARIO} "")
 
 expect("stderr 폭주에도 교착하지 않는다" big_code EQUAL 0)
@@ -272,7 +280,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/request.json"
     OUTPUT_VARIABLE rounded_out
     ERROR_VARIABLE rounded_err
-    RESULT_VARIABLE rounded_code)
+    RESULT_VARIABLE rounded_code
+    ENCODING UTF-8)
 set(ENV{NEGAFLOW_VSCAN_SCENARIO} "")
 
 expect("반올림 경고가 있으면 실패한다" rounded_code EQUAL 1)
@@ -298,7 +307,8 @@ execute_process(
     INPUT_FILE "${WORKDIR}/stale-request.json"
     OUTPUT_VARIABLE stale_out
     ERROR_VARIABLE stale_err
-    RESULT_VARIABLE stale_code)
+    RESULT_VARIABLE stale_code
+    ENCODING UTF-8)
 set(ENV{NEGAFLOW_VSCAN_SCENARIO} "")
 set(ENV{NEGAFLOW_VSCAN_MARKER} "")
 
@@ -314,7 +324,8 @@ execute_process(
     COMMAND "${PLUGIN}" detect
     OUTPUT_VARIABLE missing_out
     ERROR_VARIABLE missing_err
-    RESULT_VARIABLE missing_code)
+    RESULT_VARIABLE missing_code
+    ENCODING UTF-8)
 set(ENV{NEGAFLOW_SCANIMAGE_PATH} "${VSCAN}")
 
 expect("scanimage 가 없으면 exit 1 이다" missing_code EQUAL 1)

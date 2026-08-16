@@ -6,6 +6,7 @@
 build/
 build-*/
 cmake-build-*/
+/out/
 *.profraw
 *.tiff
 *.tif
@@ -31,6 +32,9 @@ CODEX.md
 # Windows 배포물은 빌드 산출물이다 (15 MB). make-payload.sh 가 만든다.
 Installer/windows/payload/
 Installer/windows/*-setup.exe
+# GPL plugin의 macOS 소스 트리 안에서 Windows payload를 조립한다.
+negaflow-mac/Installer/windows/payload/
+negaflow-mac/Installer/windows/*-setup.exe
 
 # 카탈로그는 install.ps1 이 기기마다 자체 서명으로 만든다. 저장소에 담지 않는다.
 negaflow-windows/tools/usbscan-bind/*.cat

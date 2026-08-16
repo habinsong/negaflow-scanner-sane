@@ -289,7 +289,9 @@ if(WIN32 AND TIFF_FOUND AND NEGAFLOW_HAVE_RAPIDJSON)
     # 긴 경로(260자 초과) staging 을 호스트가 줄 수 있다. 매니페스트의
     # long-path 인식이 없으면 CreateFileW 가 그 경로를 열지 못한다.
     # 근거: docs/03-process-and-io/child-process.md §14
-    target_sources(negaflow-scanner-sane PRIVATE src/app/long_path.manifest)
+    target_sources(negaflow-scanner-sane PRIVATE
+        src/app/long_path.manifest
+        src/app/Negaflow.rc)
 
     # --- 실행 파일을 실제로 돌리는 스모크 -----------------------------------
     #

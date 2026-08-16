@@ -24,7 +24,12 @@ set -euo pipefail
 OUT=${1:?출력 디렉터리를 달라}
 PLUGIN=${2:?negaflow-scanner-sane.exe 경로를 달라}
 PREFIX=${MINGW_PREFIX:-/c/msys64/ucrt64}
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+PRODUCT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+
+# `ldd`가 백엔드의 모든 전이 DLL을 실제 UCRT64 트리에서 해석해야 한다.
+# MSYS bash를 PowerShell에서 직접 실행하는 경우 PATH에 이 디렉터리가 빠질 수 있다.
+export PATH="$PREFIX/bin:$PATH"
 
 [ -x "$PLUGIN" ] || { echo "플러그인 실행 파일이 없다: $PLUGIN" >&2; exit 1; }
 [ -x "$PREFIX/bin/scanimage.exe" ] || { echo "scanimage.exe 가 없다: $PREFIX" >&2; exit 1; }
@@ -81,9 +86,12 @@ cp -f "$REPO/LICENSE" "$OUT/LICENSES/"
 cp -f "$REPO/THIRD_PARTY_NOTICES.md" "$OUT/LICENSES/"
 cp -f "$REPO/PROVENANCE.md" "$OUT/LICENSES/"
 
-# GPL 바이너리를 배포하므로 대응 소스를 함께 싣는다. 레시피와 패치와 원본
-# 해시가 있으면 같은 바이너리를 다시 만들 수 있다.
-cp -rf "$REPO/sane-runtime" "$OUT/source/"
+# GPL 바이너리를 배포하므로 대응 소스를 함께 싣는다. 빌드 중 생성된 소스 트리와
+# 패키지 산출물까지 복사하지 않고, 재현에 필요한 레시피·원본 해시·패치만 넣는다.
+mkdir -p "$OUT/source/sane-runtime/patches"
+cp -f "$PRODUCT_ROOT/sane-runtime/PKGBUILD" "$OUT/source/sane-runtime/"
+cp -f "$PRODUCT_ROOT/sane-runtime/SOURCES.md" "$OUT/source/sane-runtime/"
+cp -f "$PRODUCT_ROOT/sane-runtime/patches/"*.patch "$OUT/source/sane-runtime/patches/"
 git -C "$REPO" archive --format=tar --prefix=negaflow-scanner-sane/ HEAD \
     | gzip > "$OUT/source/negaflow-scanner-sane-source.tar.gz"
 
@@ -104,7 +112,11 @@ names it with a pinned hash so it can be fetched and verified.
 TXT
 
 # --- 매니페스트 -------------------------------------------------------------
-cp -f "$REPO/manifest.json" "$OUT/"
+# macOS 실행 파일에는 접미사가 없지만 Windows 호스트는 manifest 의 executable 을
+# 정확한 상대 파일명으로 해석한다. 배포 payload 에만 .exe 를 적어 두어 두 플랫폼의
+# 실행 파일명을 억지로 통일하지 않는다.
+sed 's/"executable"[[:space:]]*:[[:space:]]*"negaflow-scanner-sane"/"executable": "negaflow-scanner-sane.exe"/' \
+    "$PRODUCT_ROOT/manifest.json" > "$OUT/manifest.json"
 
 echo
 echo "배포물: $OUT"

@@ -45,7 +45,8 @@ execute_process(
     COMMAND "${DUMP}"
     OUTPUT_VARIABLE actual
     ERROR_VARIABLE dump_err
-    RESULT_VARIABLE dump_code)
+    RESULT_VARIABLE dump_code
+    ENCODING UTF-8)
 
 if(NOT dump_code EQUAL 0)
     message(FATAL_ERROR "parity_dump 가 ${dump_code} 로 끝났다.\nstderr: ${dump_err}")

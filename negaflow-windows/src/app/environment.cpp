@@ -246,6 +246,8 @@ std::wstring buildScanEnvironment(const std::filesystem::path& scanimage,
         if (std::filesystem::is_directory(configDir, ec) && !ec) {
             overrides.emplace_back(L"SANE_CONFIG_DIR", configDir.wstring());
         }
+        // 번들 SANE은 개발 PC의 절대 LIBDIR가 아니라 이 디렉터리에서 백엔드를 연다.
+        overrides.emplace_back(L"SANE_BACKEND_DIR", toolDirectory.wstring());
     }
 
     // `SANE_DEFAULT_DEVICE` 가 있으면 `scanimage -L` 이 probe 없이 그 장치를

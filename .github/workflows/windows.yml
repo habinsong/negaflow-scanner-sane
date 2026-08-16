@@ -122,3 +122,42 @@ jobs:
             build/vcpkg-manifest-install.log
           if-no-files-found: ignore
           retention-days: 7
+
+  # 실제 SANE runtime은 MSYS2 recipe로 만드는 GPL 배포물이라 hosted runner에서
+  # 매 PR마다 재조립하지 않는다. 대신 installer source가 Windows manifest(.exe),
+  # GPL license page와 user-scope layout을 계속 컴파일할 수 있는지는 확인한다.
+  installer-contract:
+    name: NSIS installer contract
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --yes --no-progress
+      - name: Assemble minimal installer payload
+        shell: pwsh
+        run: |
+          $payload = Join-Path $env:RUNNER_TEMP 'negaflow-sane-installer-contract'
+          New-Item -ItemType Directory -Force -Path "$payload\LICENSES", "$payload\sane\bin", "$payload\source" | Out-Null
+          Copy-Item COPYING "$payload\LICENSES\COPYING"
+          Copy-Item LICENSE "$payload\LICENSES\LICENSE"
+          Copy-Item THIRD_PARTY_NOTICES.md "$payload\LICENSES\THIRD_PARTY_NOTICES.md"
+          Copy-Item PROVENANCE.md "$payload\LICENSES\PROVENANCE.md"
+          Copy-Item "$env:SystemRoot\System32\where.exe" "$payload\negaflow-scanner-sane.exe"
+          Copy-Item "$env:SystemRoot\System32\where.exe" "$payload\sane\bin\scanimage.exe"
+          Set-Content -LiteralPath "$payload\manifest.json" -Encoding UTF8 -NoNewline -Value '{"schemaVersion":1,"protocolVersion":2,"id":"sane","name":"SANE Film Scanner","executable":"negaflow-scanner-sane.exe","kind":"scanner","pluginVersion":"1.0.4"}'
+          "PAYLOAD=$payload" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Compile installer source
+        shell: pwsh
+        run: >
+          & "C:\Program Files (x86)\NSIS\makensis.exe" -V2 -INPUTCHARSET UTF8
+          "-DPAYLOAD=$env:PAYLOAD" -DVERSION=1.0.4
+          negaflow-mac\Installer\windows\negaflow-scanner-sane.nsi
+      - name: Assert installer exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path negaflow-scanner-sane-1.0.4-x64-setup.exe)) {
+            throw 'NSIS installer contract did not create setup.exe.'
+          }

@@ -9,7 +9,7 @@ negaflow-scanner-sane-<버전>-x64-setup.exe        실행하면 마법사가 �
 negaflow-scanner-sane-<버전>-x64-setup.exe /S     무인
 ```
 
-설치 위치는 `%LOCALAPPDATA%\Negaflow\ScannerPlugins\sane` 이고, 마법사에서
+설치 위치는 `%LOCALAPPDATA%\Negaflow\Plugins\sane` 이고, 마법사에서
 바꿀 수 있다(무인일 때는 `/D=<경로>` 를 **맨 뒤에 따옴표 없이**).
 
 제거는 Windows 의 "설치된 앱"에서 하거나, 설치 폴더의 `uninstall.exe` 를

@@ -18,7 +18,6 @@ SetCompressor /SOLID lzma
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "x64.nsh"
-!include "WinVer.nsh"
 !include "FileFunc.nsh"
 
 !ifndef PAYLOAD
@@ -33,10 +32,15 @@ SetCompressor /SOLID lzma
 !define EXENAME  "negaflow-scanner-sane.exe"
 !define REGKEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\negaflow-scanner-sane"
 !define LOGNAME  "negaflow-scanner-sane-install.log"
+!define APP_ICON "${__FILEDIR__}\..\..\..\negaflow-windows\src\app\Negaflow.ico"
 
 Name        "${APPNAME}"
 OutFile     "negaflow-scanner-sane-${VERSION}-x64-setup.exe"
-InstallDir  "$LOCALAPPDATA\Negaflow\ScannerPlugins\${PLUGINID}"
+Icon        "${APP_ICON}"
+UninstallIcon "${APP_ICON}"
+; Negaflow Windows discovers user plug-ins below `Plugins`, matching the
+; macOS product contract.  Keep this separate from the Apache-2.0 app payload.
+InstallDir  "$LOCALAPPDATA\Negaflow\Plugins\${PLUGINID}"
 
 ; 사용자 영역에만 쓴다. 상승을 요구하면 드라이버를 바꾸지 않는다는 약속이
 ; 무색해지고, 관리자가 아닌 사용자는 설치 자체를 못 한다.
@@ -80,7 +84,8 @@ Var LogFile
 ; 기다리며 멈추면 배포 스크립트가 통째로 멎는다. 무인 모드의 결과는 종료
 ; 코드와 로그로만 말한다.
 !macro SAY icon text
-  ${IfNot} ${Silent}
+  ${If} ${Silent}
+  ${Else}
     MessageBox ${icon} "${text}"
   ${EndIf}
 !macroend
@@ -95,13 +100,9 @@ Var MovedAside
 Function .onInit
   ; scanimage.exe 와 백엔드는 x64 다. ARM64 에서는 에뮬레이션으로 돌지만
   ; USB 계층을 확인한 적이 없으므로 조용히 넘기지 않는다.
-  ${IfNot} ${RunningX64}
+  ${If} ${RunningX64}
+  ${Else}
     ${SAY} MB_ICONSTOP "이 패키지는 64비트 Windows 전용입니다."
-    SetErrorLevel 1
-    Abort
-  ${EndIf}
-  ${IfNot} ${AtLeastWin10}
-    ${SAY} MB_ICONSTOP "Windows 10 이상이 필요합니다."
     SetErrorLevel 1
     Abort
   ${EndIf}
@@ -221,6 +222,6 @@ Section "Uninstall"
   DeleteRegKey HKCU "${REGKEY}"
 
   ; 우리가 만든 상위 폴더는 비었을 때만 지운다.
-  RMDir "$LOCALAPPDATA\Negaflow\ScannerPlugins"
+  RMDir "$LOCALAPPDATA\Negaflow\Plugins"
   RMDir "$LOCALAPPDATA\Negaflow"
 SectionEnd
