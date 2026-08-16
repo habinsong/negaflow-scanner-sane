@@ -14,6 +14,13 @@ REPO_ROOT = ROOT.parent
 # The Windows adapter is first-party C++ written for this project. Native source
 # is rejected everywhere else so that a vendored SANE tree still fails the check.
 FIRST_PARTY_NATIVE_ROOT = "negaflow-windows"
+WINDOWS_USB_BINDING_DESCRIPTORS = frozenset(
+    {
+        Path("negaflow-windows/tools/usbscan-bind/generate-inf.py"),
+        Path("negaflow-windows/tools/usbscan-bind/install.ps1"),
+        Path("negaflow-windows/tools/usbscan-bind/negaflow-usbscan.inf"),
+    }
+)
 
 
 def fail(message: str) -> None:
@@ -114,6 +121,12 @@ def verify_source_authorship_markers(files: list[Path]) -> None:
         text = path.read_text(encoding="utf-8").lower()
         if root == FIRST_PARTY_NATIVE_ROOT:
             for marker in windows_forbidden:
+                # The USB binding scripts and generated INF name sanei_usb only
+                # in comments explaining why usbscan.sys is required. They neither
+                # include nor call a SANE API, so exempt that exact documentation
+                # reference without weakening the implementation-marker check.
+                if relative in WINDOWS_USB_BINDING_DESCRIPTORS and marker == "sanei_":
+                    continue
                 if marker in text:
                     fail(f"foreign implementation marker {marker!r} found in {relative}")
             # The adapter carries the project's own GPL tag. Any other license
