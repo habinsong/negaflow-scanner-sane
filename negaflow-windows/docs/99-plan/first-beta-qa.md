@@ -91,3 +91,11 @@
 - 수정할 것: 로컬 CI를 통과한 setup을 실제 플러그인 경로에 설치하고 두 실제 장치의 preview·scan·IR·취소·재연결을 앱 통합 상태에서 검증한다.
 - 수정한 것: 개별 빌드·설치 명령 대신 실패 즉시 중단하고 전체 로그를 남기는 단일 로컬 CI를 추가했다.
 - 검증한 것: `scripts/local-ci.ps1` 통과. CTest 5/5, setup 설치 payload·설치본 `detect` 종료 코드 0·제거 통과. 설치 파일 SHA-256은 `85b1928ec01a8729af4de27d09805ed2bf336deaf41680b55f9ad39f2066fe09`, 로그는 `out\logs\local-ci-20260817-000901.log`이다.
+
+### CP3 — 실제 플러그인 경로 설치와 장치 탐지
+
+- 한 것: 로컬 CI를 통과한 1.0.4 setup을 `%LOCALAPPDATA%\Negaflow\Plugins\sane`에 설치하고 설치된 adapter로 `detect`를 실행했다.
+- 안 한 것: 실제 preview·scan·IR·취소·재연결·반복 스캔은 아직 실행하지 않았다.
+- 수정할 것: 본체 최신 설치본에서 두 장치 capability와 실제 scan 전체 흐름을 검증한다.
+- 수정한 것: 이전 플러그인 설치를 로컬 CI 통과 setup으로 교체했다.
+- 검증한 것: 설치 adapter SHA-256 `e2a49ed244e8571e842a3efee19f9141dca28db7e056c0ec0ab01aa7aa2e0453`; `detect`가 `sane-epson2:usbscan:001` Epson GT-X900과 `sane-genesys:usbscan:000` Plustek OpticFilm 8100을 반환했다.
