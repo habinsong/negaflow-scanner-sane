@@ -118,7 +118,15 @@ def verify_source_authorship_markers(files: list[Path]) -> None:
         # 들어왔는데, 다른 구현을 설명하는 문장이 이식 흔적으로 잡히면 안 된다.
         if root == FIRST_PARTY_NATIVE_ROOT and relative.parts[1:2] == ("docs",):
             continue
-        text = path.read_text(encoding="utf-8").lower()
+        raw = path.read_bytes()
+        # App icons and other resources live beside first-party source. They
+        # are not authorship text; decoding them as UTF-8 crashes the gate.
+        if b"\0" in raw[:8192]:
+            continue
+        try:
+            text = raw.decode("utf-8").lower()
+        except UnicodeDecodeError as exc:
+            fail(f"source file is not valid UTF-8: {relative} ({exc})")
         if root == FIRST_PARTY_NATIVE_ROOT:
             for marker in windows_forbidden:
                 # The USB binding scripts and generated INF name sanei_usb only
