@@ -3,7 +3,7 @@
 기준일: 2026-08-25
 상태: x64 Release build와 CTest 5/5를 통과했습니다. V700·OpticFilm 8100 의 Color/Gray 와
 V700 IR 실장 결과가 있고 Gray 는 patch 011 로 닫혔습니다. 커밋된 소스에서의 재빌드와
-GitHub 실행 결과는 별도입니다.
+GitHub 실행 결과는 별도입니다. 배포 기준 산출물은 §7 의 `092cf0b2…` 입니다.
 
 ## 1. 사용자 설치
 
@@ -122,17 +122,33 @@ recipe까지 재현된 Windows release PC에서 위 스크립트로 만들고, s
   절차는 `scripts\build-sane-runtime.ps1`이 소유하며, PKGBUILD 의 `source=()`·`prepare()`와
   `patches/`를 대조하고 CRLF 를 거부하고 설치 뒤 낡은 `cygsane-*` 그림자를 지웁니다.
 - **GL846** host-side Gray 종료 길이를 수정한 UCRT64 패키지 SHA-256:
-  `31d00ae1701ea4040ab058a81068aa1a5be43995e924583f751e60f5b08f6703`.
+  `f777d88d74d05318761ffab3d46a93e18844588243c56cbc54562035c39e7073`.
+  이것은 **커밋된 clean tree** 에서 다시 빌드한 배포 기준 산출물입니다. 커밋 전 dirty tree
+  판(`31d00ae1…`)은 GPL 대응 소스 증거가 아니므로 폐기합니다. 재빌드본은 dirty 판과
+  1,400,695 바이트 중 **6 바이트**(PE 링크 타임스탬프)만 다릅니다 — 소스는 재현되지만
+  bit-for-bit 동일 해시는 아닙니다.
   (이전 기록의 `e1f11ec7…`는 종료 길이 수정을 `gl843.cpp`에 넣은 판으로, OpticFilm 8100은
   `AsicType::GL845`라 그 파일을 타지 않아 실제로는 아무 효과가 없었습니다.)
 - 해당 runtime으로 adapter Release build와 CTest 5/5를 통과해 만든 setup SHA-256:
-  `ba79f19165cc099105617a83d5b0cc3dd8693330511d8ced0bcf95db23677851`.
+  `092cf0b2a615f41d9cd97435661f8d6e3619f3c8396c0cf69bb4fbb843f5b915`.
 - 이 setup을 `%LOCALAPPDATA%\Negaflow\Plugins\sane`에 무인 설치한 뒤 확인했습니다.
-  - 번들 `cygsane-genesys-1.dll` SHA-256이 빌드한 `libsane-genesys-1.dll`과 동일 (`37b6df9a…`).
-  - OpticFilm 8100 Gray 16-bit **연속 2회 성공**: 16,658/16,781ms, 1,010,302B,
+  - 번들 `cygsane-genesys-1.dll` SHA-256이 빌드한 `libsane-genesys-1.dll`과 동일 (`ff4803bb…`).
+  - GPL 대응 소스 payload 에 11개 패치 전부가 들어갔고 `010`·`011` 해시가 커밋본과 일치.
+  - OpticFilm 8100 Gray 16-bit **12회 중 11 성공**: 16,7xx~16,9xx ms, 1,010,302B,
     856×590 Samples/Pixel 1, 예고/실제 바이트 일치, 경고 없음.
   - OpticFilm 8100 Color 16-bit 회귀 성공 (856×590, Samples/Pixel 3).
   - Epson GT-X900 Gray/Color 16-bit 모두 성공.
   - Negaflow host `--scanner-live-end-to-end` 네 조합 모두 published 1/1.
-- **dirty tree에서 만든 산출물입니다.** 최종 릴리스는 010·011 패치를 포함해 커밋한 뒤
-  같은 소스에서 다시 빌드하고, 그 해시로 이 절을 갱신해야 GPL 대응 소스와 일치합니다.
+
+### OPEN · 설치 직후 첫 스캔의 간헐 `sane_start` I/O 실패
+
+위 12회 중 실패한 1회는 `sane_start: Error during device I/O`, 소요 **121,001ms**, 0B
+였습니다. 121초는 Windows still-image 클래스 드라이버의 2분 `ERROR_SEM_TIMEOUT`(121)과
+일치하며, patch 008 이 다루는 **파킹 중 장치가 control transfer 에 답하지 않는** 계열입니다.
+
+- 실패 시점은 설치 프로그램이 방금 DLL 을 교체한 직후의 첫 스캔이었습니다.
+- 재현 A(장치 탐색 없이 연속 3회) **3/3 성공**, 재현 B(`scanimage -L` 직후 스캔 ×2)
+  **2/2 성공**. 두 가설 모두 재현하지 못했으므로 원인을 확정으로 적지 않습니다.
+- Gray 전용이라는 증거는 없습니다. 실패는 mode 별 처리 이전의 `sane_start` 에서 났고,
+  같은 계열을 `SOURCES.md` §008 이 Color 포함으로 이미 기록합니다.
+- 다음 작업: 설치→첫 스캔을 반복해 재현부터 시도합니다.

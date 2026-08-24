@@ -195,12 +195,18 @@ host-side Gray는 3채널을 획득한다. native Gray가 멀쩡한 장치에 �
 | TIFF | 856×590, 16-bit, SPP 1 | 동일 |
 | Color 16-bit 회귀 | 정상 | 정상 (856×590, SPP 3, exit 0) |
 
+재빌드한 배포본으로 다시 돌린 Gray 는 **12회 중 11 성공**이다. 실패한 1회는
+`sane_start: Error during device I/O`, 121,001ms, 0B 였고 121초는 Windows still-image
+드라이버의 2분 `ERROR_SEM_TIMEOUT`(121)과 일치한다 — 008 이 다루는 파킹 계열이다. 실패
+시점은 설치 프로그램이 DLL 을 막 교체한 직후의 첫 스캔이었고, 연속 3회와 `-L` 직후 스캔
+×2 어느 쪽으로도 재현하지 못했다. Gray 전용이라는 증거는 없다. **OPEN 으로 남긴다.**
+
 전체 001~011 패치를 clean 작업 디렉터리에서 빌드한 SANE `1.4.0-5` 패키지 SHA-256은
-`31d00ae1701ea4040ab058a81068aa1a5be43995e924583f751e60f5b08f6703`,
+`f777d88d74d05318761ffab3d46a93e18844588243c56cbc54562035c39e7073`,
 그것으로 만든 setup SHA-256은
-`ba79f19165cc099105617a83d5b0cc3dd8693330511d8ced0bcf95db23677851`다. 이 setup을 실제 host
+`092cf0b2a615f41d9cd97435661f8d6e3619f3c8396c0cf69bb4fbb843f5b915`다. 이 setup을 실제 host
 경로 `%LOCALAPPDATA%\Negaflow\Plugins\sane`에 무인 설치한 뒤 번들
-`cygsane-genesys-1.dll`의 SHA-256이 빌드한 `libsane-genesys-1.dll`과 같음(`37b6df9a…`)을
+`cygsane-genesys-1.dll`의 SHA-256이 빌드한 `libsane-genesys-1.dll`과 같음(`ff4803bb…`)을
 확인했고, 그 설치 경로로 위 Gray 연속 2회를 다시 통과했다.
 
 #### 왜 고친 백엔드가 한동안 로드되지 않았는가

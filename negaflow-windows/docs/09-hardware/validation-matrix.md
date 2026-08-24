@@ -42,6 +42,9 @@ native Gray 가 되는 장치에 켜면 느려지는 회귀입니다. 각 행은
 ## 각 장치에서 남은 확인
 
 - (닫힘 2026-08-25) `HOST_SIDE_GRAY` 설치본의 Gray 16-bit 연속 2회와 Color 16-bit 회귀
+- **OPEN** 설치 직후 첫 스캔의 간헐 `sane_start` I/O 실패. 재빌드 배포본 Gray 12회 중
+  1회가 121,001ms 뒤 0B 로 실패(=still-image 드라이버 2분 `ERROR_SEM_TIMEOUT`). 연속 3회,
+  `-L`+스캔 ×2 로 재현 실패. Gray 전용 증거 없음. 설치→첫 스캔 반복으로 재현부터 시도
 - 스캔 중 취소 후 바로 다음 스캔
 - USB 분리·재연결 뒤 detect와 scan
 - 다른 스캔 프로그램이 장치를 점유한 상태의 오류
