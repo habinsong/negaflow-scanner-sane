@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     downstream SANE 런타임(mingw-w64-ucrt-x86_64-sane)을 저장소의 PKGBUILD 와
     patches/ 로 빌드하고 MSYS2 UCRT64 에 설치한다.
