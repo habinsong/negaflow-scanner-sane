@@ -7,11 +7,21 @@
   CreateFileW 가 그 경로를 열지 못하고, 실패는 "출력 파일을 만들 수 없습니다"
   라는 원인 없는 오류로만 보인다.
   근거: docs/03-process-and-io/child-process.md §14
+
+  activeCodePage=UTF-8 은 이 프로세스의 ANSI 코드 페이지를 UTF-8 로 고정한다.
+  없으면 시스템 ACP(한국어 Windows 에서는 CP949)가 쓰이고, wire 로 들어온 UTF-8
+  문자열이 그 코드 페이지로 해석된다. 실측(2026-08-22): 스캔 목적지 폴더 이름이
+  한국어일 때 `std::filesystem::path` 의 narrow→wide 변환이 실패하며 예외를 던졌고,
+  아무도 잡지 않아 std::terminate → abort(0xC0000409, subcode 7)로 죽었다.
+  호스트에는 "ProcessFailed" 한 줄만 보였다. wire 계약이 UTF-8 이므로 프로세스의
+  narrow 인코딩도 UTF-8 이어야 한다.
 -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+    <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings"
+                       xmlns:ws3="http://schemas.microsoft.com/SMI/2019/WindowsSettings">
       <ws2:longPathAware>true</ws2:longPathAware>
+      <ws3:activeCodePage>UTF-8</ws3:activeCodePage>
     </windowsSettings>
   </application>
 </assembly>

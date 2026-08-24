@@ -30,6 +30,7 @@
 #include <io.h>
 #include <stdio.h>
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
@@ -61,6 +62,36 @@ using namespace negaflow;
     WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), out.data(), needed,
                         nullptr, nullptr);
     return out;
+}
+
+/// UTF-8 바이트열을 그대로 wide 로 옮긴다.
+///
+/// ☠️ **`std::string` 을 `std::filesystem::path` 에 그냥 넘기면 안 된다.** MSVC 의
+///    `path` 는 narrow→wide 변환에 **CRT 로캘 코드 페이지**를 쓴다. 그것은 기본적으로
+///    시스템 ANSI(한국어 Windows 에서는 CP949)이고, wire 로 들어온 UTF-8 한글 바이트는
+///    거기서 유효하지 않다. 변환이 실패하면 `path` 는 **예외를 던지고**, 여기에는 그것을
+///    잡는 곳이 없어 `std::terminate` → `abort` 로 죽는다.
+///
+///    실측(2026-08-22): 목적지가 `...\color-negative\무제 필름\...` 일 때
+///    `0xC0000409`(subcode 7 = FAST_FAIL_FATAL_APP_EXIT), 폴트 오프셋이 CRT `abort()`.
+///    같은 요청을 ASCII 경로로 보내면 정상 완료된다.
+///
+///    매니페스트의 `activeCodePage=UTF-8` 이 이 프로세스의 ACP 를 UTF-8 로 고정하지만,
+///    그것은 Windows 10 1903 이상에서만 듣는다. 경계에서 명시적으로 변환해 두면 OS
+///    버전과 무관하게 같은 결과가 된다.
+[[nodiscard]] std::wstring widen(std::string_view utf8) {
+    if (utf8.empty()) return {};
+    const int needed = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()),
+                                           nullptr, 0);
+    if (needed <= 0) return {};
+    std::wstring out(static_cast<std::size_t>(needed), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()), out.data(), needed);
+    return out;
+}
+
+/// wire 의 UTF-8 경로 문자열을 파일 시스템 경로로. 위 주석의 이유로 반드시 이것을 쓴다.
+[[nodiscard]] std::filesystem::path utf8Path(std::string_view utf8) {
+    return std::filesystem::path{widen(utf8)};
 }
 
 /// `GetCommandLineW` 를 CRT 와 같은 규칙으로 나눈다.
@@ -283,8 +314,8 @@ void emitError(wire::EventEmitter& emitter, wire::ByteSink& sink, std::string me
     };
 
     app::ScanOutcome outcome;
-    if (auto scanError = backend.scan(options, request->capabilityToken, request->outputPath,
-                                      progress, &outcome)) {
+    if (auto scanError = backend.scan(options, request->capabilityToken,
+                                      utf8Path(request->outputPath), progress, &outcome)) {
         emitError(emitter, sink, scanError->description());
         return 1;
     }
