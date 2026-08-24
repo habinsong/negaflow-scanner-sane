@@ -1,7 +1,8 @@
 # 실전 교훈 — 무엇이 통했고 무엇이 터졌는가
 
-기준일: 2026-08-04
-상태: 사실 기록 — macOS 구현 과정에서 실제로 일어난 일
+기준일: 2026-08-16
+최종 상태 검토: 2026-08-25
+상태: 과거 사실 기록. 현재 Windows 상태와 다음 확인은 `../00-overview/handoff.md`를 따릅니다.
 목적: Windows 이식이 **같은 함정을 다시 밟지 않게** 한다
 
 관련 문서:
@@ -332,7 +333,7 @@ concurrency로 컴파일되는데 로컬 기본 설정이 그렇지 않았기 �
 이 플러그인 테스트가 건드릴 수 있는 것:
 
 ```text
-%LOCALAPPDATA%\Negaflow\ScannerPlugins\   설치 위치
+%LOCALAPPDATA%\Negaflow\Plugins\          설치 위치
 SANE 설정 디렉터리                          dll.conf 등
 %TEMP%                                     중간 파일
 레지스트리                                  (현재 안 씀 — 계속 안 쓴다)

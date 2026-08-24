@@ -1,5 +1,7 @@
 # Third-party notices
 
+Last updated: 2026-08-25
+
 The standard and Coolscan installers contain or install the following
 independent software.
 
@@ -55,9 +57,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   `Formula/sane-backends-negaflow.rb`
 
 The installer distribution does not contain or redistribute a `sane-backends` bottle or SANE runtime binary.
-The Coolscan installer's GPL source payload contains a Homebrew formula with the upstream two-line
-`coolscan2`/`coolscan3` word-list allocation fix. Homebrew verifies the pinned source SHA-256,
-applies that patch, and builds the separate `sane-backends-negaflow` keg locally.
+The Coolscan installer's GPL source payload contains a Homebrew formula whose `__END__` section carries
+the complete patch set applied to the pinned upstream source: the `coolscan2`/`coolscan3` word-list
+allocation fixes, the `epson2` scan-height and infrared-frame fixes, and the `genesys` OpticFilm
+host-side Gray fixes (`genesys.cpp` colour-filter gate, `tables_model.cpp` model flag,
+`gl846.cpp` host-side Gray output length). Homebrew verifies the pinned source SHA-256, applies
+those patches, and builds the separate `sane-backends-negaflow` keg locally. Every patch is
+GPL-2.0-or-later and is distributed as source inside the formula itself.
 
 ### Windows redistributes the runtime, macOS does not
 
@@ -68,8 +74,8 @@ obligations are different and stronger.
 - Upstream source: `backends-1.4.0.tar.bz2` from
   <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
 - Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
-- License: GPL-2.0-or-later (with the SANE exception)
-- Modifications: eight patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
+- License: GPL-2.0-or-later
+- Modifications: eleven patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
   described in [`sane-runtime/SOURCES.md`](sane-runtime/SOURCES.md)
 - Build recipe: [`sane-runtime/PKGBUILD`](sane-runtime/PKGBUILD), based on the
   MSYS2 `mingw-w64-sane` package
@@ -79,7 +85,7 @@ obligations are different and stronger.
 `mingw-w64-sane` package (GPL-2.0-or-later, same licence as the work it patches):
 <https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane>
 
-The other seven are written for this project.
+The other ten are written for this project.
 
 **Because a Windows release distributes GPL binaries, it must carry the
 corresponding source.** The recipe above plus the pinned tarball hash reproduces

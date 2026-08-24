@@ -1,6 +1,7 @@
 # 환경과 경로
 
 기준일: 2026-08-04
+최종 상태 검토: 2026-08-25
 기준 커밋: c554aaf
 상태: 이식 정본 — 전면 재설계 대상
 코드 근거: `SANEBackend+Environment.swift`, `SaneConfigTuner.swift`,
@@ -163,7 +164,7 @@ macOS 에도 같은 검증을 추가하는 것을 권장하되 별도 작업으�
 **(b) 빌드 시 `--libdir`을 우리 레이아웃에 맞춘다**
 
 재빌드할 것이므로 가능하다. 다만 설치 경로가 고정돼야 한다
-(`%LOCALAPPDATA%\Negaflow\ScannerPlugins\sane\sane\lib\sane`).
+(`%LOCALAPPDATA%\Negaflow\Plugins\sane\sane\lib\sane`).
 사용자가 옮기면 깨진다.
 
 **(c) `SetDllDirectory` / `AddDllDirectory`**
@@ -262,7 +263,7 @@ SANE_DEBUG_DLL, SANE_DEBUG_<BACKEND>
 ## 6. 플러그인 설치 경로
 
 ```text
-%LOCALAPPDATA%\Negaflow\ScannerPlugins\sane\
+%LOCALAPPDATA%\Negaflow\Plugins\sane\
     negaflow-scanner-sane.exe
     manifest.json
     sane\
@@ -274,7 +275,7 @@ SANE_DEBUG_DLL, SANE_DEBUG_<BACKEND>
 ```
 
 negaflow 본체 negaflow-windows/docs의 `10-scanner/plugin-architecture.md` §6이
-`%LOCALAPPDATA%\Negaflow\ScannerPlugins\<plugin-id>\`를 1차 user-scope
+`%LOCALAPPDATA%\Negaflow\Plugins\<plugin-id>\`를 1차 user-scope
 root로 정의한다. 그것을 따른다.
 
 플러그인 ID는 `sane`이다(현재 `manifest.json`). 그 ID의 Windows 규칙

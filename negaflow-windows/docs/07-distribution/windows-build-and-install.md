@@ -1,7 +1,9 @@
 # Windows 빌드와 설치 파일
 
-기준일: 2026-08-16
-상태: x64 로컬 CI에서 Release build, CTest, setup 설치 payload, 설치본 `detect`, 제거 통과. 실제 장치 scan과 GitHub 실행 결과는 별도입니다.
+기준일: 2026-08-25
+상태: x64 Release build와 CTest 5/5를 통과했습니다. V700·OpticFilm 8100 의 Color/Gray 와
+V700 IR 실장 결과가 있고 Gray 는 patch 011 로 닫혔습니다. 커밋된 소스에서의 재빌드와
+GitHub 실행 결과는 별도입니다.
 
 ## 1. 사용자 설치
 
@@ -113,3 +115,24 @@ recipe까지 재현된 Windows release PC에서 위 스크립트로 만들고, s
 - 로그: `out\logs\local-ci-20260817-000901.log`
 - 설치 파일 SHA-256: `85b1928ec01a8729af4de27d09805ed2bf336deaf41680b55f9ad39f2066fe09`
 - 실제 8100/V700 scan, IR, 취소, 재연결, 반복 스캔은 이 로컬 CI의 범위가 아닙니다.
+
+## 7. 2026-08-25 Gray runtime 체크포인트
+
+- SANE 1.4.0에 001~011 패치를 순서대로 적용해 clean 작업 디렉터리에서 빌드했습니다.
+  절차는 `scripts\build-sane-runtime.ps1`이 소유하며, PKGBUILD 의 `source=()`·`prepare()`와
+  `patches/`를 대조하고 CRLF 를 거부하고 설치 뒤 낡은 `cygsane-*` 그림자를 지웁니다.
+- **GL846** host-side Gray 종료 길이를 수정한 UCRT64 패키지 SHA-256:
+  `31d00ae1701ea4040ab058a81068aa1a5be43995e924583f751e60f5b08f6703`.
+  (이전 기록의 `e1f11ec7…`는 종료 길이 수정을 `gl843.cpp`에 넣은 판으로, OpticFilm 8100은
+  `AsicType::GL845`라 그 파일을 타지 않아 실제로는 아무 효과가 없었습니다.)
+- 해당 runtime으로 adapter Release build와 CTest 5/5를 통과해 만든 setup SHA-256:
+  `ba79f19165cc099105617a83d5b0cc3dd8693330511d8ced0bcf95db23677851`.
+- 이 setup을 `%LOCALAPPDATA%\Negaflow\Plugins\sane`에 무인 설치한 뒤 확인했습니다.
+  - 번들 `cygsane-genesys-1.dll` SHA-256이 빌드한 `libsane-genesys-1.dll`과 동일 (`37b6df9a…`).
+  - OpticFilm 8100 Gray 16-bit **연속 2회 성공**: 16,658/16,781ms, 1,010,302B,
+    856×590 Samples/Pixel 1, 예고/실제 바이트 일치, 경고 없음.
+  - OpticFilm 8100 Color 16-bit 회귀 성공 (856×590, Samples/Pixel 3).
+  - Epson GT-X900 Gray/Color 16-bit 모두 성공.
+  - Negaflow host `--scanner-live-end-to-end` 네 조합 모두 published 1/1.
+- **dirty tree에서 만든 산출물입니다.** 최종 릴리스는 010·011 패치를 포함해 커밋한 뒤
+  같은 소스에서 다시 빌드하고, 그 해시로 이 절을 갱신해야 GPL 대응 소스와 일치합니다.

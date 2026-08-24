@@ -1,7 +1,12 @@
 # SANE 런타임 빌드와 패치
 
-기준일: 2026-08-04
-상태: 설계 — 실행 전
+기준일: 2026-08-25
+상태: x64 downstream SANE 1.4.0-5와 001~011 패치를 빌드하고 실기 검증했습니다. 빌드 진입점은
+`../../scripts/build-sane-runtime.ps1` 이며, 손으로 패치를 복사하면 011 이 빠지는 사고가
+실제로 있었으므로 그 스크립트를 씁니다. 현재 recipe와
+패치별 출처·실측은 `../../../negaflow-mac/sane-runtime/PKGBUILD`와
+`../../../negaflow-mac/sane-runtime/SOURCES.md`가 정본이며, 실제 설치 절차는
+`../07-distribution/windows-build-and-install.md`가 우선입니다.
 목적: Windows용 SANE 런타임을 우리가 어떻게 만들고 무엇을 책임지는지 정한다
 
 관련 문서:
@@ -11,6 +16,21 @@
 - [gpl-compliance](../07-distribution/gpl-compliance.md)
 - [backend-quirks](../02-frontend-contract/backend-quirks.md)
 - [packaging-and-install](../07-distribution/packaging-and-install.md)
+
+## 0. 현재 구현
+
+- upstream `sane-backends` 1.4.0 고정 tarball 위에 11개 패치를 순서대로 적용한다.
+- 빌드 백엔드는 `genesys epson2 epsonds coolscan2 coolscan3 test`이며, 설치
+  payload에는 test를 제외한 다섯 백엔드를 넣는다.
+- 009는 epson2 IR 프레임, 010은 설치 번들의 backend 검색 경로, 011은
+  OpticFilm 7400-v2/8100 host-side Gray(색 필터 `None` 노출 포함)와 GL845/GL846 종료
+  길이를 담당한다. 종료 길이를 `gl843.cpp` 에 넣으면 8100 은 `AsicType::GL845` 라
+  `CommandSetGl846` 을 쓰므로 아무 효과가 없다.
+- 2026-08-25 clean 작업 디렉터리 빌드, UCRT64
+  build, adapter Release CTest 5/5, 설치본 OpticFilm Gray 16-bit 연속 2회와 Color 회귀,
+  Negaflow host 종단 4조합을 통과했다. macOS formula 의 같은 수정은 맥 실장 검증이 남았다.
+- 아래 §1~§4는 macOS 패치와 초기 Windows 설계 판단의 역사적 근거다. 현재
+  Windows 파일 목록·번호·상태로 사용하지 않는다.
 
 ## 1. macOS에서 우리가 하고 있는 일
 
@@ -29,7 +49,7 @@
 빌드하게 하는 것은 현실적이지 않다. 따라서 Windows에서는 거의 확실히
 **바이너리를 배포하게 되고, 그 순간 GPL 소스 제공 의무가 우리에게 온다.**
 
-## 2. 현재 적용 중인 패치
+## 2. macOS 패치 기준 기록
 
 ### 2.0 무엇에 패치하는가 — 고정된 upstream 소스
 
@@ -100,7 +120,7 @@ https://gitlab.com/-/project/429008/uploads/
 | coolscan2/3 word-list | **예.** OS 무관한 힙 오버플로우다. Windows 힙이 조용히 넘어갈 수도 있지만 그것은 "동작한다"가 아니라 "아직 안 터졌다"이다 |
 | epson2 높이 | **선택.** 플러그인 쪽 `epson2AlignedHeightMM` 보정으로도 대응된다. 백엔드를 고치면 보정이 no-op가 되고, 고치지 않아도 계약이 지켜진다 |
 
-## 3. MSYS2 재빌드가 필요한 이유
+## 3. 초기 MSYS2 재빌드 판단
 
 **확인** — MSYS2 `mingw-w64-sane` 1.4.0-4의 `BACKENDS=` 허용 목록에
 다음이 없다.
@@ -122,7 +142,7 @@ https://gitlab.com/-/project/429008/uploads/
 힙 오버플로우를 안은 채 출하하게 된다.** Coolscan은 이 플러그인의 가장 강한
 Windows 존재 이유이므로 이것은 받아들일 수 없다.
 
-## 4. 재빌드 계획
+## 4. 초기 재빌드 계획 — 현재 구현 아님
 
 ### 4.1 무엇을 만드는가
 
@@ -254,7 +274,7 @@ SANE 프런트엔드가 공유하는 파일**이기 때문이다.
 Windows에서 우리가 SANE를 자체 디렉터리에 배치하면 이 문제가 사라진다.
 
 ```text
-%LOCALAPPDATA%\Negaflow\ScannerPlugins\sane\sane\etc\sane.d\dll.conf
+%LOCALAPPDATA%\Negaflow\Plugins\sane\sane\etc\sane.d\dll.conf
 ```
 
 이 파일은 **우리만 쓴다.** 다른 프로그램이 공유하지 않는다. 따라서:

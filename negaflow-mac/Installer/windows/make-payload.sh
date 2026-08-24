@@ -99,7 +99,7 @@ cat > "$OUT/source/README.txt" <<'TXT'
 This directory carries the source that corresponds to the binaries shipped
 here, as GPL-2.0-or-later requires.
 
-  sane-runtime/       the SANE build recipe, the seven patches applied to it,
+  sane-runtime/       the SANE build recipe and patches applied to it,
                       and SOURCES.md, which records the upstream tarball URL
                       and its SHA-256.  Together they rebuild the exact
                       scanimage.exe and backend DLLs in sane/.

@@ -1,0 +1,62 @@
+--- a/backend/dll.c
++++ b/backend/dll.c
+@@ -460,13 +460,29 @@ load (struct backend *be)
+   for (i = 0; i < NUM_OPS; ++i)
+     be->op[i] = op_unsupported;
+ 
+-  path = getenv ("LD_LIBRARY_PATH");
+-  if (!path)
+-    path = getenv ("SHLIB_PATH");	/* for HP-UX */
+-  if (!path)
+-    path = getenv ("LIBPATH");	/* for AIX */
+-
++#ifdef HAVE_WINDOWS_H
++  /* A redistributable Windows bundle cannot use the build machine's
++     absolute LIBDIR.  The launcher sets this to its sane\\bin directory. */
++  path = getenv ("SANE_BACKEND_DIR");
+   if (path)
++    {
++      src = strdup (path);
++      if (!src)
++        {
++          DBG (1, "load: strdup failed: %s\\n", strerror (errno));
++          return SANE_STATUS_NO_MEM;
++        }
++    }
++  else
++#endif
++    {
++      path = getenv ("LD_LIBRARY_PATH");
++      if (!path)
++        path = getenv ("SHLIB_PATH");	/* for HP-UX */
++      if (!path)
++        path = getenv ("LIBPATH");	/* for AIX */
++
++      if (path)
+     {
+       src_len = strlen (path) + strlen (DIR_SEP) + strlen(LIBDIR) + 1;
+       src = malloc (src_len);
+@@ -477,14 +493,15 @@ load (struct backend *be)
+ 	}
+       snprintf (src, src_len, "%s%s%s", path, DIR_SEP, LIBDIR);
+     }
+-  else
+-    {
+-      src = LIBDIR;
+-      src = strdup (src);
+-      if (!src)
+-	{
+-	  DBG (1, "load: strdup failed: %s\n", strerror (errno));
+-	  return SANE_STATUS_NO_MEM;
++      else
++        {
++          src = LIBDIR;
++          src = strdup (src);
++          if (!src)
++	    {
++	      DBG (1, "load: strdup failed: %s\n", strerror (errno));
++	      return SANE_STATUS_NO_MEM;
++	    }
+ 	}
+     }
+   DBG (3, "load: searching backend `%s' in `%s'\n", be->name, src);

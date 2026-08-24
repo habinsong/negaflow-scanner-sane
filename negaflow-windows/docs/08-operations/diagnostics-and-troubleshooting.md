@@ -1,6 +1,7 @@
 # 진단과 문제 해결
 
 기준일: 2026-08-04
+최종 상태 검토: 2026-08-25
 상태: 설계
 목적: README의 macOS 문제 해결 절차를 Windows로 옮기고, 로그 정책을 정한다
 
@@ -82,7 +83,7 @@ negaflow-scanner-sane.exe diagnose
 출력(사람이 읽는 형태, stderr):
 
 ```text
-negaflow-scanner-sane 1.0.3 (win-x64)
+negaflow-scanner-sane 1.0.4 (win-x64)
 
 [플러그인]
   실행 파일: C:\Users\...\negaflow-scanner-sane.exe
@@ -306,7 +307,7 @@ Windows가 유휴 USB 장치의 전원을 끈다. 긴 스캔 중에는 활동이
 ```text
 제외 경로 권장:
   <staging 디렉터리>
-  %LOCALAPPDATA%\Negaflow\ScannerPlugins\sane\
+  %LOCALAPPDATA%\Negaflow\Plugins\sane\
 ```
 
 **사용자에게 안티바이러스를 끄라고 하지 않는다.** 특정 경로 제외만 안내한다.

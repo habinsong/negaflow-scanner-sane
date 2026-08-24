@@ -1,6 +1,7 @@
 # macOS 구현 인벤토리
 
 기준일: 2026-08-04
+최종 상태 검토: 2026-08-25
 기준 커밋: c554aaf
 상태: 사실 기록 — Windows 설계의 입력
 목적: Windows 이식이 보존해야 할 **현재 동작**을 파일 단위로 확정한다
@@ -383,7 +384,7 @@ Windows에는 keg 개념이 없으므로 이 우선순위 자체를 다시 설�
 |---|---|
 | Homebrew, keg, `brew install sane-backends` | 없음. SANE 런타임 전달 방식 자체가 미결 |
 | `.pkg`/`.dmg`, Distribution.xml, notarization | MSI/MSIX + Authenticode |
-| `~/Library/Application Support/negaflow/Plugins` | `%LOCALAPPDATA%\Negaflow\ScannerPlugins` |
+| `~/Library/Application Support/negaflow/Plugins` | `%LOCALAPPDATA%\Negaflow\Plugins` |
 | POSIX 신호 취소 | 신호 없음 — 새 취소 설계 필요 |
 | `dll.conf` 주석 복구 | SANE 설정 파일이 존재하는지 자체가 경로에 따라 다름 |
 | `codesign`/`spctl` | `signtool`/`WinVerifyTrust` |

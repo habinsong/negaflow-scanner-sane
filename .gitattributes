@@ -1,4 +1,6 @@
 # SANE 런타임 패치와 PKGBUILD 는 MSYS2 의 patch(1) / makepkg 가 읽는다.
-# CRLF 로 바뀌면 패치가 적용되지 않는다.
-sane-runtime/patches/*.patch text eol=lf
-sane-runtime/PKGBUILD       text eol=lf
+# CRLF 로 바뀌면 패치가 적용되지 않고, makepkg 의 고정 sha256 도 어긋난다.
+# 경로에 `/` 가 들어간 패턴은 이 파일이 있는 디렉터리에 고정되므로
+# 저장소 루트 기준의 전체 경로를 적는다.
+negaflow-mac/sane-runtime/patches/*.patch text eol=lf
+negaflow-mac/sane-runtime/PKGBUILD        text eol=lf

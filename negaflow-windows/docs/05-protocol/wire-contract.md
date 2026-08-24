@@ -1,6 +1,7 @@
 # wire 계약 (플러그인 쪽)
 
 기준일: 2026-08-04
+최종 상태 검토: 2026-08-25
 기준 커밋: c554aaf
 상태: 이식 정본
 범위: 이 플러그인이 **내는** 것과 **받는** 것
@@ -38,7 +39,7 @@
   "kind": "scanner",
   "license": "GPL-2.0-or-later",
   "homepage": "https://github.com/habinsong/negaflow-scanner-sane",
-  "pluginVersion": "1.0.3"
+  "pluginVersion": "1.0.4"
 }
 ```
 
@@ -58,8 +59,8 @@ Windows에서 바뀌는 것은 `executable`뿐이다.
 아키텍처별 매니페스트가 필요한가? 호스트가 실행 파일의 PE machine type을
 확인하므로(본체 negaflow-windows/docs `10-scanner/plugin-architecture.md` §6.3
 "executable path"), 매니페스트에 아키텍처 필드는 필요 없다.
-x64용과 ARM64용을 **별도 설치물**로 배포하고 각각 `executable` 이름은
-같게 유지한다.
+현재 배포물은 x64만 제공합니다. ARM64를 추가할 때도 별도 설치물과 같은
+`executable` 이름을 사용합니다.
 
 ## 3. `detect`
 

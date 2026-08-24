@@ -1,5 +1,7 @@
 # SANE runtime — sources and patches
 
+최종 갱신: 2026-08-25
+
 Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 플러그인은 이 런타임을 **자식 프로세스(`scanimage.exe`)로 실행**하고 링크하지
 않는다. 그래도 배포하는 바이너리에는 GPL 의무가 붙으므로, 여기 있는 것만으로
@@ -13,7 +15,7 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | 버전 | 1.4.0 |
 | 원본 | `https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2` |
 | sha256 | `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d` |
-| 라이선스 | GPL-2.0-or-later (SANE 예외 조항 포함) |
+| 라이선스 | GPL-2.0-or-later |
 
 빌드 레시피는 [`PKGBUILD`](PKGBUILD) 이며 MSYS2 의
 `mingw-w64-sane` 를 기반으로 한다. 빌드 대상 백엔드는
@@ -31,6 +33,9 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | `006-debug-output-on-mingw.patch` | 이 저장소 | `SANE_DEBUG_*` 를 켜면 프론트엔드가 segfault 하던 것을 고친다 |
 | `007-cancel-on-sigbreak.patch` | 이 저장소 | Windows 에서 취소가 스캐너를 죽이지 않게 한다. 아래 참조 |
 | `008-opticfilm-wait-for-park.patch` | 이 저장소 | OpticFilm 이 스캔 헤드를 세운 뒤 끝나게 한다. 아래 참조 |
+| `009-expose-infrared-frame.patch` | 이 저장소 | `epson2`가 IR 프레임을 별도 `SANE_FRAME_IR`로 반환하도록 한다 |
+| `010-bundled-backend-dir.patch` | 이 저장소 | 설치 번들의 백엔드 디렉터리를 `SANE_BACKEND_DIR`로 지정할 수 있게 한다 |
+| `011-opticfilm-host-side-gray.patch` | 이 저장소 | OpticFilm 7400-v2/8100의 멎는 단일채널 Gray 대신 기존 스트리밍 RGB→Gray 경로를 사용하고 GL845/GL846 의 빠진 출력 길이 계산을 바로잡는다 |
 
 ### 005 — usbscan.sys 백엔드
 
@@ -120,25 +125,102 @@ libusb 로도 보이는 같은 하드웨어는 열거에서 뺀다 — 열 수 �
 마지막 줄이 중요하다. **Zadig 로 드라이버를 바꿨어도 같은 벽에 부딪혔을
 것이다.** usbscan.sys 를 고른 것이 이 문제의 원인이 아니다.
 
-### Gray 모드는 upstream 결함이다 — 우리 쪽 문제가 아니다
+### 011 — OpticFilm 7400-v2/8100 Gray 정지와 GL845/GL846 출력 길이
 
-OpticFilm 8100 을 `--mode Gray` 로 스캔하면 genesys 가 스캔을 시작하고
-`sanei_genesys_is_buffer_empty` 를 무한히 폴링한다. 타임아웃도 나지 않는다.
-실측으로 20분 이상 그 상태였다. 같은 조건의 `--mode Color` 는 17초에 끝난다.
+2026-08-25 OpticFilm 8100, 600 DPI, 16-bit 실측에서 원본 1.4.0의 단일채널
+Gray 경로는 dark/white calibration과 `begin_scan`까지 끝낸 뒤 장치 버퍼가 계속
+비어 있어 `wait_until_buffer_non_empty()`에서 멎었다. 출력은 0B였다. 같은 장치와
+영역의 Color는 856×590, 16-bit, RGB로 끝났으므로 Gray 미지원으로 숨기지 않고
+SANE에 이미 있는 `ModelFlag::HOST_SIDE_GRAY`를 먼저 검증하기로 했다.
 
-같은 증상이 **Linux 에서 독립적으로 보고돼 있다** — sane-devel, Plustek
-OpticFilm 8200i:
+패치는 hunk 세 개다. 범용성이 서로 다르므로 나눠서 적는다.
 
-> "scan and preview do not work in grayscale mode" — 스캔이 시작은 되지만
-> 끝에서 멈춰 프론트엔드를 강제 종료해야 한다. 컬러는 정상이고, Windows 와
-> VueScan 에서는 잘 된다.
+| hunk | 파일 | 분기 조건 | 성격 |
+|---|---|---|---|
+| 1 | `backend/genesys/genesys.cpp` | `ModelFlag::HOST_SIDE_GRAY` | flag 기반. 모델명 없음 |
+| 2 | `backend/genesys/tables_model.cpp` | 7400-v2 행 (8100 이 상속) | 모델 행. 증거 범위 한정 |
+| 3 | `backend/genesys/gl846.cpp` | `session.use_host_side_gray` | 세션 속성. upstream 버그 수정 |
 
-즉 genesys 의 GL845/GL846 Gray 경로 자체가 미완성이다. Windows 포팅이나
-usbscan.sys 와 무관하다.
+**hunk 1** 없이는 hunk 2 가 무의미하다. `compute_session()`의 host-side Gray 조건은
+`color_filter == ColorFilter::NONE`인데, `genesys.cpp`는 CCD(`is_cis == false`) 스캐너에
+`Red|Green|Blue`만 주고 기본값을 `Green`으로 잡는다. OpticFilm은 CCD다. 그래서 이 분기를
+`HOST_SIDE_GRAY` flag 기준으로 넓혔다. 설치 번들에서 실제
+`--color-filter Red|Green|Blue|None [None]`을 확인했다.
 
-**제품에는 영향이 없다.** 플러그인은 필름 네거티브를 Color 로 스캔한다
-(`windows/src/app/backend.h` 의 `colorMode` 기본값). Gray 는 적외선 채널
-파일의 TIFF 검증에만 쓰이고, 8100 에는 적외선 채널이 없다.
+**hunk 2** 가 켜지면 SANE의 기존 파이프라인이 장치에는 RGB single-pass를 요청하고,
+`ImagePipelineNodeMergeColorToGray`가 한 행짜리 임시 버퍼에서 RGB를 Gray로 합친다.
+전체 RGB 영상을 추가 보관하지 않는다.
+
+**hunk 3 에서 한 번 헛짚었다.** 첫 패치 실장 결과는 정지 없이 종료됐지만 성공은 아니었다.
+`scanimage`는 1,010,080B를 예고하고 3,030,240B를 받아 “read more data than announced”를
+냈으며 파일은 3,030,462B였다. 코드 대조로 GL841은 host-side Gray일 때
+`total_bytes_to_read`를 3으로 나누지만 다른 command set에는 그 줄이 없는 것이 확인됐다.
+그래서 처음에는 그 계산을 `gl843.cpp`에 넣었다 — **그런데 8100은 `gl843.cpp`를 한 줄도
+타지 않는다.**
+
+```
+tables_model.cpp  : plustek-opticfilm-8100 → model.asic_type = AsicType::GL845
+low.cpp:64        : case AsicType::GL845:   // 흘려보냄
+low.cpp:65        : case AsicType::GL846: return new gl846::CommandSetGl846{};
+```
+
+게다가 현재 `HOST_SIDE_GRAY`를 켠 모델(upstream 3개 + 우리 1개)에 GL843은 하나도 없어서
+gl843 쪽 수정은 **컴파일만 되고 절대 실행되지 않는 죽은 코드**였다. 빌드는 성공하고 기능만
+그대로이므로 로그로는 알 수 없다. 실기 스캔의 바이트 수로만 드러났다. `gl846.cpp`로 옮긴 뒤
+통과했다.
+
+#### hunk 2 의 범위를 왜 넓히지 않는가
+
+`tables_model.cpp`는 SANE이 모델별 하드웨어 사실을 적는 표다. upstream도 GL841 3개 행에
+같은 방식으로 이 flag를 켠다. 그렇더라도 실기 증거는 **OpticFilm 8100 한 대뿐**이다.
+
+| 모델 | ASIC | flag |
+|---|---|---|
+| 7200 | GL842 | 끄기 — 미검증 |
+| 7200i / 7200-v2 / 7300 / 7400-v1 / 7500i / 7600i-v1 | GL843 | 끄기 — 미검증 |
+| **7400-v2** | **GL845** | **켜기** — 8100이 이 행을 상속 |
+| **8100** | **GL845** | **켜기** — 실기 증거 |
+| 8200i / 7600i-v2 | GL845 | 끄기 — 미검증 |
+
+host-side Gray는 3채널을 획득한다. native Gray가 멀쩡한 장치에 켜면 **느려지는 회귀**다.
+어떤 행을 켜려면 그 장치의 실제 스캔 결과가 있어야 한다.
+
+#### 실기 결과
+
+| 항목 | 수정 전 | 수정 후 |
+|---|---|---|
+| Gray 16-bit 600 dpi | 무한 정지, 0B | exit 0, **16,658 / 16,781 ms** (연속 2회) |
+| 예고/실제 바이트 | `3030240 / 1010080` 경고 | 경고 없음, 정확히 일치 |
+| 파일 | 3,030,462B | **1,010,302B** |
+| TIFF | 856×590, 16-bit, SPP 1 | 동일 |
+| Color 16-bit 회귀 | 정상 | 정상 (856×590, SPP 3, exit 0) |
+
+전체 001~011 패치를 clean 작업 디렉터리에서 빌드한 SANE `1.4.0-5` 패키지 SHA-256은
+`31d00ae1701ea4040ab058a81068aa1a5be43995e924583f751e60f5b08f6703`,
+그것으로 만든 setup SHA-256은
+`ba79f19165cc099105617a83d5b0cc3dd8693330511d8ced0bcf95db23677851`다. 이 setup을 실제 host
+경로 `%LOCALAPPDATA%\Negaflow\Plugins\sane`에 무인 설치한 뒤 번들
+`cygsane-genesys-1.dll`의 SHA-256이 빌드한 `libsane-genesys-1.dll`과 같음(`37b6df9a…`)을
+확인했고, 그 설치 경로로 위 Gray 연속 2회를 다시 통과했다.
+
+#### 왜 고친 백엔드가 한동안 로드되지 않았는가
+
+`dll.c`는 Windows에서 백엔드를 **`cygsane-<backend>-1.dll`** 이름으로만 `dlopen` 한다.
+빌드 산출물은 `libsane-<backend>-1.dll`이고 `make-payload.sh`가 복사하며 이름을 바꾼다.
+그런데 `$MINGW_PREFIX/lib/sane/`에 예전에 손으로 복사해 둔 `cygsane-*`가 남아 있으면
+**새로 빌드한 백엔드를 영원히 가린다.** 진단 중 MSYS2 런타임의 Gray가 무한 정지한 것이
+이것이었다. `negaflow-windows/scripts/build-sane-runtime.ps1`이 설치 뒤 이 그림자를 제거한다.
+
+#### macOS
+
+같은 hunk 3개를 `negaflow-mac/Formula/sane-backends-negaflow.rb`의 `__END__` payload에
+추가하고 version을 `1.4.0-negaflow.4`로 올렸다. 맥은 008(MUST_WAIT)을 적용하지 않으므로
+`tables_model` hunk는 맥 기준 context로 따로 만들었다. formula의 8개 hunk 전체가 실제 맥
+upstream tarball(`sane-backends-1.4.0.tar.gz`, sha256 `f99205c9…`)에 `patch -p1 --dry-run`
+으로 오프셋 0, fuzz 0으로 적용된다. **맥 실기 검증은 남아 있다** —
+절차와 합격 기준은 `../docs/opticfilm-gray.md`가 소유한다. 맥에서 실패하면 이 패치를
+유지하지 않고 Color RGB 획득 뒤 Negaflow의 흑백 네거/포지티브 현상 프로세스를 쓰는 것으로
+판정한다.
 
 ### 007 — 취소가 스캐너를 죽이던 것
 
@@ -231,8 +313,38 @@ OpticFilm 6개 항목에만 켰다. 8100 으로만 확인했고 나머지는 같
 
 ## 다시 만드는 법
 
+Windows 는 스크립트를 쓴다. 손으로 복사하지 말 것 — 아래 §"손으로 하면 틀리는 것" 참고.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File negaflow-windows\scripts\build-sane-runtime.ps1 -Clean
+```
+
+이 스크립트가 하는 일:
+
+1. PKGBUILD 의 `source=()` 와 `prepare()` 를 `patches/` 와 대조한다. 어느 쪽이든 빠지거나
+   남으면 빌드 전에 멈춘다.
+2. CRLF 로 오염된 패치·PKGBUILD 를 거부한다.
+3. 저장소 밖 작업 디렉터리에 staging 하고 `MSYSTEM=UCRT64 makepkg-mingw -sf --nocheck` 를 돈다.
+4. `pacman -U` 로 설치한 뒤 `$MINGW_PREFIX/lib/sane` 의 낡은 `cygsane-*` 그림자를 지운다.
+
+수동 절차가 꼭 필요하면 다음과 같다. **`patches/` 에서 복사해야 한다.**
+
 ```bash
 cp sane-runtime/PKGBUILD sane-runtime/patches/*.patch <작업 디렉터리>/
 cd <작업 디렉터리>
 MSYSTEM=UCRT64 makepkg-mingw -sf --nocheck
 ```
+
+### 손으로 하면 틀리는 것 — 실제로 세 번 틀렸다
+
+1. **`sane-runtime/` 최상위의 낡은 패치 복사본.** makepkg 작업 흔적으로 남아 있던 001~010
+   사본에는 011 이 없었다. `cp sane-runtime/*.patch` 로 잘못 옮기면 빌드는 성공하고 Gray
+   수정만 조용히 빠진다.
+2. **CRLF 오염.** 저장소 루트 `.gitattributes` 가 `sane-runtime/patches/*.patch` 로 적혀
+   있었는데, `/` 가 든 패턴은 그 파일이 있는 디렉터리에 고정되므로 실제 경로
+   `negaflow-mac/sane-runtime/...` 와 한 번도 일치하지 않았다. 001~009 가 CRLF 가 됐고
+   `patch(1)` 이 적용하지 못한다. 전체 경로로 고쳤다.
+3. **오염된 해시로 덮기.** 그 CRLF 를 고치는 대신 PKGBUILD 의 고정 sha256 을 CRLF 파일의
+   해시로 바꿔 놓은 적이 있다. 고정 해시는 **커밋된 LF 파일 기준**이어야 한다
+   (`001` → `c7d84a80d4f91000024562500b95de165b8200bae66f48d807e9f07e7e8f4bb2`).

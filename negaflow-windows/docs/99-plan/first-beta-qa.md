@@ -1,13 +1,17 @@
 # Windows 최초 QA·프리뷰 데모·베타 추적
 
-기준일: 2026-08-16
+기준일: 2026-08-25
 
 이 문서는 최초 QA·프리뷰 데모·베타 테스트의 SANE 어댑터 추적 문서다. 아래 사용자 목표의 기능·품질·성능·검증 범위는 축약하거나 재해석하지 않는다. 스캐너 어댑터 단독 검사와 Negaflow 호스트 통합 검사를 구분하며, 실제 장치 증거 없이 완료로 표시하지 않는다.
+
+현재 사용자 지시에 따라 렌더링된 UI/UX 최종 QA는 사용자가 직접 수행한다.
+Codex의 현재 책임은 코드·테스트·빌드·비UI 실장치 종단이며, 아래 과거
+`computer-use` 요구는 최초 QA 당시 기록이지 현재 실행 지시가 아니다.
 
 ## 사용자 목표
 
 1. GrainMend 기능이 동작하지 않고 "고칠 것을 찾지 못했습니다"만 표시된다. 자동·가이드·브러시·복제 도구·IR을 모두 macOS와 동일하게 동작하게 한다. 복제 도구가 잘려 보이는 문제도 수정한다.
-2. 창작한 UI/UX를 제거하고 각종 뷰의 크기·모양·모서리 라운딩·위치·정렬을 macOS와 동일하게 한다. 누락된 현상 버튼, 아예 만들지 않은 UI/UX, 백엔드에 연결되지 않은 UI를 모두 구현·연결한다. `C:\Users\habin\negaflow\negaflow_mac_screenshot`의 기준 화면을 그대로 대조한다.
+2. 창작한 UI/UX를 제거하고 각종 뷰의 크기·모양·모서리 라운딩·위치·정렬을 macOS와 동일하게 한다. 누락된 현상 버튼, 아예 만들지 않은 UI/UX, 백엔드에 연결되지 않은 UI를 모두 구현·연결한다. `C:\Users\habin\맥negaflow 스크린샷`의 기준 화면을 그대로 대조한다. 파일 전체 목록은 `C:\Users\habin\negaflow\negaflow-windows\docs\audit\11-ui-verification-protocol.md` 1.3절. 옛 `negaflow_mac_screenshot` 은 폐기.
 3. Library에서 사진을 불러온 뒤 Develop에서 이미지와 썸네일이 보여야 하며 하단 탭 전체가 동작해야 한다. Library와 Develop을 분리된 데이터 흐름으로 두지 않는다.
 4. 창작한 Develop 좌측 탭을 제거하고 macOS Develop 좌측 탭의 모든 기능과 여러 사진을 다루는 흐름을 동일하게 구현한다. Library 좌측 탭에만 있는 기능으로 축소하지 않는다.
 5. 창작한 UI/UX 때문에 글자가 잘리거나 가려지는 문제를 모든 화면·상태·지원 언어에서 수정한다.
@@ -15,7 +19,7 @@
 7. 자동 톤·자동 색상·자동 레벨이 모두 동작하고 실시간 사용에 적합한 속도를 내게 한다.
 8. 이미지 crop·rotate·flip을 포함한 모든 이미지 편집 기능의 속도와 반응성을 개선한다.
 9. Print에서 선택한 이미지가 표시되게 하고 UI/UX와 전체 기능을 macOS와 동일하게 구현한다.
-10. macOS 스크린샷과 동일한 UI/UX 위치·크기·모양 및 기능을 모두 구현한다. `computer-use`로 연결된 8100과 V700 스캐너를 사용해 스캔·보정·인화·내보내기 전체 흐름을 검증한다. `C:\Users\habin\OneDrive\바탕 화면\negaflow_test`로 일반 이미지 경로를 테스트하고 `C:\Users\habin\Downloads\golden\golden`으로 IR을 테스트한다. `C:\Users\habin\negaflow\negaflow-windows`와 `C:\Users\habin\negaflow-scanner-sane` 양쪽을 모두 수정·검증한다. 스크린샷 기준은 `C:\Users\habin\negaflow\negaflow_mac_screenshot`, macOS 코드 기준은 `C:\Users\habin\negaflow\negaflow-mac`과 `C:\Users\habin\negaflow-scanner-sane\negaflow-mac`이다. 검증되지 않은 상태에서 "다했습니다" 또는 "완성했습니다"라고 주장하지 않는다.
+10. macOS 스크린샷과 동일한 UI/UX 위치·크기·모양 및 기능을 모두 구현한다. `computer-use`로 연결된 8100과 V700 스캐너를 사용해 스캔·보정·인화·내보내기 전체 흐름을 검증한다. `C:\Users\habin\OneDrive\바탕 화면\negaflow_test`로 일반 이미지 경로를 테스트하고 `C:\Users\habin\Downloads\golden\golden`으로 IR을 테스트한다. `C:\Users\habin\negaflow\negaflow-windows`와 `C:\Users\habin\negaflow-scanner-sane` 양쪽을 모두 수정·검증한다. 스크린샷 기준은 `C:\Users\habin\맥negaflow 스크린샷`(PNG 50장, 목록 `negaflow-windows/docs/audit/11` 1.3절. 옛 `negaflow_mac_screenshot` 폐기), macOS 코드 기준은 `C:\Users\habin\negaflow\negaflow-mac`과 `C:\Users\habin\negaflow-scanner-sane\negaflow-mac`이다. 검증되지 않은 상태에서 "다했습니다" 또는 "완성했습니다"라고 주장하지 않는다.
 
 ## 추가 운영 요구
 
@@ -38,16 +42,16 @@
 
 | 목표 | 상태 | SANE 책임과 현재 확인 사실 | 수정할 것 | 수정한 것 | 검증한 것 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 미재현 | IR TIFF 제공과 호스트 전달이 직접 책임이며 GrainMend 적용은 본체 책임 | V700 IR 스캔→RGB/IR 격자·경로→호스트 import→결함 적용 전 구간 대조 | 없음 | 없음 |
+| 1 | 부분 검증 | IR TIFF 제공과 호스트 전달이 직접 책임이며 GrainMend 적용은 본체 책임 | 렌더링 UI와 결함이 있는 추가 실쌍 검증 | epson2 IR source 선택과 별도 IR frame, host RGB/IR 원자 게시·재열기 연결 | V700 600 DPI 16-bit RGB/IR 실쌍과 host GrainMend `NoDefects` 경계 통과 |
 | 2 | 미재현 | 스캐너 UI는 본체 책임, 장치·capability·진행·오류 계약은 어댑터 책임 | macOS wire 결과와 Windows 호스트 표시의 연결 검증 | 없음 | 없음 |
-| 3 | 미재현 | 스캔 결과 publish 후 Library/Develop 전달은 호스트 통합 경계 | scan result·infraredPath·artifact commit 영수증을 실제 앱에서 확인 | 없음 | 없음 |
+| 3 | 부분 검증 | 스캔 결과 publish 후 Library/Develop 전달은 호스트 통합 경계 | 렌더링된 Library/Develop/Print 표시를 사용자 QA로 확인 | visible/IR staging·commit·receipt·catalog 재열기 경로 수정 | 실제 V700 RGB/IR 1쌍이 visible frame 1개와 IR companion으로 재열림 |
 | 4 | 미재현 | Develop 좌측 탭은 본체 책임 | 스캔한 여러 프레임이 host interaction scope에 유지되는지 통합 검증 | 없음 | 없음 |
 | 5 | 미재현 | UI 문자열 클리핑은 본체 책임, 장치명·오류 문자열 데이터는 어댑터 책임. 다국어 확장 시 뒤쪽 글자 잘림·가림도 금지 | 여섯 지원 언어에서 긴 장치명·오류·진행 텍스트의 전체 표시·줄바꿈·접근성 이름 확인 | 없음 | 없음 |
 | 6 | 미재현 | Develop 슬라이더는 본체 책임 | 스캐너 자식 프로세스·배경 작업이 현상 preview를 방해하지 않는지 통합 계측 | 없음 | 없음 |
 | 7 | 미재현 | 자동 톤·색상·레벨은 본체 책임 | 스캔 publish 후 host 자동 보정 입력이 올바른지 확인 | 없음 | 없음 |
 | 8 | 미재현 | crop·rotate·flip은 본체 책임 | 스캔 원본과 recipe 분리·원본 불변성 통합 확인 | 없음 | 없음 |
 | 9 | 미재현 | Print는 본체 책임 | 스캔 결과가 host Print 대상 집합까지 전달되는지 통합 확인 | 없음 | 없음 |
-| 10 | 미재현 | 8100/V700 실제 스캔과 IR 산출이 직접 책임 | 두 장치 detect→capabilities→preview→full→IR→cancel/retry와 본체 전 구간 검증 | 없음 | 없음 |
+| 10 | 부분 검증 | 8100·V700 Color/Gray 실장 성공, V700 IR 성공, host 종단 4조합 published 1/1 | 취소·재연결·점유·ARM64·사용자 UI QA, 패치 010·011 커밋과 macOS 실기 | V700 source/IR와 host publish, OpticFilm `HOST_SIDE_GRAY` + 색 필터 `None` + GL846 길이 수정 | Release CTest 5/5, native 103/103, Catalog 785 · Shell 2,060 단언 실패 0, 설치본 Gray 연속 2회 성공 |
 
 호스트 UI와 연결되는 항목은 macOS에 해당 요소가 존재하는지, 같은 동작인지, 같은 위치인지, 같은 높이·너비인지, 같은 모양인지, 같은 모서리 반경인지, 문자열이 잘리거나 가리지 않는지, 장치·capability·진행·오류 백엔드가 실제로 연결됐는지, 같은 입력 상태에서 렌더한 Windows 캡처가 기준과 일치하는지를 모두 확인한다. 하나라도 없으면 완료가 아니다.
 
@@ -99,3 +103,24 @@
 - 수정할 것: 본체 최신 설치본에서 두 장치 capability와 실제 scan 전체 흐름을 검증한다.
 - 수정한 것: 이전 플러그인 설치를 로컬 CI 통과 setup으로 교체했다.
 - 검증한 것: 설치 adapter SHA-256 `e2a49ed244e8571e842a3efee19f9141dca28db7e056c0ec0ab01aa7aa2e0453`; `detect`가 `sane-epson2:usbscan:001` Epson GT-X900과 `sane-genesys:usbscan:000` Plustek OpticFilm 8100을 반환했다.
+
+### CP4 — V700 종단과 OpticFilm Gray 원인
+
+- 한 것: 최신 host/plugin으로 V700 Color/Gray × 8/16-bit, Color 16-bit IR 쌍,
+  host staging→commit→catalog publication→GrainMend IR→catalog 재열기를 실행했다.
+  OpticFilm은 Color 16-bit 성공 뒤 Gray 16-bit 정지를 direct `scanimage`까지 내려가 재현했다.
+- 확인한 원인: OpticFilm 단일채널 Gray는 calibration과 `begin_scan` 뒤 장치
+  버퍼가 비어 멎었다. `HOST_SIDE_GRAY` 를 켜면 정지는 사라지지만, 종료 길이를
+  3으로 줄이는 줄이 GL841에만 있어 예고량의 3배를 반환했다.
+- 수정한 것: 011 패치가 7400-v2/8100에서 기존 streaming RGB→Gray를 사용하고,
+  색 필터에 `None` 을 노출하며, **GL846** 에 GL841과 같은 종료 길이 계산을 넣는다.
+  종료 길이를 `gl843.cpp` 에 넣었던 첫 판은 8100이 `AsicType::GL845` 라
+  `CommandSetGl846` 을 쓰므로 아무 효과가 없었다. GPL 대응 소스 목록·recipe·
+  provenance·배포 문서와 001 패치 해시를 현재 tracked 파일에 맞췄다.
+- 검증한 것: clean 작업 디렉터리 UCRT64 1.4.0-5 build, adapter Release CTest 5/5,
+  설치본 OpticFilm Gray 16-bit 연속 2회(1,010,302B, SPP 1, 예고=실제)와 Color 회귀,
+  Epson GT-X900 Gray/Color, Negaflow host 종단 4조합 published 1/1. setup SHA-256은
+  `ba79f19165cc099105617a83d5b0cc3dd8693330511d8ced0bcf95db23677851`이다.
+- 남은 것: 패치 010·011 커밋과 커밋된 소스 재빌드, macOS formula 의 같은 수정을
+  맥 실기로 검증하는 것. 맥에서 실패하면 host-side Gray를 유지하지 않고
+  RGB 획득→흑백 현상으로 전환한다.

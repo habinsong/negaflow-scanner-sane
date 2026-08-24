@@ -1,5 +1,7 @@
 # Code and distribution provenance
 
+Last updated: 2026-08-25
+
 This file records the source and release boundary of `negaflow-scanner-sane`.
 It is an auditable project record, not a legal opinion.
 
@@ -35,9 +37,10 @@ time and not vendored into this tree.
 
 Outside `windows/`, the source tree contains no C, C++, or Objective-C. Nowhere
 in the tree is there a vendored native dependency, a vendored SANE tree, or a
-prebuilt SANE binary. Release verification rejects those additions. The small
-patch embedded in the Homebrew formula is GPL-2.0-or-later and is distributed
-with the plug-in's complete source.
+prebuilt SANE binary. Release verification rejects those additions. The patches
+embedded in the Homebrew formula are GPL-2.0-or-later and are distributed as
+source with the plug-in — coolscan2/coolscan3 word-list, epson2 scan-height and
+infrared frame, and the genesys OpticFilm host-side Gray fixes.
 
 ## SANE and negaflow boundary
 
@@ -63,7 +66,7 @@ build it on the user's machine, so the plug-in distribution contains GPL
 binaries and must carry the corresponding source.
 
 - Recipe and patches: [`sane-runtime/`](sane-runtime/) —
-  `PKGBUILD`, eight patches, and `SOURCES.md` describing each one
+  `PKGBUILD`, eleven patches, and `SOURCES.md` describing each one
 - The pinned tarball hash plus that recipe reproduces the exact runtime
 
 The chain stays process-separated at every link:

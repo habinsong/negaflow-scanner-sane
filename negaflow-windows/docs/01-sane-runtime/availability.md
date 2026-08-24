@@ -1,7 +1,10 @@
 # Windows에서 SANE를 얻는 방법
 
-기준일: 2026-08-04
-상태: 1차 조사 완료 — 실기 검증 전
+기준일: 2026-08-25
+상태: upstream/MSYS2 조사 기록과 현재 downstream 실행 상태를 분리합니다. 공식
+MSYS2 패키지는 1.4.0-4이고, Negaflow 시험 runtime은 11개 패치를 적용한
+1.4.0-5입니다. x64 실기는 OpticFilm 8100 Color와 Epson V700 Color/Gray/IR까지
+확인했으며 OpticFilm 최종 host-side Gray, ARM64와 다른 장치는 별도 확인이 필요합니다.
 조사 방법: upstream 저장소·패키지 색인·공식 문서 직접 확인
 검증 표기: **확인**은 이 조사에서 원문을 직접 읽은 것, **미확인**은 확인하지 못한 것
 
@@ -29,6 +32,7 @@
 | Cygwin 패키지 | — | **더 이상 존재하지 않음** |
 | vcpkg / conan | — | 포트 없음 |
 | 직접 MinGW 빌드 | 예 | 가능하나 upstream이 CI로 검증하지 않음 |
+| Negaflow downstream UCRT64 runtime | **예** | 1.4.0-5, 001~011 패치. clean source 무결성·build 완료, 최종 OpticFilm Gray 실장 재시험 대기 |
 
 가장 큰 장애물은 SANE가 아니라 **USB 드라이버 바인딩**이다. 네이티브 Windows
 경로는 libusb를 요구하고, libusb는 WinUSB 바인딩을 요구하며, WinUSB로 바꾸면
@@ -105,6 +109,10 @@ README를 따라 직접 빌드해야 한다.
 | 패키지명 | `mingw-w64-ucrt-x86_64-sane`, `mingw-w64-clang-x86_64-sane`, `mingw-w64-clang-aarch64-sane` |
 | ucrt64 빌드 시각 | **2025-09-30 07:55:49** |
 | 라이선스 | GPL-2.0-or-later |
+
+위 표의 1.4.0-4는 MSYS2 공식 패키지 사실이다. 제품 시험에 설치한 것은 이
+PKGBUILD를 기반으로 11개 패치를 적용한 별도 downstream `1.4.0-5`이며, 공식
+MSYS2가 1.4.0-5를 배포한다는 뜻이 아니다.
 
 **ARM64 빌드(`clangarm64`)가 존재한다.** Windows on ARM 지원의 전제 조건이
 이미 갖춰져 있다는 뜻이다.

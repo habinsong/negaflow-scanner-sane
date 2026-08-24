@@ -1,6 +1,7 @@
 # 본체가 이 플러그인 출력에 거는 계약
 
 기준일: 2026-08-04
+최종 상태 검토: 2026-08-25
 상태: 이식 정본 — 이 계약을 깨면 색이 무너진다
 목적: 플러그인이 내는 TIFF가 negaflow 현상 파이프라인에서 **무엇으로 취급되는지**
 확정한다
@@ -50,7 +51,7 @@ negaflow (Apache-2.0)                  이 저장소 (GPL-2.0-or-later)
 - 장치 id는 `plugin:<pluginId>:<내부id>`. 이 플러그인의 `pluginId`는 `sane`.
 - 플러그인 발견 경로(macOS): `~/Library/Application Support/negaflow/Plugins/<id>/manifest.json`
   (재정의 env: `NEGAFLOW_PLUGINS_DIR`)
-- Windows 대응: `%LOCALAPPDATA%\Negaflow\ScannerPlugins\<id>\`
+- Windows 대응: `%LOCALAPPDATA%\Negaflow\Plugins\<id>\`
 
 **negaflow의 기본 워크플로우는 "이미지 가져오기 → 현상"이고, 스캐너는
 선택적 외부 플러그인이다.** 이 플러그인이 없어도 본체는 완전히 동작한다.

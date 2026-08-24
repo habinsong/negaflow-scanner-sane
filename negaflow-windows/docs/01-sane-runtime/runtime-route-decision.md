@@ -1,7 +1,11 @@
 # SANE 런타임 경로 결정
 
-기준일: 2026-08-04
-상태: **조건부 결정** — spike S-1·S-2 통과 전에는 확정이 아니다
+기준일: 2026-08-25
+상태: x64 bundled SANE 경로를 사용합니다. OpticFilm 8100 Color와 Epson V700의
+Color/Gray·IR, Negaflow host RGB/IR 게시·재열기를 확인했습니다. OpticFilm의
+원본 Gray 정지는 재현했고 011 패치(`HOST_SIDE_GRAY` + 색 필터 `None` + GL846 종료
+길이)로 닫혔습니다 — 설치본 Gray 16-bit 연속 2회와 Color 회귀를 통과했습니다.
+ARM64는 아직 실기하지 않았습니다.
 목적: Windows 사용자에게 `scanimage`가 어떤 경로로 도달하는지 하나로 정한다
 
 관련 문서:
@@ -652,6 +656,11 @@ D-05(`dll.conf` 를 수정하지 않는다)를 지키는 편이 여전히 안전
 **Gray 는 제외했다.** upstream genesys 결함으로 무한 정지한다 —
 [sane-runtime/SOURCES.md](../../../negaflow-mac/sane-runtime/SOURCES.md) 참조.
 
+이 문단은 2026-08-06 당시 결과다. **더 이상 유효하지 않다.** 2026-08-25에 단일채널
+정지를 다시 재현한 뒤 011 패치로 기존 `HOST_SIDE_GRAY`를 활성화했고, 3배 출력 길이
+결함까지 GL846에서 고쳐 설치본 Gray 16-bit 연속 2회를 통과했다. 최신 판정은
+`SOURCES.md`의 011 절을 따른다.
+
 ### S-2 — binary stdout 정확성
 
 **가장 먼저 실행한다.** 실패하면 A 경로 전체가 무너진다.
@@ -884,7 +893,7 @@ S-3 (WSL2)              ← 대체 경로 문서화용, 병행 가능
 ```text
 1. negaflow-scanner-sane 설치 프로그램 실행
 2. 설치 프로그램이 SANE 런타임을 함께 배치
-     %LOCALAPPDATA%\Negaflow\ScannerPlugins\sane\
+     %LOCALAPPDATA%\Negaflow\Plugins\sane\
        negaflow-scanner-sane.exe
        manifest.json
        sane\bin\scanimage.exe, libsane-1.dll, libusb-1.0.dll, …

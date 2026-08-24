@@ -38,3 +38,15 @@ negaflow-mac/Installer/windows/*-setup.exe
 
 # 카탈로그는 install.ps1 이 기기마다 자체 서명으로 만든다. 저장소에 담지 않는다.
 negaflow-windows/tools/usbscan-bind/*.cat
+
+# makepkg 작업 흔적. `sane-runtime/` 최상위에 패치 사본이 남으면 다음 사람이
+# `patches/` 대신 그것을 복사해 새 패치가 조용히 빠진다 (실제로 011 이 그랬다).
+negaflow-mac/sane-runtime/src/
+negaflow-mac/sane-runtime/pkg/
+negaflow-mac/sane-runtime/*.patch
+negaflow-mac/sane-runtime/*.tar.bz2
+negaflow-mac/sane-runtime/*.tar.gz
+negaflow-mac/sane-runtime/*.pkg.tar.zst
+
+# 빌드 산출물
+negaflow-windows/out/
