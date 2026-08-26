@@ -60,7 +60,7 @@ D-07이 "upstream tarball SHA-256과 툴체인 버전을 고정한다"를 요구
 ```text
 upstream 버전   1.4.0
 tarball SHA-256 f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72
-formula 버전    1.4.0-negaflow.2
+formula 버전    1.4.0-negaflow.4
 upstream 수정   sane-project/backends 커밋 9bea1ee256c744098576acee98053e094b4a14a2
 ```
 

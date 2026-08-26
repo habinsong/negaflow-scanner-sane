@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -219,8 +220,24 @@ def verify_distribution_policy() -> None:
             fail(f"release scripts bundle a SANE runtime: {marker}")
 
     formula = (ROOT / "Formula/sane-backends-negaflow.rb").read_text(encoding="utf-8")
+    # 버전은 패치를 하나 더할 때마다 올라간다. 그 숫자를 검사기에 글자로 박아 두면 정당한
+    # 인상마다 CI 가 깨진다 - 실제로 formula 가 negaflow.4 로 올라간 뒤 이 줄만 .3 에 남아
+    # CI 가 이틀 동안 멈춰 있었다. 지켜야 할 것은 "어느 숫자냐"가 아니라 **negaflow 패치본
+    # 이라는 것**과 **그 인상이 기록과 함께 간다는 것**이다. 둘을 맞물려 본다.
+    version = re.search(
+        r'^\s*version "(1\.4\.0-negaflow\.\d+)"$', formula, re.MULTILINE
+    )
+    if version is None:
+        fail("patched SANE formula must carry a 1.4.0-negaflow.N version")
+    else:
+        record = (ROOT / "sane-runtime/SOURCES.md").read_text(encoding="utf-8")
+        if version.group(1) not in record:
+            fail(
+                "sane-runtime/SOURCES.md does not record formula version "
+                f"{version.group(1)}"
+            )
+
     for marker in (
-        'version "1.4.0-negaflow.3"',
         "depends_on macos: :tahoe",
         'sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"',
         "cs2_xmalloc (3 * sizeof (SANE_Word))",
