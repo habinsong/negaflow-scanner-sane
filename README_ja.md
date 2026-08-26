@@ -79,10 +79,10 @@ macOS 14・15のためのものです。
 
 | インストーラー | SANE経路 | プラグインバイナリ |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm、macOS 14以降 | `arm64`のみ |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm、macOS 14以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 修正版SANE、macOS 26以降 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm、macOS 14以降 | `arm64`のみ |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm、macOS 14以降 | `arm64` + `x86_64` |
 
 `macos26` DMGでは`Install negaflow Scanner.pkg`、`opticfilm-macos14` DMGでは
 `Install negaflow Scanner for OpticFilm.pkg`を実行します。

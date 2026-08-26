@@ -39,7 +39,7 @@ ctest --test-dir out\build -C Release --output-on-failure
 
 ## 설치 파일
 
-현재 플러그인 버전은 `1.0.4`입니다. x64 설치 파일 생성과 무인 설치 검사는 [Windows 빌드와 설치 파일](docs/07-distribution/windows-build-and-install.md)을 따릅니다.
+현재 플러그인 버전은 `1.1.0`입니다. x64 설치 파일 생성과 무인 설치 검사는 [Windows 빌드와 설치 파일](docs/07-distribution/windows-build-and-install.md)을 따릅니다.
 
 ## 문서
 

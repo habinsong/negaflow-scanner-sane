@@ -80,10 +80,10 @@ peut pas être installée.
 
 | Programme d'installation | Parcours SANE | Binaire du module |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` uniquement |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
 
 Le DMG `macos26` contient `Install negaflow Scanner.pkg` ; le DMG `opticfilm-macos14` contient
 `Install negaflow Scanner for OpticFilm.pkg`.

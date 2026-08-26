@@ -79,10 +79,10 @@ be installed.
 
 | Installer | SANE path | Plug-in binary |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | Patched SANE, macOS 26+ | `arm64` only |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | Patched SANE, macOS 26+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` only |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | Patched SANE, macOS 26+ | `arm64` only |
+| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | Patched SANE, macOS 26+ | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` only |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
 
 The `macos26` DMG contains `Install negaflow Scanner.pkg`; the `opticfilm-macos14` DMG contains
 `Install negaflow Scanner for OpticFilm.pkg`.

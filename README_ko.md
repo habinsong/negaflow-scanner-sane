@@ -77,10 +77,10 @@ xcode-select --install
 
 | 설치 파일 | SANE 경로 | 플러그인 바이너리 |
 |---|---|---|
-| `negaflow-scanner-sane-1.0.4-macos26-arm64-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.4-macos26-universal-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.0.4-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` + `x86_64` |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` 전용 |
+| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` + `x86_64` |
 
 `macos26` DMG에서는 `Install negaflow Scanner.pkg`, `opticfilm-macos14` DMG에서는
 `Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.

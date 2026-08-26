@@ -25,6 +25,18 @@ VERSION=$(sed -n 's/.*"pluginVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
 
 bash "$HERE/make-payload.sh" "$PAYLOAD" "$PLUGIN"
 
+# 설치 화면이 쓰는 브랜딩 비트맵을 앱 아이콘에서 굽는다. 저장소에 BMP 를 넣어 두면 아이콘을
+# 바꿔도 설치 화면이 옛 아이콘으로 남는다.
+BRANDING="$(mktemp -d)"
+trap 'rm -rf "$BRANDING"' EXIT
+powershell.exe -NoProfile -ExecutionPolicy Bypass \
+    -File "$(cygpath -w "$REPO/negaflow-windows/scripts/generate-installer-branding.ps1")" \
+    -SourceIcon "$(cygpath -w "$REPO/negaflow-windows/src/app/AppIcon-1024.png")" \
+    -OutputDirectory "$(cygpath -w "$BRANDING")" >/dev/null
+for bitmap in welcome.bmp header.bmp; do
+    [ -f "$BRANDING/$bitmap" ] || { echo "브랜딩 비트맵이 안 나왔다: $bitmap" >&2; exit 1; }
+done
+
 echo
 echo "설치 프로그램을 만든다 (버전 $VERSION)"
 cd "$HERE"
@@ -33,6 +45,7 @@ cd "$HERE"
 # 첫 줄에서 멈춘다.
 "$MAKENSIS" -V2 -INPUTCHARSET UTF8 \
          -DPAYLOAD="$(cygpath -w "$PAYLOAD")" -DVERSION="$VERSION" \
+         -DBRANDING="$(cygpath -w "$BRANDING")" \
          negaflow-scanner-sane.nsi
 
 OUT="$HERE/negaflow-scanner-sane-$VERSION-x64-setup.exe"
