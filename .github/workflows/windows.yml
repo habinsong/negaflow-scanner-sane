@@ -153,9 +153,10 @@ jobs:
           Copy-Item negaflow-mac/manifest.json "$payload\manifest.json"
           # 설치 화면 비트맵은 저장소에 두지 않고 앱 아이콘에서 굽는다 — 빌드와 같은 방식이다.
           $branding = Join-Path $env:RUNNER_TEMP 'negaflow-sane-installer-branding'
-          & ./negaflow-windows/scripts/generate-installer-branding.ps1 `
-            -SourceIcon negaflow-windows/src/app/AppIcon-1024.png `
-            -OutputDirectory $branding
+          py -3 -m pip install --quiet --disable-pip-version-check pillow
+          py -3 ./negaflow-windows/scripts/generate-installer-branding.py `
+            --source negaflow-windows/src/app/AppIcon-1024.png `
+            --output $branding
           foreach ($bitmap in @('welcome.bmp', 'header.bmp')) {
             if (-not (Test-Path -LiteralPath (Join-Path $branding $bitmap) -PathType Leaf)) {
               throw "branding bitmap was not produced: $bitmap"

@@ -29,10 +29,9 @@ bash "$HERE/make-payload.sh" "$PAYLOAD" "$PLUGIN"
 # 바꿔도 설치 화면이 옛 아이콘으로 남는다.
 BRANDING="$(mktemp -d)"
 trap 'rm -rf "$BRANDING"' EXIT
-powershell.exe -NoProfile -ExecutionPolicy Bypass \
-    -File "$(cygpath -w "$REPO/negaflow-windows/scripts/generate-installer-branding.ps1")" \
-    -SourceIcon "$(cygpath -w "$REPO/negaflow-windows/src/app/AppIcon-1024.png")" \
-    -OutputDirectory "$(cygpath -w "$BRANDING")" >/dev/null
+py -3 "$(cygpath -w "$REPO/negaflow-windows/scripts/generate-installer-branding.py")" \
+    --source "$(cygpath -w "$REPO/negaflow-windows/src/app/AppIcon-1024.png")" \
+    --output "$(cygpath -w "$BRANDING")" >/dev/null
 for bitmap in welcome.bmp header.bmp; do
     [ -f "$BRANDING/$bitmap" ] || { echo "브랜딩 비트맵이 안 나왔다: $bitmap" >&2; exit 1; }
 done

@@ -45,6 +45,8 @@ SetCompressor /SOLID lzma
 
 Name        "${APPNAME}"
 OutFile     "negaflow-scanner-sane-${VERSION}-x64-setup.exe"
+; 기본값은 NSIS 자기 이름과 판번호를 단다. 이 제품의 것이 아니다.
+BrandingText "${APPNAME} ${VERSION}"
 Icon        "${APP_ICON}"
 UninstallIcon "${APP_ICON}"
 ; Negaflow Windows discovers user plug-ins below `Plugins`, matching the
@@ -70,20 +72,28 @@ VIAddVersionKey "LegalCopyright"  "GPL-2.0-or-later"
 
 ; 브랜딩 비트맵은 `negaflow-windows\scripts\generate-installer-branding.ps1` 이 앱 아이콘에서
 ; 굽는다. NSIS 는 BMP 만 받고 알파를 읽지 않으므로 각 화면의 배경색 위에 미리 합성해 둔 것이다.
+; 비트맵은 두 배 크기로 굽고 칸에 맞춘다. 마법사는 화면 배율을 따라 커지는데 비트맵은
+; 그대로 그려지므로, 원래 크기로 두면 왼쪽 판 아래에 흰 여백이 남고 머리글 아이콘이 뭉갠다.
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_RIGHT
-!define MUI_HEADERIMAGE_UNSTRETCHED
 !define MUI_HEADERIMAGE_BITMAP "${BRANDING}\header.bmp"
+!define MUI_HEADERIMAGE_BITMAP_STRETCH AspectFitHeight
 !define MUI_HEADERIMAGE_UNBITMAP "${BRANDING}\header.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP_STRETCH AspectFitHeight
 !define MUI_WELCOMEFINISHPAGE_BITMAP "${BRANDING}\welcome.bmp"
+!define MUI_WELCOMEFINISHPAGE_BITMAP_STRETCH AspectFill
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "${BRANDING}\welcome.bmp"
-!define MUI_WELCOMEFINISHPAGE_BITMAP_NOSTRETCH
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP_NOSTRETCH
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP_STRETCH AspectFill
 
 !define MUI_WELCOMEPAGE_TITLE "$(SaneWelcomeTitle)"
 !define MUI_WELCOMEPAGE_TEXT "$(SaneWelcomeText)"
 !define MUI_FINISHPAGE_TITLE "$(SaneFinishTitle)"
 !define MUI_FINISHPAGE_TEXT "$(SaneFinishText)"
+; 마음에 들면 프로젝트에 별 하나. 기본은 꺼짐이다.
+!define MUI_FINISHPAGE_SHOWREADME ""
+!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_SHOWREADME_TEXT "$(SaneFinishStar)"
+!define MUI_FINISHPAGE_SHOWREADME_FUNCTION OpenProjectPage
 
 ; GPL 바이너리를 배포하므로 전문을 보여준다.
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "$(SaneLicenseBottom)"
@@ -108,36 +118,42 @@ LangString SaneWelcomeText   ${LANG_ENGLISH} "This adds scanner support to negaf
 LangString SaneFinishTitle   ${LANG_ENGLISH} "Scanner plug-in installed"
 LangString SaneFinishText    ${LANG_ENGLISH} "Open negaflow and the scanner controls will be there.$\r$\n$\r$\nIf your scanner is not listed, check Diagnostics inside negaflow."
 LangString SaneLicenseBottom ${LANG_ENGLISH} "This software is distributed under GPL-2.0-or-later. The corresponding source ships in the source\ folder of the install directory."
+LangString SaneFinishStar    ${LANG_ENGLISH} "Star negaflow-scanner-sane on GitHub"
 
 LangString SaneWelcomeTitle  ${LANG_KOREAN} "negaflow 스캐너 플러그인"
 LangString SaneWelcomeText   ${LANG_KOREAN} "negaflow 에 스캐너 기능을 더합니다. 어댑터와 패치한 SANE 런타임, 그리고 Windows 자신의 usbscan 드라이버로 스캐너를 여는 장치 파일이 들어 있습니다.$\r$\n$\r$\n제조사 소프트웨어를 바꾸지 않고, 드라이버를 갈아 끼우는 도구도 쓰지 않습니다. 스캐너 통로를 여는 단계에서 관리자 확인이 한 번 필요하며, 플러그인 자체는 사용자 폴더에 설치됩니다."
 LangString SaneFinishTitle   ${LANG_KOREAN} "스캐너 플러그인 설치 완료"
 LangString SaneFinishText    ${LANG_KOREAN} "negaflow 를 열면 스캐너 조작이 나타납니다.$\r$\n$\r$\n스캐너가 보이지 않으면 negaflow 의 진단 기능을 확인하십시오."
 LangString SaneLicenseBottom ${LANG_KOREAN} "이 소프트웨어는 GPL-2.0-or-later 로 배포됩니다. 대응 소스는 설치 폴더의 source\ 에 함께 들어갑니다."
+LangString SaneFinishStar    ${LANG_KOREAN} "GitHub 에서 negaflow-scanner-sane 에 별 남기기"
 
 LangString SaneWelcomeTitle  ${LANG_JAPANESE} "negaflow スキャナープラグイン"
 LangString SaneWelcomeText   ${LANG_JAPANESE} "negaflow にスキャナー機能を追加します。アダプター、パッチ済み SANE ランタイム、そして Windows 自身の usbscan ドライバーでスキャナーを開くデバイスファイルが含まれます。$\r$\n$\r$\nメーカー製ソフトウェアを置き換えず、ドライバー入れ替えツールも使いません。スキャナー経路を開く手順で管理者の確認が一度必要です。プラグイン本体はユーザーフォルダーに入ります。"
 LangString SaneFinishTitle   ${LANG_JAPANESE} "スキャナープラグインを導入しました"
 LangString SaneFinishText    ${LANG_JAPANESE} "negaflow を開くとスキャナーの操作が現れます。$\r$\n$\r$\n表示されない場合は negaflow の診断機能を確認してください。"
 LangString SaneLicenseBottom ${LANG_JAPANESE} "本ソフトウェアは GPL-2.0-or-later で配布されます。対応するソースはインストール先の source\ に同梱されます。"
+LangString SaneFinishStar    ${LANG_JAPANESE} "GitHub で negaflow-scanner-sane にスターを付ける"
 
 LangString SaneWelcomeTitle  ${LANG_SIMPCHINESE} "negaflow 扫描仪插件"
 LangString SaneWelcomeText   ${LANG_SIMPCHINESE} "为 negaflow 添加扫描仪支持。其中包含适配器、打过补丁的 SANE 运行时，以及通过 Windows 自带 usbscan 驱动打开扫描仪的设备文件。$\r$\n$\r$\n不会替换厂商软件，也不使用驱动替换工具。开启扫描仪通路时需要一次管理员确认，插件本身安装在你的用户目录中。"
 LangString SaneFinishTitle   ${LANG_SIMPCHINESE} "扫描仪插件已安装"
 LangString SaneFinishText    ${LANG_SIMPCHINESE} "打开 negaflow 即可看到扫描仪控件。$\r$\n$\r$\n若未列出你的扫描仪，请查看 negaflow 中的诊断功能。"
 LangString SaneLicenseBottom ${LANG_SIMPCHINESE} "本软件以 GPL-2.0-or-later 分发。对应源代码位于安装目录的 source\ 文件夹中。"
+LangString SaneFinishStar    ${LANG_SIMPCHINESE} "在 GitHub 上为 negaflow-scanner-sane 点星"
 
 LangString SaneWelcomeTitle  ${LANG_FRENCH} "Module scanner negaflow"
 LangString SaneWelcomeText   ${LANG_FRENCH} "Ajoute la prise en charge des scanners à negaflow. Le module contient l'adaptateur, un runtime SANE corrigé et le fichier d'interface qui ouvre votre scanner via le pilote usbscan de Windows.$\r$\n$\r$\nAucun logiciel constructeur n'est remplacé et aucun outil de substitution de pilote n'est utilisé. L'ouverture du chemin scanner demande une confirmation administrateur une fois ; le module lui-même s'installe dans votre profil utilisateur."
 LangString SaneFinishTitle   ${LANG_FRENCH} "Module scanner installé"
 LangString SaneFinishText    ${LANG_FRENCH} "Ouvrez negaflow : les commandes du scanner y sont.$\r$\n$\r$\nSi votre scanner n'apparaît pas, consultez les diagnostics dans negaflow."
 LangString SaneLicenseBottom ${LANG_FRENCH} "Ce logiciel est distribué sous GPL-2.0-or-later. Les sources correspondantes se trouvent dans le dossier source\ du répertoire d'installation."
+LangString SaneFinishStar    ${LANG_FRENCH} "Mettre une étoile à negaflow-scanner-sane sur GitHub"
 
 LangString SaneWelcomeTitle  ${LANG_GERMAN} "negaflow Scanner-Plug-in"
 LangString SaneWelcomeText   ${LANG_GERMAN} "Ergänzt negaflow um Scanner-Unterstützung. Enthalten sind der Adapter, eine gepatchte SANE-Laufzeit und die Geräteschnittstellendatei, die Ihren Scanner über den Windows-eigenen usbscan-Treiber öffnet.$\r$\n$\r$\nEs wird keine Herstellersoftware ersetzt und kein Treiber-Austauschwerkzeug verwendet. Das Öffnen des Scanner-Pfads erfordert einmal eine Administratorbestätigung; das Plug-in selbst wird in Ihrem Benutzerprofil installiert."
 LangString SaneFinishTitle   ${LANG_GERMAN} "Scanner-Plug-in installiert"
 LangString SaneFinishText    ${LANG_GERMAN} "Öffnen Sie negaflow — die Scanner-Bedienelemente sind dort.$\r$\n$\r$\nFehlt Ihr Scanner, prüfen Sie die Diagnose in negaflow."
 LangString SaneLicenseBottom ${LANG_GERMAN} "Diese Software wird unter GPL-2.0-or-later verteilt. Der zugehörige Quellcode liegt im Ordner source\ des Installationsverzeichnisses."
+LangString SaneFinishStar    ${LANG_GERMAN} "negaflow-scanner-sane auf GitHub mit einem Stern versehen"
 
 ; --- 기록 -------------------------------------------------------------------
 ;
@@ -167,6 +183,10 @@ Var LogFile
 Var Staging
 Var Backup
 Var MovedAside
+
+Function OpenProjectPage
+  ExecShell "open" "https://github.com/habinsong/negaflow-scanner-sane"
+FunctionEnd
 
 Function .onInit
   !insertmacro MUI_LANGDLL_DISPLAY
