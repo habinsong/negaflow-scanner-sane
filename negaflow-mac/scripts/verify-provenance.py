@@ -165,8 +165,12 @@ def verify_distribution_policy() -> None:
             fail(f"required release notice is missing: {required}")
 
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("pluginVersion") != "1.0.4":
-        fail("manifest pluginVersion must be 1.0.4")
+    # 버전을 여기 글자로 박아 두면 정당한 인상마다 이 검사가 깨진다. 지켜야 할 것은 "어느
+    # 숫자냐"가 아니라 **매니페스트와 README 가 같은 숫자를 말한다는 것**이고, 그 대조는
+    # 바로 아래에서 한다 - 설치 파일 이름을 이 값에서 만들어 여섯 README 에서 찾는다.
+    plugin_version = manifest.get("pluginVersion")
+    if not isinstance(plugin_version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", plugin_version):
+        fail(f"manifest pluginVersion must be x.y.z, found {plugin_version!r}")
 
     # 접미사 없는 쪽이 기본 배포본(패치 SANE 동봉, macOS 26+)이고, OpticFilm 전용이
     # 시스템 SANE을 쓰는 macOS 14+ 빌드다.
