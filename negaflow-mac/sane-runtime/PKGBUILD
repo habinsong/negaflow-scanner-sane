@@ -85,6 +85,7 @@ build() {
   # 사라지므로 로그로는 알 수 없습니다.
   CPPFLAGS="-I$(pwd)/../backends-${pkgver}/include ${CPPFLAGS:-}"
   export CPPFLAGS
+  # -lsetupapi: 005-usbscan-backend.patch 가 still-image 장치 인터페이스를 열거합니다.
   CFLAGS+=" -Wno-implicit-function-declaration -Wno-int-conversion -Wno-incompatible-pointer-types" \
   ../backends-${pkgver}/configure \
     --prefix="${MINGW_PREFIX}" \
@@ -95,7 +96,7 @@ build() {
     --with-pic \
     --with-poppler-glib \
     --with-usb \
-    LIBS="-lws2_32 -ldl"
+    LIBS="-lws2_32 -ldl -lsetupapi"
 
   make || make -C tools || make
 }

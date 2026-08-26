@@ -37,6 +37,7 @@
 +#define NOMINMAX
 +#include <windows.h>
 +#include <winioctl.h>
++#include <setupapi.h>
 +
 +#define USBSCAN_FILE_DEVICE	0x8000
 +#define USBSCAN_IOCTL_INDEX	0x0800
@@ -64,7 +65,6 @@
 +#define USBSCAN_WRITE_DATA_PIPE	2
 +
 +/* how far up \\.\UsbscanN device names are probed */
-+#define USBSCAN_MAX_DEVICES	16
 +
 +typedef struct
 +{
@@ -109,18 +109,23 @@
  }
  sanei_usb_access_method_type;
  
-@@ -161,6 +254,10 @@
+@@ -161,6 +254,15 @@
    libusb_device *lu_device;
    libusb_device_handle *lu_handle;
  #endif /* HAVE_LIBUSB */
 +#ifdef _WIN32
 +  HANDLE usbscan_handle;
 +  SANE_Int usbscan_bcd_device;
++  /* Interface path from SetupAPI.  The device is opened through this,
++     never through a rebuilt name carrying the usbscan number: that number
++     is handed out by usbscan.sys and climbs past any fixed bound as devices
++     come and go, which made a present scanner invisible.  */
++  char *usbscan_path;
 +#endif /* _WIN32 */
  }
  device_list_type;
  
-@@ -1378,6 +1475,231 @@
+@@ -1378,6 +1480,292 @@
  }
  #endif // WITH_USB_RECORD_REPLAY
  
@@ -192,17 +197,49 @@
 +  return 0;
 +}
 +
-+/** scan for devices behind the still-image class driver */
++/** scan for devices behind the still-image class driver
++ *
++ * The devices are found by enumerating the still-image device interface,
++ * not by walking the numbered device names up to a fixed bound.
++ * usbscan.sys hands that number out when a device arrives and never reuses
++ * it, so it climbs every time a scanner is unplugged and plugged back in.
++ * Once it passed the bound the scanner was simply not there as far as SANE
++ * was concerned, while Windows still reported the device as healthy.
++ *
++ * The interface path answers the same IOCTLs as the numbered name, so it is
++ * kept and used for opening: nothing has to guess the number again.
++ */
 +static void
 +usbscan_scan_devices (void)
 +{
-+  int index;
++  static const GUID usbscan_interface_guid =
++    { 0x6bdd1fc6, 0x810f, 0x11d0,
++      { 0xbe, 0xc7, 0x08, 0x00, 0x2b, 0xe2, 0x09, 0x2f } };
++  HDEVINFO set;
++  SP_DEVICE_INTERFACE_DATA interface_data;
++  DWORD member;
++  int slot = 0;
 +
 +  DBG (4, "%s: Looking for still-image class driver devices\n", __func__);
 +
-+  for (index = 0; index < USBSCAN_MAX_DEVICES; index++)
++  set = SetupDiGetClassDevsA (&usbscan_interface_guid, NULL, NULL,
++			      DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
++  if (set == INVALID_HANDLE_VALUE)
 +    {
-+      char path[32];
++      DBG (1, "%s: cannot enumerate still-image interfaces, error %lu\n",
++	   __func__, (unsigned long) GetLastError ());
++      return;
++    }
++
++  memset (&interface_data, 0, sizeof (interface_data));
++  interface_data.cbSize = sizeof (interface_data);
++  for (member = 0;
++       SetupDiEnumDeviceInterfaces (set, NULL, &usbscan_interface_guid,
++				    member, &interface_data);
++       member++)
++    {
++      SP_DEVICE_INTERFACE_DETAIL_DATA_A *detail = NULL;
++      DWORD needed = 0;
 +      char devname[32];
 +      HANDLE handle;
 +      usbscan_pipe_configuration pipes;
@@ -211,12 +248,31 @@
 +      device_list_type device;
 +      unsigned int pipe;
 +
-+      sprintf (path, "\\\\.\\Usbscan%d", index);
-+      handle = CreateFileA (path, GENERIC_READ | GENERIC_WRITE,
++      SetupDiGetDeviceInterfaceDetailA (set, &interface_data, NULL, 0,
++					&needed, NULL);
++      if (needed == 0)
++	continue;
++      detail = (SP_DEVICE_INTERFACE_DETAIL_DATA_A *) malloc (needed);
++      if (!detail)
++	break;
++      detail->cbSize = sizeof (SP_DEVICE_INTERFACE_DETAIL_DATA_A);
++      if (!SetupDiGetDeviceInterfaceDetailA (set, &interface_data, detail,
++					     needed, &needed, NULL))
++	{
++	  free (detail);
++	  continue;
++	}
++
++      handle = CreateFileA (detail->DevicePath, GENERIC_READ | GENERIC_WRITE,
 +			    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
 +			    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 +      if (handle == INVALID_HANDLE_VALUE)
-+	continue;
++	{
++	  DBG (3, "%s: cannot open %s, error %lu\n", __func__,
++	       detail->DevicePath, (unsigned long) GetLastError ());
++	  free (detail);
++	  continue;
++	}
 +
 +      /* This is not the USB device descriptor.  usbscan.sys answers with
 +	 four words: vendor, product, bcdDevice and the language id.  */
@@ -231,18 +287,26 @@
 +			       NULL))
 +	{
 +	  DBG (3, "%s: %s does not answer as a still-image device, "
-+	       "error %lu\n", __func__, path,
++	       "error %lu\n", __func__, detail->DevicePath,
 +	       (unsigned long) GetLastError ());
 +	  CloseHandle (handle);
++	  free (detail);
 +	  continue;
 +	}
 +      CloseHandle (handle);
 +
 +      memset (&device, 0, sizeof (device));
-+      sprintf (devname, "usbscan:%03d", index);
++      sprintf (devname, "usbscan:%03d", slot);
 +      device.devname = strdup (devname);
-+      if (!device.devname)
-+	return;
++      device.usbscan_path = strdup (detail->DevicePath);
++      free (detail);
++      if (!device.devname || !device.usbscan_path)
++	{
++	  free (device.devname);
++	  free (device.usbscan_path);
++	  break;
++	}
++      slot++;
 +      device.vendor = identity[0];
 +      device.product = identity[1];
 +      device.usbscan_bcd_device = identity[2];
@@ -275,6 +339,8 @@
 +
 +      store_device (device);
 +    }
++
++  SetupDiDestroyDeviceInfoList (set);
 +}
 +
 +/** control transfer through IOCTL_SEND_USB_REQUEST
@@ -352,7 +418,7 @@
  void
  sanei_usb_init (void)
  {
-@@ -1524,6 +1846,15 @@
+@@ -1524,6 +1912,15 @@
        DBG (4, "%s: freeing resources\n", __func__);
        for (i = 0; i < device_number; i++)
          {
@@ -368,7 +434,7 @@
            if (devices[i].devname != NULL)
              {
                DBG (5, "%s: freeing device %02d\n", __func__, i);
-@@ -1988,6 +2319,15 @@
+@@ -1988,6 +2385,15 @@
  	  continue;
  	}
  
@@ -384,7 +450,7 @@
        memset (&device, 0, sizeof (device));
        device.lu_device = libusb_ref_device(dev);
        snprintf (devname, sizeof (devname), "libusb:%03d:%03d",
-@@ -2045,6 +2385,12 @@
+@@ -2045,6 +2451,12 @@
  #if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
    kernel_scan_devices();
  #endif
@@ -397,23 +463,25 @@
  
  #if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
    /* Check for devices using libusb (old or new)*/
-@@ -2855,6 +3201,38 @@
+@@ -2855,6 +3267,40 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
      }
 +#ifdef _WIN32
 +  else if (devices[devcount].method == sanei_usb_method_usbscan)
 +    {
-+      char path[32];
-+      int index = -1;
++      const char *path = devices[devcount].usbscan_path;
 +
-+      if (sscanf (devname, "usbscan:%d", &index) != 1 || index < 0)
++      /* The path comes from the enumeration that found this device.  It is
++	 not rebuilt from the name: the number in the name is our own slot,
++	 while the one usbscan.sys uses keeps climbing as devices come and go.
++	 Rebuilding from it is how a present scanner became unreachable.  */
++      if (!path)
 +	{
-+	  DBG (1, "sanei_usb_open: `%s' is not a still-image device name\n",
++	  DBG (1, "sanei_usb_open: `%s' has no still-image device path\n",
 +	       devname);
 +	  return SANE_STATUS_INVAL;
 +	}
-+      sprintf (path, "\\\\.\\Usbscan%d", index);
 +      devices[devcount].usbscan_handle =
 +	CreateFileA (path, GENERIC_READ | GENERIC_WRITE,
 +		     FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
@@ -436,7 +504,7 @@
    else if (devices[devcount].method == sanei_usb_method_scanner_driver)
      {
  #ifdef FD_CLOEXEC
-@@ -3051,6 +3429,14 @@
+@@ -3051,6 +3497,14 @@
      {
        DBG (1, "sanei_usb_close: closing fake USB device\n");
      }
@@ -451,7 +519,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      close (devices[dn].fd);
    else if (devices[dn].method == sanei_usb_method_usbcalls)
-@@ -3107,6 +3493,10 @@
+@@ -3107,6 +3561,10 @@
    if (testing_mode == sanei_usb_testing_mode_replay)
      return;
  
@@ -462,7 +530,7 @@
  #if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
    libusb_timeout = timeout;
  #else
-@@ -3134,6 +3524,24 @@
+@@ -3134,6 +3592,24 @@
        return SANE_STATUS_INVAL;
      }
  
@@ -487,7 +555,7 @@
    if (testing_mode == sanei_usb_testing_mode_replay)
      return SANE_STATUS_GOOD;
  
-@@ -3194,6 +3602,19 @@
+@@ -3194,6 +3670,19 @@
  SANE_Status
  sanei_usb_reset (SANE_Int __sane_unused__ dn)
  {
@@ -507,7 +575,7 @@
    if (testing_mode == sanei_usb_testing_mode_replay)
      return SANE_STATUS_GOOD;
  
-@@ -3404,6 +3825,22 @@
+@@ -3404,6 +3893,22 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -530,7 +598,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        read_size = read (devices[dn].fd, buffer, *size);
-@@ -3740,6 +4177,22 @@
+@@ -3740,6 +4245,22 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -553,7 +621,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        write_size = write (devices[dn].fd, buffer, *size);
-@@ -4060,6 +4513,10 @@
+@@ -4060,6 +4581,10 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -564,7 +632,7 @@
    if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
  #if defined(__linux__)
-@@ -4342,6 +4799,17 @@
+@@ -4342,6 +4867,17 @@
        return SANE_STATUS_UNSUPPORTED;
  #endif
      }
@@ -582,7 +650,7 @@
    else if (devices[dn].method == sanei_usb_method_scanner_driver)
      {
        DBG (1, "sanei_usb_read_int: access method %d not implemented\n",
-@@ -4944,6 +5412,22 @@
+@@ -4944,6 +5480,22 @@
      }
  
    DBG (5, "sanei_usb_get_descriptor\n");
