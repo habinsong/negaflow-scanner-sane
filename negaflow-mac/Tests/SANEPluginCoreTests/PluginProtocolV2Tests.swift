@@ -17,7 +17,13 @@ final class PluginProtocolV2Tests: XCTestCase {
 
         XCTAssertEqual(manifest["schemaVersion"] as? Int, 1)
         XCTAssertEqual(manifest["protocolVersion"] as? Int, 2)
-        XCTAssertEqual(manifest["pluginVersion"] as? String, "1.0.4")
+        // 버전 숫자를 여기 박아 두면 정당한 인상마다 이 테스트가 깨진다. 이 테스트가
+        // 지키는 것은 프로토콜 계약이지 어느 판이냐가 아니다 - 모양만 본다.
+        let pluginVersion = try XCTUnwrap(manifest["pluginVersion"] as? String)
+        XCTAssertNotNil(
+            pluginVersion.wholeMatch(of: /\d+\.\d+\.\d+/),
+            "pluginVersion must be x.y.z, found \(pluginVersion)"
+        )
     }
 
     func testHostV2RequestDecodesWithoutGuessingAndPreservesExactOptions() throws {
