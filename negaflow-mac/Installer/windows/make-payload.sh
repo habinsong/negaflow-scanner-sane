@@ -80,6 +80,16 @@ done < "$OUT/.deps"
 rm -f "$OUT/.deps"
 echo "DLL $count 개를 담았다"
 
+# --- 스캐너 통로 ------------------------------------------------------------
+# 플러그인은 Windows 자신의 usbscan.sys 를 통해 장치를 연다. 그 드라이버가 스캐너에
+# 묶여 있어야 하는데, 깨끗한 PC 에는 묶어 주는 것이 없다 - runtime-route-decision
+# §4.4b 의 실측도 "Plustek 드라이버 그대로" 였고, 8100 이 열렸던 것은 SilverFast 가
+# 깔아 둔 INF 덕이었다. 벤더 소프트웨어 없이도 열리도록 INF 와 그 설치 스크립트를
+# 함께 싣는다. 카탈로그는 install.ps1 이 그 자리에서 만들어 서명하므로 싣지 않는다.
+mkdir -p "$OUT/usbscan-bind"
+cp -f "$REPO/negaflow-windows/tools/usbscan-bind/negaflow-usbscan.inf" "$OUT/usbscan-bind/"
+cp -f "$REPO/negaflow-windows/tools/usbscan-bind/install.ps1" "$OUT/usbscan-bind/"
+
 # --- 라이선스와 소스 --------------------------------------------------------
 cp -f "$REPO/COPYING" "$OUT/LICENSES/"
 cp -f "$REPO/LICENSE" "$OUT/LICENSES/"

@@ -1,8 +1,14 @@
 ; negaflow-scanner-sane — Windows 설치 프로그램 (단일 실행 파일)
 ;
 ; 사용자는 이 exe 하나만 받아 실행한다. 플러그인과 SANE 런타임이 함께 들어가고
-; 따로 받을 것이 없다. **관리자 권한을 요구하지 않는다** — 드라이버를 바꾸지
-; 않기 때문이다. 그것이 이 제품의 전제다(runtime-route-decision §4.4b).
+; 따로 받을 것이 없다. **설치 자체는 사용자 영역에만 쓰고 관리자를 요구하지 않는다.**
+;
+; 다만 스캐너를 여는 통로는 다르다. 플러그인은 Windows 자신의 usbscan.sys 로 장치를
+; 열고(runtime-route-decision §4.4b), 그 드라이버가 스캐너에 묶여 있어야 한다. §4.4b 의
+; 실측은 "Plustek 드라이버 그대로" 인 기계에서 잰 것이고, 8100 이 열렸던 것도 SilverFast 가
+; 깔아 둔 INF 덕이었다 — **벤더 소프트웨어가 없는 깨끗한 PC 에는 묶어 주는 것이 없다.**
+; 그래서 설치 마지막에 그 통로를 여는 단계를 두고, 그 한 단계만 권한을 올린다. 거절해도
+; 설치는 그대로 남고, 벤더 드라이버로 이미 열리는 기계는 이 단계 없이도 동작한다.
 ;
 ; 빌드:
 ;   makensis -DPAYLOAD=<payload 경로> -DVERSION=<x.y.z> negaflow-scanner-sane.nsi
@@ -200,6 +206,39 @@ Section "설치"
   ${LOG} "확인 완료: $1"
   DetailPrint "확인 완료: 플러그인이 동작합니다."
 
+  ; --- 스캐너 통로 ---
+  ;
+  ; 플러그인은 Windows 자신의 usbscan.sys 를 통해 장치를 연다. 그 드라이버가 스캐너에
+  ; 묶여 있어야 하는데, **깨끗한 PC 에는 묶어 주는 것이 없다.** §4.4b 의 실측은
+  ; "Plustek 드라이버 그대로" 인 기계에서 잰 것이고, 8100 이 열렸던 것도 SilverFast 가
+  ; 깔아 둔 INF 덕이었다. 벤더 소프트웨어가 없는 기계에서는 여기까지 와도 장치가 없다.
+  ;
+  ; 통로를 여는 일은 드라이버 설치라 관리자가 필요하다. **설치 자체는 사용자 영역
+  ; 그대로 두고 이 한 단계만 올린다** - 관리자가 아닌 사용자도 설치는 할 수 있어야 하고,
+  ; 벤더 드라이버로 이미 열리는 기계는 이 단계 없이도 동작한다. 거절해도 설치는 남는다.
+  ${If} ${Silent}
+    ${LOG} "무인 모드: 스캐너 통로 열기를 건너뛴다 (관리자 확인을 띄울 수 없다)"
+    DetailPrint "무인 모드: 스캐너 통로 열기를 건너뜁니다."
+  ${Else}
+    MessageBox MB_YESNO|MB_ICONQUESTION "스캐너를 연결할 통로를 지금 엽니다.$\n$\n스캐너를 Windows 의 usbscan 드라이버에 묶는 단계이며 관리자 확인이 필요합니다. 건너뛰면 스캐너 제조사 소프트웨어가 이미 깔린 기계에서만 인식됩니다.$\n$\n지금 열까요?" /SD IDYES IDNO SkipUsbScanBind
+    DetailPrint "스캐너 통로를 엽니다 (관리자 확인)."
+    ClearErrors
+    ExecShellWait "runas" "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1"' SW_SHOWNORMAL
+    ${If} ${Errors}
+      ${LOG} "스캐너 통로 열기를 건너뛰었다 (관리자 확인 거절 또는 실행 실패)"
+      DetailPrint "스캐너 통로를 열지 못했습니다. 나중에 usbscan-bind\install.ps1 을 관리자로 실행하십시오."
+    ${Else}
+      ${LOG} "스캐너 통로 열기를 실행했다"
+      ; 열렸는지는 말이 아니라 목록으로 확인한다.
+      nsExec::ExecToStack '"$INSTDIR\${EXENAME}" detect'
+      Pop $0
+      Pop $1
+      ${LOG} "통로를 연 뒤 detect (종료 코드 $0): $1"
+      DetailPrint "통로를 연 뒤 장치 목록: $1"
+    ${EndIf}
+    SkipUsbScanBind:
+  ${EndIf}
+
   FileClose $LogFile
   CopyFiles /SILENT "$TEMP\${LOGNAME}" "$INSTDIR\install.log"
 SectionEnd
@@ -210,6 +249,18 @@ SectionEnd
 ; 통째로 옮기고 지울 수 있다.
 
 Section "Uninstall"
+  ; 통로를 열었다면 되돌린다. 드라이버를 남기면 제거한 뒤에도 우리가 깔아 둔 것이
+  ; 계속 스캐너를 잡고, 자체 서명 인증서가 신뢰 저장소에 영영 남는다. 지우면 Windows 가
+  ; 남아 있는 최선의 드라이버(벤더 INF 등)로 되돌아간다.
+  ${If} ${Silent}
+  ${Else}
+    ${If} ${FileExists} "$INSTDIR\usbscan-bind\install.ps1"
+      MessageBox MB_YESNO|MB_ICONQUESTION "설치할 때 연 스캐너 통로도 함께 되돌립니다.$\n$\n관리자 확인이 필요합니다. 건너뛰면 통로는 그대로 남습니다.$\n$\n지금 되돌릴까요?" /SD IDNO IDNO SkipUsbScanUnbind
+      ExecShellWait "runas" "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1" -Uninstall -RemoveCertificate' SW_SHOWNORMAL
+      SkipUsbScanUnbind:
+    ${EndIf}
+  ${EndIf}
+
   ; 제거도 실행 중이면 실패한다. 조용히 반쯤 지우지 않는다.
   ClearErrors
   Rename "$INSTDIR" "$INSTDIR.removing"
