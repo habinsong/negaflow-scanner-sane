@@ -20,10 +20,15 @@ final class PluginProtocolV2Tests: XCTestCase {
         // 버전 숫자를 여기 박아 두면 정당한 인상마다 이 테스트가 깨진다. 이 테스트가
         // 지키는 것은 프로토콜 계약이지 어느 판이냐가 아니다 - 모양만 본다.
         let pluginVersion = try XCTUnwrap(manifest["pluginVersion"] as? String)
-        XCTAssertNotNil(
-            pluginVersion.wholeMatch(of: /\d+\.\d+\.\d+/),
-            "pluginVersion must be x.y.z, found \(pluginVersion)"
-        )
+        let parts = pluginVersion.split(separator: ".", omittingEmptySubsequences: false)
+        XCTAssertEqual(parts.count, 3, "pluginVersion must be x.y.z, found \(pluginVersion)")
+        for part in parts {
+            XCTAssertFalse(part.isEmpty, "pluginVersion must be x.y.z, found \(pluginVersion)")
+            XCTAssertTrue(
+                part.allSatisfy(\.isNumber),
+                "pluginVersion must be x.y.z, found \(pluginVersion)"
+            )
+        }
     }
 
     func testHostV2RequestDecodesWithoutGuessingAndPreservesExactOptions() throws {
