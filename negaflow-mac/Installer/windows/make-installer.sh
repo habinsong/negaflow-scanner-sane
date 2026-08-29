@@ -29,7 +29,25 @@ bash "$HERE/make-payload.sh" "$PAYLOAD" "$PLUGIN"
 # 바꿔도 설치 화면이 옛 아이콘으로 남는다.
 BRANDING="$(mktemp -d)"
 trap 'rm -rf "$BRANDING"' EXIT
-py -3 "$(cygpath -w "$REPO/negaflow-windows/scripts/generate-installer-branding.py")" \
+# Python 은 **Windows 쪽 Python** 이어야 한다 — 이 스크립트가 넘기는 것은 `cygpath -w` 로
+# 만든 Windows 경로이고, 비트맵을 굽는 데 Pillow 가 필요한데 MSYS 의 python3 에는 없다.
+#
+# 그런데 `bash -lc` 로 들어오면 로그인 셸이 PATH 를 새로 짜서 Windows 의 `py` 런처가
+# 사라진다 — 빌드 스크립트가 실제로 그 자리에서 `py: command not found` 로 멈췄다.
+# 그래서 부르는 쪽이 `PYTHON` 으로 넘겨 주고, 없으면 여기서 찾는다.
+if [ -n "${PYTHON:-}" ]; then
+    PYTHON_CMD=("$PYTHON")
+elif command -v py >/dev/null 2>&1; then
+    PYTHON_CMD=(py -3)
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD=(python3)
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD=(python)
+else
+    echo "Python 이 없다. PYTHON=<경로> 로 넘기거나 py/python3 을 PATH 에 두라." >&2
+    exit 1
+fi
+"${PYTHON_CMD[@]}" "$(cygpath -w "$REPO/negaflow-windows/scripts/generate-installer-branding.py")" \
     --source "$(cygpath -w "$REPO/negaflow-windows/src/app/AppIcon-1024.png")" \
     --output "$(cygpath -w "$BRANDING")" >/dev/null
 for bitmap in welcome.bmp header.bmp; do

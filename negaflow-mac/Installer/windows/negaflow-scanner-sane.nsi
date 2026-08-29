@@ -70,6 +70,14 @@ VIAddVersionKey "LegalCopyright"  "GPL-2.0-or-later"
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
 
+; 고른 언어를 남긴다. 남기지 않으면 제거 프로그램이 목록의 첫 언어(영어)로 뜬다 —
+; 설치는 한국어로 했는데 제거만 영어가 되면 같은 UI/UX 가 아니다. 설치 때는 남긴 값이
+; 있어도 언제나 묻는다(ALWAYSSHOW) — 언어를 바꾸려는 사용자가 바꿀 자리를 잃지 않게.
+!define MUI_LANGDLL_REGISTRY_ROOT "HKCU"
+!define MUI_LANGDLL_REGISTRY_KEY "${REGKEY}"
+!define MUI_LANGDLL_REGISTRY_VALUENAME "InstallerLanguage"
+!define MUI_LANGDLL_ALWAYSSHOW
+
 ; 브랜딩 비트맵은 `negaflow-windows\scripts\generate-installer-branding.ps1` 이 앱 아이콘에서
 ; 굽는다. NSIS 는 BMP 만 받고 알파를 읽지 않으므로 각 화면의 배경색 위에 미리 합성해 둔 것이다.
 ; 비트맵은 두 배 크기로 굽고 칸에 맞춘다. 마법사는 화면 배율을 따라 커지는데 비트맵은
@@ -103,8 +111,20 @@ VIAddVersionKey "LegalCopyright"  "GPL-2.0-or-later"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
+
+; --- 제거 마법사 -------------------------------------------------------------
+;
+; 설치와 **같은 화면**이다 - 환영 · 확인 · 진행 · 완료. 아이콘도 왼쪽 판도 머리글
+; 비트맵도 위에서 정한 그대로다. 라이선스 화면만 없다 — 지우는 데에는 동의할 조건이
+; 없다. MUI2 는 페이지를 꽂을 때마다 제목·본문 정의를 지우므로 여기서 다시 건다.
+!define MUI_WELCOMEPAGE_TITLE "$(SaneUninstallWelcomeTitle)"
+!define MUI_WELCOMEPAGE_TEXT "$(SaneUninstallWelcomeText)"
+!define MUI_FINISHPAGE_TITLE "$(SaneUninstallFinishTitle)"
+!define MUI_FINISHPAGE_TEXT "$(SaneUninstallFinishText)"
+!insertmacro MUI_UNPAGE_WELCOME
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
 
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "Korean"
@@ -155,6 +175,42 @@ LangString SaneFinishText    ${LANG_GERMAN} "Öffnen Sie negaflow — die Scanne
 LangString SaneLicenseBottom ${LANG_GERMAN} "Diese Software wird unter GPL-2.0-or-later verteilt. Der zugehörige Quellcode liegt im Ordner source\ des Installationsverzeichnisses."
 LangString SaneFinishStar    ${LANG_GERMAN} "negaflow-scanner-sane auf GitHub mit einem Stern versehen"
 
+LangString SaneUninstallWelcomeTitle ${LANG_ENGLISH} "Remove the scanner plug-in"
+LangString SaneUninstallWelcomeText ${LANG_ENGLISH} "This removes negaflow-scanner-sane from your user profile: the adapter, the bundled SANE runtime, and its uninstall entry.$\r$\n$\r$\nnegaflow itself stays installed and keeps working without scanner controls. You will be asked once, with an administrator prompt, whether to also undo the scanner device path; declining leaves it in place."
+LangString SaneUninstallFinishTitle ${LANG_ENGLISH} "Scanner plug-in removed"
+LangString SaneUninstallFinishText ${LANG_ENGLISH} "The plug-in folder is gone and negaflow will start without scanner controls.$\r$\n$\r$\nYour scans and libraries were not touched."
+LangString SaneUninstallLink ${LANG_ENGLISH} "Uninstall negaflow scanner plug-in"
+
+LangString SaneUninstallWelcomeTitle ${LANG_KOREAN} "스캐너 플러그인 제거"
+LangString SaneUninstallWelcomeText ${LANG_KOREAN} "사용자 폴더에 있는 negaflow-scanner-sane 을 지웁니다 — 어댑터, 함께 넣은 SANE 런타임, 제거 항목입니다.$\r$\n$\r$\nnegaflow 본체는 그대로 남고 스캐너 조작만 사라집니다. 설치할 때 연 스캐너 통로를 함께 되돌릴지 한 번 묻고, 그때만 관리자 확인이 필요합니다 — 건너뛰면 통로는 그대로 남습니다."
+LangString SaneUninstallFinishTitle ${LANG_KOREAN} "스캐너 플러그인을 제거했습니다"
+LangString SaneUninstallFinishText ${LANG_KOREAN} "플러그인 폴더를 지웠고, negaflow 는 스캐너 조작 없이 열립니다.$\r$\n$\r$\n스캔한 파일과 라이브러리는 건드리지 않았습니다."
+LangString SaneUninstallLink ${LANG_KOREAN} "negaflow 스캐너 플러그인 제거"
+
+LangString SaneUninstallWelcomeTitle ${LANG_JAPANESE} "スキャナープラグインの削除"
+LangString SaneUninstallWelcomeText ${LANG_JAPANESE} "ユーザーフォルダーの negaflow-scanner-sane を削除します — アダプター、同梱の SANE ランタイム、アンインストール項目です。$\r$\n$\r$\nnegaflow 本体は残り、スキャナー操作だけがなくなります。導入時に開いた スキャナー経路も戻すかを一度確認し、そのときだけ管理者の確認が必要です。"
+LangString SaneUninstallFinishTitle ${LANG_JAPANESE} "スキャナープラグインを削除しました"
+LangString SaneUninstallFinishText ${LANG_JAPANESE} "プラグインのフォルダーを削除しました。negaflow はスキャナー操作なしで 起動します。$\r$\n$\r$\nスキャン済みのファイルとライブラリには触れていません。"
+LangString SaneUninstallLink ${LANG_JAPANESE} "negaflow スキャナープラグインのアンインストール"
+
+LangString SaneUninstallWelcomeTitle ${LANG_SIMPCHINESE} "卸载扫描仪插件"
+LangString SaneUninstallWelcomeText ${LANG_SIMPCHINESE} "将从你的用户目录中删除 negaflow-scanner-sane：适配器、随附的 SANE 运行时以及卸载项。$\r$\n$\r$\nnegaflow 本身仍会保留，只是不再显示扫描仪控件。安装时开启的扫描仪通路是否一并还原会询问一次，仅该步骤需要管理员确认。"
+LangString SaneUninstallFinishTitle ${LANG_SIMPCHINESE} "扫描仪插件已卸载"
+LangString SaneUninstallFinishText ${LANG_SIMPCHINESE} "插件目录已删除，negaflow 将在没有扫描仪控件的情况下启动。$\r$\n$\r$\n已扫描的文件和图库未被改动。"
+LangString SaneUninstallLink ${LANG_SIMPCHINESE} "卸载 negaflow 扫描仪插件"
+
+LangString SaneUninstallWelcomeTitle ${LANG_FRENCH} "Désinstaller le module scanner"
+LangString SaneUninstallWelcomeText ${LANG_FRENCH} "Ceci supprime negaflow-scanner-sane de votre profil utilisateur : l'adaptateur, le runtime SANE fourni et son entrée de désinstallation.$\r$\n$\r$\nnegaflow reste installé et fonctionne sans les commandes du scanner. Il vous sera demandé une fois, avec une confirmation administrateur, si le chemin du scanner doit aussi être annulé ; refuser le laisse en place."
+LangString SaneUninstallFinishTitle ${LANG_FRENCH} "Module scanner désinstallé"
+LangString SaneUninstallFinishText ${LANG_FRENCH} "Le dossier du module a disparu et negaflow démarrera sans les commandes du scanner.$\r$\n$\r$\nVos numérisations et bibliothèques n'ont pas été touchées."
+LangString SaneUninstallLink ${LANG_FRENCH} "Désinstaller le module scanner negaflow"
+
+LangString SaneUninstallWelcomeTitle ${LANG_GERMAN} "Scanner-Plug-in entfernen"
+LangString SaneUninstallWelcomeText ${LANG_GERMAN} "Damit wird negaflow-scanner-sane aus Ihrem Benutzerprofil entfernt: der Adapter, die mitgelieferte SANE-Laufzeit und der Deinstallationseintrag.$\r$\n$\r$\nnegaflow selbst bleibt installiert und läuft ohne Scanner-Bedienelemente weiter. Sie werden einmal mit einer Administratorbestätigung gefragt, ob auch der Scanner-Pfad zurückgenommen werden soll; lehnen Sie ab, bleibt er bestehen."
+LangString SaneUninstallFinishTitle ${LANG_GERMAN} "Scanner-Plug-in entfernt"
+LangString SaneUninstallFinishText ${LANG_GERMAN} "Der Plug-in-Ordner ist entfernt; negaflow startet ohne Scanner-Bedienelemente.$\r$\n$\r$\nIhre Scans und Bibliotheken blieben unberührt."
+LangString SaneUninstallLink ${LANG_GERMAN} "negaflow Scanner-Plug-in deinstallieren"
+
 ; --- 기록 -------------------------------------------------------------------
 ;
 ; 설치가 실패했다는 신고를 받았을 때 물어볼 것이 없으면 아무것도 못 한다.
@@ -186,6 +242,11 @@ Var MovedAside
 
 Function OpenProjectPage
   ExecShell "open" "https://github.com/habinsong/negaflow-scanner-sane"
+FunctionEnd
+
+Function un.onInit
+  ; 설치 때 고른 언어를 그대로 쓴다. 남아 있지 않으면 MUI 가 목록을 띄운다.
+  !insertmacro MUI_UNGETLANGUAGE
 FunctionEnd
 
 Function .onInit
@@ -260,6 +321,15 @@ Section "설치"
 
   ; --- 제거 정보 ---
   WriteUninstaller "$INSTDIR\uninstall.exe"
+
+  ; 제거는 `설정 > 앱` 에만 있었습니다. 시작 메뉴에서 찾을 자리가 없어
+  ; 플러그인을 지우려는 사람이 갈 곳을 몰랐습니다.
+  ;
+  ; **negaflow 의 시작 메뉴 폴더에 얹지 않습니다.** 그쪽 제거 절은 자기 폴더의
+  ; `*.lnk` 를 지우므로(제거 때 언어를 바꿔 고를 수 있어 이름을 특정할 수 없습니다),
+  ; 같은 폴더를 쓰면 negaflow 를 지울 때 이 바로가기까지 함께 사라집니다.
+  CreateDirectory "$SMPROGRAMS\negaflow-scanner-sane"
+  CreateShortcut "$SMPROGRAMS\negaflow-scanner-sane\$(SaneUninstallLink).lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\${EXENAME}"
 
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegStr   HKCU "${REGKEY}" "DisplayName"     "${APPNAME}"
@@ -354,6 +424,11 @@ Section "Uninstall"
     ${SAY} MB_ICONSTOP "제거할 수 없습니다. negaflow 를 닫고 다시 시도하십시오."
     Abort "제거를 중단했습니다."
   ${EndIf}
+
+  ; 바로가기 이름은 **설치할 때 고른 언어**로 지어졌습니다. 제거를 다른 언어로
+  ; 돌리면 이름이 달라 `Delete` 가 빗나가고 죽은 바로가기가 남습니다.
+  Delete "$SMPROGRAMS\negaflow-scanner-sane\*.lnk"
+  RMDir "$SMPROGRAMS\negaflow-scanner-sane"
 
   RMDir /r "$INSTDIR.removing"
   DeleteRegKey HKCU "${REGKEY}"

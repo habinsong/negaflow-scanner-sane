@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
@@ -97,7 +97,38 @@ $posixMakensis = (& $cygpath -u $makensis).Trim()
 if ($LASTEXITCODE -ne 0) {
     throw 'cygpath could not convert the installer paths.'
 }
-& $bash -lc "MINGW_PREFIX=/ucrt64 MAKENSIS='$posixMakensis' '$posixScript' '$posixPlugin'"
+# 브랜딩 비트맵은 Pillow 로 굽는다. MSYS 의 python3 에는 Pillow 가 없고, `bash -lc` 는
+# 로그인 셸이라 PATH 를 새로 짜서 Windows 의 `py` 런처도 사라진다 — 그 자리에서
+# `py: command not found` 로 설치 프로그램 조립이 멈췄다. 여기서 찾은 Windows Python 을
+# 그대로 넘긴다.
+# **런처가 아니라 실제 인터프리터를 넘긴다.** `py.exe` 는 스크립트의 `#!/usr/bin/env
+# python3` 를 보고 `python3` 를 다시 찾는데, 이 기계에서 그것은 Microsoft Store 별칭
+# (`WindowsApps\python3.exe`)이고 MSYS 에서 그 재분석 지점을 실행하면 fork 가
+# `cygheap read copy failed` 로 죽는다. 실제 exe 경로를 미리 풀어서 그 우회를 없앤다.
+$launcher = Get-Command py -ErrorAction SilentlyContinue
+if ($null -ne $launcher) {
+    $pythonPath = (& $launcher.Source -3 -c 'import sys; print(sys.executable)' 2>$null)
+}
+if ([string]::IsNullOrWhiteSpace($pythonPath)) {
+    $fallback = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -ne $fallback) {
+        $pythonPath = (& $fallback.Source -c 'import sys; print(sys.executable)' 2>$null)
+    }
+}
+if ([string]::IsNullOrWhiteSpace($pythonPath) -or -not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
+    throw 'Python was not found. The installer branding bitmaps need Windows Python with Pillow.'
+}
+$pythonPath = $pythonPath.Trim()
+& $pythonPath -c 'import PIL' 2>$null
+if ($LASTEXITCODE -ne 0) {
+    throw "Pillow is missing from $pythonPath. Install it with: `"$pythonPath`" -m pip install pillow"
+}
+$posixPython = (& $cygpath -u $pythonPath).Trim()
+if ($LASTEXITCODE -ne 0) {
+    throw 'cygpath could not convert the Python path.'
+}
+
+& $bash -lc "MINGW_PREFIX=/ucrt64 PYTHON='$posixPython' MAKENSIS='$posixMakensis' '$posixScript' '$posixPlugin'"
 if ($LASTEXITCODE -ne 0) {
     throw 'SANE installer assembly failed.'
 }
