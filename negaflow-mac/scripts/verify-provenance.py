@@ -183,13 +183,15 @@ def verify_distribution_policy() -> None:
         f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos26-{architecture}-installer.dmg"
         for architecture in ("arm64", "universal")
     )
+    # 설치 파일 표는 macOS 문서에 있다. 최상위 README 는 두 플랫폼을 함께 소개하고
+    # 자세한 설치는 각 플랫폼 문서로 넘긴다.
     for readme_name in (
-        "README.md",
-        "README_ko.md",
-        "README_ja.md",
-        "README_zh-Hans.md",
-        "README_fr.md",
-        "README_de.md",
+        "negaflow-mac/docs/README.md",
+        "negaflow-mac/docs/README_ko.md",
+        "negaflow-mac/docs/README_ja.md",
+        "negaflow-mac/docs/README_zh-Hans.md",
+        "negaflow-mac/docs/README_fr.md",
+        "negaflow-mac/docs/README_de.md",
     ):
         readme = (REPO_ROOT / readme_name).read_text(encoding="utf-8")
         for installer_name in standard_installer_names + coolscan_installer_names:
