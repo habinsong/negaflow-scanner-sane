@@ -1,12 +1,12 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">macOS용 negaflow SANE 필름 스캐너 플러그인</p>
+<p align="center">macOS와 Windows에서 쓰는 negaflow SANE 필름 스캐너 플러그인</p>
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/ko/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="웹사이트"></a>
-  <a href="#요구-사항"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 이상"></a>
-  <a href="negaflow-mac/Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 이상"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 스캐너 프로토콜 v2"></a>
+  <a href="negaflow-mac/docs/README_ko.md"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 이상"></a>
+  <a href="negaflow-windows/docs/README_ko.md"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
+  <a href="negaflow-mac/manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 스캐너 프로토콜 v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 이상 라이선스"></a>
 </p>
 
@@ -53,167 +53,23 @@ Apache-2.0인 **negaflow** 와는 다른 별도 프로세스, CLI 인자, 파이
 
 ## 요구 사항
 
-- 현재 negaflow와 Homebrew 설치 경로 기준 macOS 14.0 이상
-- negaflow
-- 일반 스캐너 경로는 Homebrew 기본 `sane-backends`
-- 별도 SANE 패치 경로만 macOS 26 이상
-- 소스에서 빌드할 때만 Swift 5.9 이상
-
-설치 안내는 현재 negaflow와 Homebrew가 함께 지원되는 macOS 14 이상을 기준으로 합니다.
+- negaflow가 먼저 설치돼 있어야 합니다
+- SANE이 지원하는 필름 스캐너
+- macOS 14.0 이상 또는 Windows 11
 
 ## 설치
 
-### 1. 손쉬운 설치
+두 시스템의 설치 과정이 꽤 달라서 각각 문서를 따로 두었습니다.
 
-Xcode Command Line Tools가 없다면 먼저 설치합니다.
-
-```bash
-xcode-select --install
-```
-
-설치 파일은 네 가지입니다. macOS 26을 쓸 수 없는 경우가 아니라면 `macos26` 쪽을 받습니다.
-패치판 SANE 빌드가 여기에 들어 있고, Nikon Coolscan과 Epson 적외선 채널을 쓰게 해 주는 것이
-그 빌드입니다. `opticfilm-macos14` 쪽은 그 빌드를 설치할 수 없는 macOS 14·15를 위한 것입니다.
-
-| 설치 파일 | SANE 경로 | 플러그인 바이너리 |
-|---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 패치판 SANE, macOS 26 이상 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14 이상 | `arm64` + `x86_64` |
-
-`macos26` DMG에서는 `Install negaflow Scanner.pkg`, `opticfilm-macos14` DMG에서는
-`Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.
-
-`macos26` 판은 공식 SANE 1.4.0 소스를 `sane-backends-negaflow`로 빌드한 뒤 같은 플러그인을
-설치합니다. 적용되는 패치는 셋입니다.
-
-| 패치 | 바뀌는 것 |
+| 플랫폼 | 문서 |
 |---|---|
-| Coolscan 깊이 목록 | upstream `coolscan2`/`coolscan3` 할당 수정 |
-| `epson2` 스캔 높이 | Epson 평판이 보고하는 스캔 높이를 바로잡습니다 |
-| `epson2` 적외선 | `SANE_FRAME_IR` 차단을 풀어, Epson 필름 평판이 별도 적외선 패스를 낼 수 있게 합니다 |
+| macOS | [macOS에 설치하기](negaflow-mac/docs/README_ko.md) |
+| Windows | [Windows에 설치하기](negaflow-windows/docs/README_ko.md) |
 
-`opticfilm-macos14` 판은 Homebrew 기본 `sane-backends`를 설치하며 위 패치는 들어가지 않습니다.<br>
-설치에는 인터넷 연결과 관리자 암호가 필요하며, 기존 Homebrew가 있으면 그대로 사용합니다.
-
-두 설치본 모두 macOS 14·15에서 Coolscan을 강제로 차단하지는 않습니다. stock SANE으로 동작할 수도
-있지만 할당 수정이 없으므로, 지원하는 패치 경로는 `macos26` 설치본입니다.
-
-이후 upstream에는 적어도 LS-5000 펌웨어 1.03에서 필요한 Coolscan3
-load/eject/reset 매개변수 초기화도 반영됐습니다. 이 변경은 의도적으로 최소 패치 범위에
-넣지 않았으므로, 패치판에서도 LS-5000의 필름 로드·배출·리셋은 미검증이며 실패할 수 있습니다.
-
-설치가 끝나면 negaflow를 다시 실행하고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤 승인합니다.<br><br>
-**그냥 간단하게 윗 손쉬운 방법으로 설치후 negaflow 를 실행하시고, 승인 버튼 한번 누르면 끝납니다.**
-
----
-### 2. Homebrew와 SANE 수동 설치
-
-Homebrew가 없다면 현재 공식 설치 명령을 실행합니다.
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-이 명령은 Homebrew 설치 파일을 내려받아 실행합니다. 실행하기 전에 주소가 정확히
-`raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`인지 확인합니다. <br>
-명령 대신 쓸 수 있는 서명된 `.pkg` 설치 파일도 [Homebrew 공식 홈페이지](https://brew.sh/)에 안내되어 있습니다.
-
-설치가 끝나면 화면에 나온 **Next steps**를 그대로 실행해 `brew`를 셸 환경에 추가하고, 먼저 명령이 잡히는지 확인합니다.
-
-
-```bash
-brew --version
-```
-
-일반 macOS 14 이상 경로는 다음과 같습니다.
-
-```bash
-brew install sane-backends
-```
-
-macOS 26 이상 SANE 패치 경로는 저장소에 포함된 도우미를 실행합니다.
-
-```bash
-bash scripts/install-patched-sane.sh
-export PATH="$(brew --prefix sane-backends-negaflow)/bin:$PATH"
-```
-
-설치된 명령과 버전을 확인합니다.
-
-```bash
-command -v scanimage
-scanimage --version
-brew list --versions sane-backends sane-backends-negaflow
-```
-
-패치된 keg가 있으면 플러그인은 `/opt/homebrew/opt/...` 또는 `/usr/local/opt/...`
-절대 경로와 같은 keg의 `etc/sane.d`, `lib/sane`을 함께 사용합니다.<br><br>
-
-### 3. 스캐너 연결과 SANE 확인
-
-스캐너 전원을 켜고 가능하면 USB 허브를 거치지 않고 직접 연결한 뒤 실행합니다.
-
-```bash
-scanimage -L
-```
-
-출력에 적힌 백엔드와 USB 주소를 포함한 device ID 전체를 복사해서 해당 장치가 제공하는 옵션을
-확인합니다.
-
-```bash
-scanimage -d '<device-id>' -A
-```
-
-device ID는 `genesys:libusb:001:002`처럼 보일 수 있습니다.<br> 이 예시를 그대로 쓰지 말고 현재
-Mac에서 `scanimage -L`이 반환한 값을 사용해야 합니다.
-
-`sane-find-scanner`는 USB나 SCSI 장치를 찾았다는 뜻일 뿐입니다.<br> 사용할 수 있는 SANE 백엔드가 없는 스캐너도 표시할 수 있습니다.<br> `scanimage -L`에 장치가 나오지 않으면 이 플러그인에서도 사용할 수 없습니다.<br><br> USB 연결,
-[SANE 지원 목록](https://www.sane-project.org/sane-supported-devices.html)과 해당 백엔드
-설명서를 먼저 확인해야 합니다.
-
-### 4A. 소스에서 플러그인 빌드·설치
-
-```bash
-git clone https://github.com/habinsong/negaflow-scanner-sane.git
-cd negaflow-scanner-sane
-./install.sh
-```
-
-스크립트가 Release 빌드를 만든 뒤 아래 두 파일을 설치합니다.
-
-```text
-~/Library/Application Support/negaflow/Plugins/sane/
-  ├── negaflow-scanner-sane
-  └── manifest.json
-```
-
-### 4B. 배포 ZIP에서 설치
-
-릴리스 ZIP을 풀고 안에 있는 설치 파일을 실행합니다.
-
-```bash
-./install.sh
-```
-
-배포 ZIP 설치에는 Swift 도구체인이 필요하지 않습니다. `install.sh`는 플러그인만
-설치하므로, 위 설명에 따라 일반 SANE 또는 macOS 26 패치판을 먼저 설치합니다.
-
-### 5. negaflow에서 승인하고 확인
-
-negaflow를 다시 실행하고 **스캐너 불러오기**를 엽니다. 플러그인 경로, 버전, 라이선스와 hash를 확인한 뒤 승인합니다. <br>
-업데이트로 실행 파일이나 manifest가 바뀌면 다시 승인을 받아야 합니다.
-
-설치된 실행 파일을 직접 확인할 수도 있습니다.
-
-```bash
-"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
-```
-
-`{"devices":[...]}`가 나오면 플러그인이 실행된 것입니다. `devices`가 빈 배열이면 플러그인은
-실행됐지만 SANE이 사용할 수 있는 스캐너를 반환하지 않은 상태입니다. 이때 플러그인을 다시
-설치해도 빠진 SANE 백엔드 지원이 생기지는 않으므로 `scanimage -L` 단계부터 확인해야 합니다.
+짧게 요약하면 이렇습니다. [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
+쓰는 시스템에 맞는 설치 파일을 받아 실행하고, negaflow를 다시 켜서 플러그인을 승인하면 됩니다.
+macOS에서는 설치 파일이 Homebrew로 SANE까지 준비해 줍니다. Windows에서는 SANE 실행 파일이
+설치 파일 안에 이미 들어 있습니다.
 
 ## 지원 스캐너
 

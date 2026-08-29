@@ -1,12 +1,12 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">Module SANE pour scanners de film, destiné à negaflow sur macOS</p>
+<p align="center">Le module scanner de film SANE pour negaflow, sur macOS et sur Windows</p>
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/fr/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="site web"></a>
-  <a href="#prérequis"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 ou version ultérieure"></a>
-  <a href="negaflow-mac/Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 ou version ultérieure"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Protocole scanner negaflow v2"></a>
+  <a href="negaflow-mac/docs/README_fr.md"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 ou version ultérieure"></a>
+  <a href="negaflow-windows/docs/README_fr.md"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
+  <a href="negaflow-mac/manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="Protocole scanner negaflow v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 ou ultérieure"></a>
 </p>
 
@@ -54,170 +54,23 @@ negaflow n'affiche que les options signalées par l'appareil connecté et son ba
 
 ## Prérequis
 
-- macOS 14.0 ou version ultérieure pour l'installation actuelle de negaflow et Homebrew
-- negaflow
-- `sane-backends` standard de Homebrew pour les scanners ordinaires
-- macOS 26 ou version ultérieure uniquement pour le parcours SANE corrigé
-- Swift 5.9 ou version ultérieure uniquement pour compiler les sources
-
-`Package.swift` conserve une cible de déploiement macOS 13 pour l'exécutable seul.<br>
-Le parcours complet décrit ici commence à macOS 14 afin de suivre les prérequis actuels de negaflow et Homebrew.
+- negaflow, installé au préalable
+- Un scanner de film pris en charge par SANE
+- macOS 14.0 ou plus récent, ou Windows 11
 
 ## Installation
 
-### 1. Installateur tout-en-un
+Les deux systèmes diffèrent assez pour que chacun ait sa propre page.
 
-Si les Xcode Command Line Tools ne sont pas encore présents, installez-les d'abord :
-
-```bash
-xcode-select --install
-```
-
-Quatre programmes d'installation sont publiés. Prenez la paire `macos26` sauf si macOS 26 est hors
-de portée : elle contient la version corrigée de SANE, celle qui rend possibles Nikon Coolscan et le
-canal infrarouge Epson. La paire `opticfilm-macos14` existe pour macOS 14 et 15, où cette version ne
-peut pas être installée.
-
-| Programme d'installation | Parcours SANE | Binaire du module |
-|---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | SANE corrigé, macOS 26+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm, macOS 14+ | `arm64` uniquement |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm, macOS 14+ | `arm64` + `x86_64` |
-
-Le DMG `macos26` contient `Install negaflow Scanner.pkg` ; le DMG `opticfilm-macos14` contient
-`Install negaflow Scanner for OpticFilm.pkg`.
-
-La version `macos26` compile `sane-backends-negaflow` depuis les sources officielles de SANE 1.4.0,
-puis installe le même plug-in. Trois correctifs sont appliqués :
-
-| Correctif | Ce qu'il change |
+| Plateforme | Page |
 |---|---|
-| Liste de profondeurs Coolscan | Le correctif d'allocation upstream `coolscan2`/`coolscan3` |
-| Hauteur de numérisation `epson2` | Corrige la hauteur qu'un scanner à plat Epson annonce |
-| Infrarouge `epson2` | Lève le verrou sur `SANE_FRAME_IR`, un scanner à plat Epson peut alors renvoyer un passage infrarouge séparé |
+| macOS | [Installer sur macOS](negaflow-mac/docs/README_fr.md) |
+| Windows | [Installer sur Windows](negaflow-windows/docs/README_fr.md) |
 
-La version `opticfilm-macos14` installe `sane-backends` de Homebrew, sans aucun de ces correctifs.<br>
-Une connexion Internet et un mot de passe d'administrateur sont nécessaires.<br>
-Une installation Homebrew existante est réutilisée.
-
-La version standard et macOS antérieur à 26 ne bloquent pas Coolscan. Stock SANE peut fonctionner
-sur certains appareils, mais sans ce correctif ; la version macOS 26 est le parcours corrigé pris
-en charge.
-
-Une modification upstream ultérieure initialise aussi les blocs de paramètres load/eject/reset
-de Coolscan3, nécessaires au moins au firmware 1.03 du LS-5000. Elle est volontairement exclue
-de cet ensemble minimal de correctifs : le chargement, l'éjection et la réinitialisation du LS-5000
-restent donc non vérifiés et peuvent échouer.
-
-À la fin, redémarrez negaflow, ouvrez « Charger le scanner », vérifiez les informations du module et approuvez-le.
-
-### 2. Installation manuelle de Homebrew et SANE
-
-Si Homebrew n'est pas installé, utilisez la commande officielle actuelle :
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-Cette commande télécharge et exécute l'installateur Homebrew.<br>
-Avant de la lancer, vérifiez que l'URL est exactement `raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`.<br>
-Un installateur `.pkg` signé est également proposé sur le [site officiel de Homebrew](https://brew.sh/).
-
-Suivez ensuite les **Next steps** affichées pour ajouter `brew` à l'environnement du shell, ouvrez un nouveau Terminal, puis vérifiez que la commande est disponible :
-
-```bash
-brew --version
-```
-
-Parcours standard sous macOS 14 ou ultérieur :
-
-```bash
-brew install sane-backends
-```
-
-Parcours SANE corrigé sous macOS 26 ou ultérieur :
-
-```bash
-bash scripts/install-patched-sane.sh
-export PATH="$(brew --prefix sane-backends-negaflow)/bin:$PATH"
-```
-
-Contrôlez la commande installée et sa version :
-
-```bash
-command -v scanimage
-scanimage --version
-brew list --versions sane-backends sane-backends-negaflow
-```
-
-Quand le keg corrigé existe, le module utilise son chemin absolu ainsi que ses propres dossiers
-`etc/sane.d` et `lib/sane`.
-
-### 3. Brancher et vérifier le scanner
-
-Allumez le scanner, branchez-le directement en USB si possible, puis lancez :
-
-```bash
-scanimage -L
-```
-
-Copiez l'identifiant complet affiché, avec le backend et l'adresse USB, puis examinez les options réellement publiées par cet appareil :
-
-```bash
-scanimage -d '<device-id>' -A
-```
-
-Un identifiant peut ressembler à `genesys:libusb:001:002`.<br>
-Ne recopiez pas cet exemple : utilisez la valeur renvoyée par `scanimage -L` sur le Mac concerné.
-
-`sane-find-scanner` prouve seulement qu'un périphérique USB ou SCSI a été détecté.<br>
-Il peut aussi afficher un scanner pour lequel aucun backend SANE utilisable n'existe.<br>
-Si l'appareil n'apparaît pas dans `scanimage -L`, ce module ne peut pas l'utiliser.<br>
-Vérifiez la liaison USB, la [liste des appareils SANE](https://www.sane-project.org/sane-supported-devices.html) et la documentation du backend avant de continuer.
-
-### 4A. Compiler et installer le module depuis les sources
-
-```bash
-git clone https://github.com/habinsong/negaflow-scanner-sane.git
-cd negaflow-scanner-sane
-./install.sh
-```
-
-Le script produit une version Release et installe ces deux fichiers :
-
-```text
-~/Library/Application Support/negaflow/Plugins/sane/
-  ├── negaflow-scanner-sane
-  └── manifest.json
-```
-
-### 4B. Installer une archive ZIP publiée
-
-Décompressez l'archive ZIP, puis lancez l'installateur fourni :
-
-```bash
-./install.sh
-```
-
-L'installation de l'archive ne demande pas la chaîne d'outils Swift. `install.sh` installe
-uniquement le module ; installez d'abord SANE standard ou la version corrigée macOS 26.
-
-### 5. Approuver et vérifier dans negaflow
-
-Redémarrez negaflow et ouvrez « Charger le scanner ».<br>
-Vérifiez le chemin, la version, la licence et les hash du module, puis approuvez-le.<br>
-Si l'exécutable ou le manifest change après une mise à jour, negaflow demande une nouvelle approbation.
-
-L'exécutable installé peut aussi être contrôlé directement :
-
-```bash
-"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
-```
-
-Une réponse `{"devices":[...]}` signifie que le module a démarré.<br>
-Si `devices` est un tableau vide, le module fonctionne mais SANE n'a renvoyé aucun scanner utilisable.<br>
-Réinstaller le module n'ajoute pas la prise en charge absente d'un backend SANE : reprenez le diagnostic à `scanimage -L`.
+En résumé : téléchargez l'installateur correspondant à votre système depuis
+[Releases](https://github.com/habinsong/negaflow-scanner-sane/releases), lancez-le,
+redémarrez negaflow et approuvez le module. Sur macOS l'installateur met aussi SANE en
+place via Homebrew. Sur Windows les binaires SANE sont déjà dans l'installateur.
 
 ## Scanners pris en charge
 

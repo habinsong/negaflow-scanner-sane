@@ -39,7 +39,7 @@ Outside `windows/`, the source tree contains no C, C++, or Objective-C. Nowhere
 in the tree is there a vendored native dependency, a vendored SANE tree, or a
 prebuilt SANE binary. Release verification rejects those additions. The patches
 embedded in the Homebrew formula are GPL-2.0-or-later and are distributed as
-source with the plug-in — coolscan2/coolscan3 word-list, epson2 scan-height and
+source with the plug-in: coolscan2/coolscan3 word-list, epson2 scan-height and
 infrared frame, and the genesys OpticFilm host-side Gray fixes.
 
 ## SANE and negaflow boundary
@@ -65,7 +65,7 @@ The same boundary holds, with one difference that matters for licensing:
 build it on the user's machine, so the plug-in distribution contains GPL
 binaries and must carry the corresponding source.
 
-- Recipe and patches: [`sane-runtime/`](sane-runtime/) —
+- Recipe and patches: [`sane-runtime/`](negaflow-mac/sane-runtime/),
   `PKGBUILD`, eleven patches, and `SOURCES.md` describing each one
 - The pinned tarball hash plus that recipe reproduces the exact runtime
 
@@ -80,7 +80,7 @@ scanimage.exe (GPL-2.0-or-later)
 ```
 
 The adapter does not link `libsane`. It runs `scanimage` and parses its
-output — the same relationship the macOS plug-in has. The Windows adapter's
+output, the same relationship the macOS plug-in has. The Windows adapter's
 own sources live in `windows/` and carry this project's GPL tag;
 `scripts/verify-provenance.py` fails the build if any third-party licence tag
 or copyright line appears there.
@@ -105,7 +105,7 @@ Coolscan installer asks Homebrew to build and install
 - this provenance record;
 - the matching complete plug-in source archive.
 
-The Coolscan package additionally includes
+The Coolscan package also includes
 `Formula/sane-backends-negaflow.rb`, including the upstream Coolscan fix.
 The standalone release publishes the same source archive beside the binary
 ZIP and embeds it in the ZIP. Release verification compares both copies and

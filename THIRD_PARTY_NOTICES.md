@@ -68,16 +68,16 @@ GPL-2.0-or-later and is distributed as source inside the formula itself.
 ### Windows redistributes the runtime, macOS does not
 
 The sentence above describes macOS only. **The Windows plugin ships a built SANE
-runtime** — there is no Homebrew to build it on the user's machine — so the
+runtime**, there is no Homebrew to build it on the user's machine, so the
 obligations are different and stronger.
 
 - Upstream source: `backends-1.4.0.tar.bz2` from
   <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
 - Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
 - License: GPL-2.0-or-later
-- Modifications: eleven patches, all in [`sane-runtime/patches/`](sane-runtime/patches/),
-  described in [`sane-runtime/SOURCES.md`](sane-runtime/SOURCES.md)
-- Build recipe: [`sane-runtime/PKGBUILD`](sane-runtime/PKGBUILD), based on the
+- Modifications: eleven patches, all in [`sane-runtime/patches/`](negaflow-mac/sane-runtime/patches/),
+  described in [`sane-runtime/SOURCES.md`](negaflow-mac/sane-runtime/SOURCES.md)
+- Build recipe: [`sane-runtime/PKGBUILD`](negaflow-mac/sane-runtime/PKGBUILD), based on the
   MSYS2 `mingw-w64-sane` package
 - Backends built: `genesys epson2 epsonds coolscan2 coolscan3 test`
 
@@ -94,7 +94,7 @@ plugin's own source is this repository, which is GPL-2.0-or-later.
 
 The runtime links libusb-1.0 (LGPL-2.1-or-later) dynamically, so the user can
 substitute their own build. See
-[`negaflow-windows/docs/07-distribution/gpl-compliance.md`](negaflow-windows/docs/07-distribution/gpl-compliance.md).
+the GPL compliance notes kept with the project.
 
 ### The Windows installer carries NSIS
 

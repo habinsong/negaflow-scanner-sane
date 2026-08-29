@@ -1,4 +1,4 @@
-# OpticFilm Gray — 무엇이 문제였고 macOS 에서 무엇이 남았는가
+# OpticFilm Gray. 무엇이 문제였고 macOS 에서 무엇이 남았는가
 
 기준일: 2026-08-25
 소유 코드: `negaflow-mac/Formula/sane-backends-negaflow.rb`
@@ -19,7 +19,7 @@ Plustek OpticFilm 8100 을 **Gray 모드**로 스캔하면:
 - 프런트엔드는 멈춘 채 남고 결과 파일은 **0 바이트**다.
 
 같은 장치의 **Color 16-bit 는 정상**이다. 그래서 "이 장치는 Gray 미지원" 이라는 추측으로
-닫으면 안 된다 — capability 목록은 Gray 를 지원한다고 보고하고, 실제로 아래 방식으로
+닫으면 안 된다. capability 목록은 Gray 를 지원한다고 보고하고, 실제로 아래 방식으로
 동작한다.
 
 ## 2. 확정한 원인 세 가지
@@ -47,7 +47,7 @@ upstream 은 GL841 계열 3개 모델에만 이 플래그를 켰다.
 발동하지 않는다.** 그래서 이 분기를 `HOST_SIDE_GRAY` 플래그 기준으로 넓혀야 한다.
 모델명이 아니라 플래그로 걸리므로 이 hunk 는 완전히 범용이다.
 
-### 2.3 GL845/GL846 의 종료 길이 계산이 빠져 있다 — upstream 버그
+### 2.3 GL845/GL846 의 종료 길이 계산이 빠져 있다 (upstream 버그)
 
 `use_host_side_gray` 가 켜지면 파이프라인은 Gray 를 내지만
 `session.output_line_bytes_requested` 는 **센서가 실제로 획득하는 3채널** 기준이다.
@@ -64,7 +64,7 @@ scanimage: WARNING: read more data than announced by backend (3030240/1010080)
 > **여기서 한 번 헛짚었다.** 처음에는 이 수정을 `gl843.cpp` 에 넣었다. OpticFilm 8100 의
 > `model.asic_type` 은 **`AsicType::GL845`** 이고, `low.cpp` 의 command-set 팩토리는
 > `case AsicType::GL845:` 를 `GL846` 으로 흘려보내 `CommandSetGl846` 을 만든다. 즉 8100 은
-> `gl843.cpp` 를 한 줄도 타지 않는다. 게다가 현재 `HOST_SIDE_GRAY` 를 켠 모델 중 GL843 은
+> `gl843.cpp` 를 한 줄도 타지 않는다. 그리고 현재 `HOST_SIDE_GRAY` 를 켠 모델 중 GL843 은
 > 하나도 없어서, gl843 쪽 수정은 **컴파일은 되고 절대 실행되지 않는 죽은 코드**였다.
 > 빌드 로그로는 알 수 없고 실기 스캔의 바이트 수로만 드러난다.
 
@@ -76,7 +76,7 @@ scanimage: WARNING: read more data than announced by backend (3030240/1010080)
 | hunk | 파일 | 분기 조건 | 범용성 |
 |---|---|---|---|
 | 1 | `backend/genesys/genesys.cpp` | `ModelFlag::HOST_SIDE_GRAY` | 플래그 기반. 모델명 없음 → **범용** |
-| 2 | `backend/genesys/tables_model.cpp` | 7400-v2 행 (8100 이 상속) | **모델 행 — 증거 범위 한정** |
+| 2 | `backend/genesys/tables_model.cpp` | 7400-v2 행 (8100 이 상속) | **모델 행, 증거 범위 한정** |
 | 3 | `backend/genesys/gl846.cpp` | `session.use_host_side_gray` | 세션 속성. 모델명 없음 → **범용**, upstream 버그 수정 |
 
 ### 3.1 hunk 2 의 범위를 왜 넓히지 않았는가
@@ -88,11 +88,11 @@ scanimage: WARNING: read more data than announced by backend (3030240/1010080)
 
 | 모델 | ASIC | 이 수정의 대상인가 |
 |---|---|---|
-| 7200 | GL842 | 아니오 — 미검증 |
-| 7200i / 7200-v2 / 7300 / 7400-v1 / 7500i / 7600i-v1 | GL843 | 아니오 — 미검증 |
-| **7400-v2** | **GL845** | **예** — 8100 이 이 행을 상속 |
-| **8100** | **GL845** | **예** — 실기 증거 있음 |
-| 8200i / 7600i-v2 | GL845 | 아니오 — 미검증 |
+| 7200 | GL842 | 아니오, 미검증 |
+| 7200i / 7200-v2 / 7300 / 7400-v1 / 7500i / 7600i-v1 | GL843 | 아니오, 미검증 |
+| **7400-v2** | **GL845** | **예**, 8100 이 이 행을 상속 |
+| **8100** | **GL845** | **예**, 실기 증거 있음 |
+| 8200i / 7600i-v2 | GL845 | 아니오, 미검증 |
 
 host-side Gray 는 **3채널을 획득**한다. native Gray 가 멀쩡히 되는 장치에 이 플래그를 켜면
 스캔이 느려지는 **회귀**다. 그래서 증거 없는 행은 켜지 않는다. 어떤 행을 켜려면 **그
@@ -118,7 +118,7 @@ macOS formula 의 8개 hunk 전체는 **실제 macOS upstream tarball**
 **그러나 macOS 에서 빌드하고 실기로 돌린 적은 없다.** 아래 §5 를 통과하기 전에는
 macOS 통과로 기록하지 않는다.
 
-## 5. macOS 에서 해야 할 일 — 정확한 절차와 합격 기준
+## 5. macOS 에서 해야 할 일. 정확한 절차와 합격 기준
 
 ### 5.1 빌드
 
@@ -135,17 +135,17 @@ SANEBIN="$(brew --prefix sane-backends-negaflow)/bin"
 "$SANEBIN/scanimage" -L          # genesys:... OpticFilm 이 보여야 한다
 ```
 
-### 5.2 합격 기준 1 — 색 필터에 `None` 이 노출된다
+### 5.2 합격 기준 1. 색 필터에 `None` 이 노출된다
 
 ```bash
 "$SANEBIN/scanimage" -d <device> -A --mode Gray | grep color-filter
 ```
 
 **합격**: `--color-filter Red|Green|Blue|None [None]`
-**불합격**: `Red|Green|Blue [Green]` — hunk 1 이 안 먹은 것이다. 이 상태에서는 hunk 2 를
+**불합격**: `Red|Green|Blue [Green]`. hunk 1 이 안 먹은 것이다. 이 상태에서는 hunk 2 를
 켜도 host-side Gray 가 발동하지 않는다.
 
-### 5.3 합격 기준 2 — Gray 16-bit 가 **연속 2회** 정상 종료한다
+### 5.3 합격 기준 2. Gray 16-bit 가 **연속 2회** 정상 종료한다
 
 ```bash
 for i in 1 2; do
@@ -163,7 +163,7 @@ done
    3배(약 3,030,462 B)가 나오면 hunk 3 이 안 먹은 것이다.
 4. `tiffinfo gray_1.tiff` 가 **Samples/Pixel 1**, **Bits/Sample 16** 이다.
 
-### 5.4 합격 기준 3 — Color 16-bit 회귀
+### 5.4 합격 기준 3. Color 16-bit 회귀
 
 ```bash
 "$SANEBIN/scanimage" -d <device> --mode Color --depth 16 --resolution 600 \
@@ -172,7 +172,7 @@ done
 
 **합격**: `exit=0`, 경고 없음, `Samples/Pixel 3`, 크기가 Gray 의 약 3배.
 
-### 5.5 합격 기준 4 — Coolscan / epson2 회귀
+### 5.5 합격 기준 4. Coolscan / epson2 회귀
 
 genesys hunk 는 다른 백엔드를 건드리지 않지만, formula 를 다시 빌드했으므로 기존 3개
 수정이 살아 있는지 같이 본다. Coolscan 의 depth 목록과 epson2 의 스캔 높이·IR 프레임을

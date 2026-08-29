@@ -1,12 +1,12 @@
 <h1 align="center">negaflow-scanner-sane</h1>
 
-<p align="center">适用于 macOS 版 negaflow 的 SANE 胶片扫描仪插件</p>
+<p align="center">在 macOS 和 Windows 上使用的 negaflow SANE 胶片扫描仪插件</p>
 
 <p align="center">
   <a href="https://habinsong.github.io/negaflow-site/zh/"><img src="https://img.shields.io/badge/website-negaflow-1F6FEB" alt="网站"></a>
-  <a href="#系统要求"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 或更高版本"></a>
-  <a href="negaflow-mac/Package.swift"><img src="https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white" alt="Swift 5.9 或更高版本"></a>
-  <a href="manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 扫描仪协议 v2"></a>
+  <a href="negaflow-mac/docs/README_zh-Hans.md"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 或更高版本"></a>
+  <a href="negaflow-windows/docs/README_zh-Hans.md"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
+  <a href="negaflow-mac/manifest.json"><img src="https://img.shields.io/badge/protocol-v2-4B5563" alt="negaflow 扫描仪协议 v2"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 或更高版本"></a>
 </p>
 
@@ -51,165 +51,24 @@
 插件不会只凭扫描仪型号判断功能。<br>
 negaflow 只显示当前设备及其 SANE 后端实际报告的选项。
 
-## 系统要求
+## 运行环境
 
-- 按当前 negaflow 与 Homebrew 安装方式，需要 macOS 14.0 或更高版本
-- negaflow
-- 普通扫描仪使用 Homebrew 标准 `sane-backends`
-- SANE 修补路径仅支持 macOS 26 或更高版本
-- 仅从源码构建时需要 Swift 5.9 或更高版本
-
-独立可执行文件在 `Package.swift` 中仍以 macOS 13 为 deployment target。<br>
-但本指南所述的 negaflow 与 Homebrew 完整安装方式，按当前支持范围从 macOS 14 开始。
+- 先装好 negaflow
+- SANE 支持的胶片扫描仪
+- macOS 14.0 或更高，或者 Windows 11
 
 ## 安装
 
-### 1. 一键安装程序
+两个系统的安装步骤差别不小，各自单独一页。
 
-如果尚未安装 Xcode Command Line Tools，请先安装：
-
-```bash
-xcode-select --install
-```
-
-安装包有四种。除非无法使用 macOS 26，否则选择 `macos26` 一组。修补版 SANE 构建在这一组里，
-Nikon Coolscan 和 Epson 红外通道靠的就是该构建。`opticfilm-macos14` 一组供无法安装该构建的
-macOS 14、15 使用。
-
-| 安装包 | SANE 路径 | 插件二进制 |
-|---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 修补版 SANE，macOS 26+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 修补版 SANE，macOS 26+ | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm，macOS 14+ | 仅 `arm64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm，macOS 14+ | `arm64` + `x86_64` |
-
-`macos26` DMG 内运行 `Install negaflow Scanner.pkg`；`opticfilm-macos14` DMG 内运行
-`Install negaflow Scanner for OpticFilm.pkg`。
-
-`macos26` 版从官方 SANE 1.4.0 源码构建 `sane-backends-negaflow`，然后安装同一个插件。共应用三个补丁：
-
-| 补丁 | 改变了什么 |
+| 平台 | 页面 |
 |---|---|
-| Coolscan 深度列表 | upstream 的 `coolscan2`/`coolscan3` 分配修复 |
-| `epson2` 扫描高度 | 修正 Epson 平板报告的扫描高度 |
-| `epson2` 红外 | 解除 `SANE_FRAME_IR` 的屏蔽，使 Epson 胶片平板可以返回独立的红外通道 |
+| macOS | [在 macOS 上安装](negaflow-mac/docs/README_zh-Hans.md) |
+| Windows | [在 Windows 上安装](negaflow-windows/docs/README_zh-Hans.md) |
 
-`opticfilm-macos14` 版安装 Homebrew 的 `sane-backends`，不含上述补丁。<br>
-安装需要互联网连接和管理员密码；若已安装 Homebrew，则直接复用现有安装。
-
-两个安装包在 macOS 14、15 上都不会主动阻止 Coolscan。stock SANE 可能适用于某些设备，但不含该分配
-修复；受支持的修补路径是 `macos26` 安装包。
-
-后续 upstream 还加入了至少 LS-5000 firmware 1.03 所需的 Coolscan3
-load/eject/reset 参数块初始化。该修改有意不包含在这组最小补丁中，因此即使使用 Coolscan
-版，LS-5000 的装片、退片和复位仍未经过验证，并可能失败。
-
-完成后重新启动 negaflow，在“加载扫描仪”中检查插件信息并批准它。
-
-### 2. 手动安装 Homebrew 和 SANE
-
-如果尚未安装 Homebrew，请运行当前官方安装命令：
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-该命令会下载并运行 Homebrew 安装程序。<br>
-执行前请确认地址正是 `raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`。<br>
-也可以使用 [Homebrew 官方网站](https://brew.sh/)提供的已签名 `.pkg` 安装程序。
-
-安装完成后，按屏幕显示的 **Next steps** 将 `brew` 加入 shell 环境，再重新打开终端并检查命令是否可用：
-
-```bash
-brew --version
-```
-
-macOS 14 以上标准路径：
-
-```bash
-brew install sane-backends
-```
-
-macOS 26 以上 SANE 修补路径：
-
-```bash
-bash scripts/install-patched-sane.sh
-export PATH="$(brew --prefix sane-backends-negaflow)/bin:$PATH"
-```
-
-检查已安装的命令和版本：
-
-```bash
-command -v scanimage
-scanimage --version
-brew list --versions sane-backends sane-backends-negaflow
-```
-
-若修补后的 keg 存在，插件会使用其绝对路径以及同一 keg 的 `etc/sane.d` 和 `lib/sane`。
-
-### 3. 连接并检查扫描仪
-
-打开扫描仪电源，尽量直接连接 USB 而不经过集线器，然后运行：
-
-```bash
-scanimage -L
-```
-
-复制输出中包含后端名和 USB 地址的完整 device ID，再查看该设备实际提供的选项：
-
-```bash
-scanimage -d '<device-id>' -A
-```
-
-device ID 可能类似 `genesys:libusb:001:002`。<br>
-不要照抄这个示例，请使用当前 Mac 上 `scanimage -L` 返回的值。
-
-`sane-find-scanner` 只能证明发现了 USB 或 SCSI 设备，也可能列出没有可用 SANE 后端的扫描仪。<br>
-如果设备没有出现在 `scanimage -L` 中，本插件就无法使用它。<br>
-请先检查 USB 连接、 [SANE 支持列表](https://www.sane-project.org/sane-supported-devices.html)以及相应后端的说明。
-
-### 4A. 从源码构建并安装插件
-
-```bash
-git clone https://github.com/habinsong/negaflow-scanner-sane.git
-cd negaflow-scanner-sane
-./install.sh
-```
-
-脚本会创建 Release 构建，并安装以下两个文件：
-
-```text
-~/Library/Application Support/negaflow/Plugins/sane/
-  ├── negaflow-scanner-sane
-  └── manifest.json
-```
-
-### 4B. 从发布 ZIP 安装
-
-解压发布 ZIP，并运行其中的安装程序：
-
-```bash
-./install.sh
-```
-
-安装已打包版本不需要 Swift 工具链。`install.sh` 只安装插件，因此请先安装标准 SANE
-或 macOS 26 修补版。
-
-### 5. 在 negaflow 中批准并验证
-
-重新启动 negaflow 并打开“加载扫描仪”。<br>
-检查插件路径、版本、许可证和 hash 后批准它。<br>
-如果更新后可执行文件或 manifest 发生变化，negaflow 会要求重新批准。
-
-也可以直接检查已安装的可执行文件：
-
-```bash
-"$HOME/Library/Application Support/negaflow/Plugins/sane/negaflow-scanner-sane" detect
-```
-
-返回 `{"devices":[...]}` 表示插件已经运行。<br>
-若 `devices` 为空数组，则插件已启动，但 SANE 没有返回可用扫描仪。<br>
-此时重新安装插件不会补上缺失的 SANE 后端支持，应从 `scanimage -L` 这一步开始检查。
+简单说就是：在 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)
+下载对应系统的安装程序并运行，重开 negaflow，批准插件即可。macOS 上安装程序会通过 Homebrew
+一并准备好 SANE。Windows 上 SANE 的可执行文件已经在安装包里。
 
 ## 扫描仪支持
 

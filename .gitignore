@@ -50,3 +50,12 @@ negaflow-mac/sane-runtime/*.pkg.tar.zst
 
 # 빌드 산출물
 negaflow-windows/out/
+
+# 만드는 과정에서 남긴 기록이다. 구현 과정, 진행 상태, 결정한 이유, 하드웨어 시험
+# 기록 같은 것들이라 공개하지 않는다. 공개하는 문서는 negaflow-mac/docs/ 와
+# negaflow-windows/docs/ 에 둔다.
+#
+# 여기 규칙은 새 파일에만 걸린다. 이미 추적 중인 파일은 git rm --cached 로 따로 빼야
+# 한다 (2026-08-30 에 48 개를 그렇게 뺐다).
+negaflow-windows/dev-notes/
+negaflow-mac/dev-notes/
