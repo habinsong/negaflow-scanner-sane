@@ -14,7 +14,7 @@ ZIP="$OUTPUT_DIR/$BASE_NAME.zip"
 DSYM_ZIP="$OUTPUT_DIR/$BASE_NAME.dSYM.zip"
 SOURCE_NAME="negaflow-sane-$VERSION-source.tar.gz"
 SOURCE_ARCHIVE="$OUTPUT_DIR/$SOURCE_NAME"
-CHECKSUMS="$OUTPUT_DIR/negaflow-sane-$VERSION-mac.sha256"
+CHECKSUMS="$OUTPUT_DIR/SHA256SUMS.txt"
 for artifact in "$ZIP" "$DSYM_ZIP" "$SOURCE_ARCHIVE" "$CHECKSUMS"; do
   if [ ! -s "$artifact" ]; then
     echo "[verify-release] ERROR: artifact가 없습니다: $artifact" >&2

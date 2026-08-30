@@ -70,7 +70,7 @@ final class ReleaseScriptContractTests: XCTestCase {
         XCTAssertTrue(workflow.contains("ARTIFACTS=negaflow-mac/.build/release-artifacts"))
         XCTAssertTrue(workflow.contains(#"cd "$ARTIFACTS""#))
         XCTAssertFalse(workflow.contains(" .build/release-artifacts"))
-        XCTAssertTrue(workflow.contains("shasum -a 256 -c negaflow-sane-*-mac.sha256"))
+        XCTAssertTrue(workflow.contains("shasum -a 256 -c SHA256SUMS.txt"))
         XCTAssertTrue(workflow.contains("actions/upload-artifact@v7"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_RELEASE_MODE: local"))
         XCTAssertFalse(workflow.contains("NEGAFLOW_INSTALLER_MODE: local"))

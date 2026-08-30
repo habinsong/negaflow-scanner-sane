@@ -6,14 +6,13 @@
 # 설치본을 하나 더 만든 뒤에 다시 불러도 되고 공증으로 파일이 바뀐 뒤에 다시 불러도 된다.
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-  echo "usage: $0 <release-artifacts-dir> <version>" >&2
+if [ "$#" -ne 1 ]; then
+  echo "usage: $0 <release-artifacts-dir>" >&2
   exit 2
 fi
 
 OUTPUT_DIR="$1"
-VERSION="$2"
-CHECKSUM_NAME="negaflow-sane-$VERSION-mac.sha256"
+CHECKSUM_NAME="SHA256SUMS.txt"
 
 if [ ! -d "$OUTPUT_DIR" ]; then
   echo "[release-checksums] ERROR: 릴리스 폴더가 없습니다: $OUTPUT_DIR" >&2
@@ -25,7 +24,7 @@ FILES=()
 for name in *; do
   [ -f "$name" ] || continue
   case "$name" in
-    *.sha256|*.exe|*.dSYM.zip|*SHA256SUMS.txt) continue ;;
+    *.sha256|*.zip|*.exe|SHA256SUMS.txt) continue ;;
   esac
   FILES+=("$name")
 done

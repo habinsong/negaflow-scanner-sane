@@ -103,7 +103,7 @@ jobs:
           VERSION="$(plutil -extract pluginVersion raw negaflow-mac/manifest.json)"
           (
             cd "$ARTIFACTS"
-            shasum -a 256 -c negaflow-sane-*-mac.sha256
+            shasum -a 256 -c SHA256SUMS.txt
           )
           bash negaflow-mac/scripts/verify-release.sh "$ARTIFACTS"
           verify_installer() {

@@ -320,7 +320,7 @@ mv -f "$BUILT_PKG" "$OUTPUT_DIR/$PKG_NAME"
 mv -f "$BUILT_DMG" "$OUTPUT_DIR/$DMG_NAME"
 
 # 체크섬은 변형마다 따로 두지 않고 릴리스 폴더 전체를 한 장에 적는다.
-bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR" "$VERSION"
+bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR"
 
 echo "[build-installer] pkg: $OUTPUT_DIR/$PKG_NAME"
 echo "[build-installer] dmg: $OUTPUT_DIR/$DMG_NAME"

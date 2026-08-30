@@ -75,7 +75,7 @@ for name in "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME"; do
 done
 
 # 체크섬은 묶음마다 따로 두지 않고 릴리스 폴더 전체를 한 장에 적는다.
-bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR" "$VERSION"
+bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR"
 
 echo "[package-release] zip: $OUTPUT_DIR/$ZIP_NAME"
 echo "[package-release] dSYM: $OUTPUT_DIR/$DSYM_NAME"

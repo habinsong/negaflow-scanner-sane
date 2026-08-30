@@ -61,7 +61,7 @@ jobs:
       - name: Verify checksums
         # The lists hold bare file names, so shasum has to run beside the files.
         working-directory: negaflow-mac/.build/release-artifacts
-        run: shasum -a 256 -c negaflow-sane-*-mac.sha256
+        run: shasum -a 256 -c SHA256SUMS.txt
       - name: Upload installer smoke artifacts
         uses: actions/upload-artifact@v7
         with:
