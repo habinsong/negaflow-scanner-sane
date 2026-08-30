@@ -36,7 +36,7 @@
     "libsane 은 여기에 없다. 어댑터는 SANE 를 링크하지 않는다(D-17, I-11)."
   ],
   "name": "negaflow-scanner-sane-windows",
-  "version-string": "1.0.3",
+  "version-string": "1.1.0",
   "license": "GPL-2.0-or-later",
   "dependencies": [
     {
