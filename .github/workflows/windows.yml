@@ -198,7 +198,7 @@ jobs:
             }
             $text = $output | Out-String
             if ($text -notmatch 'pnputil=.*pnputil\.exe') {
-              throw "Binding prerequisite check did not resolve pnputil in $powerShellHost: $text"
+              throw "Binding prerequisite check did not resolve pnputil in ${powerShellHost}: $text"
             }
           }
       - name: Assert elevation launcher stays executable
