@@ -44,6 +44,44 @@ foreach ($required in @(
     }
 }
 
+# 설치 프로그램은 32비트 NSIS 이지만 네이티브 시스템 도구를 실행해야 한다.
+# 실제 배포된 스크립트를 두 PowerShell 비트수에서 실행해 SysWOW64 회귀를 잡는다.
+$bindScript = Join-Path $InstallDirectory 'usbscan-bind\install.ps1'
+$successMarker = Join-Path $InstallDirectory 'usbscan-bind\install.success'
+$powerShellProbes = @(
+    [PSCustomObject]@{
+        Name = 'native'
+        Path = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        ExpectedPnpUtil = Join-Path $env:SystemRoot 'System32\pnputil.exe'
+    }
+)
+if ([Environment]::Is64BitOperatingSystem) {
+    $powerShellProbes += [PSCustomObject]@{
+        Name = 'wow64'
+        Path = Join-Path $env:SystemRoot 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+        ExpectedPnpUtil = Join-Path $env:SystemRoot 'Sysnative\pnputil.exe'
+    }
+}
+foreach ($probe in $powerShellProbes) {
+    if (-not (Test-Path -LiteralPath $probe.Path -PathType Leaf)) {
+        throw "Installer verification PowerShell is missing: $($probe.Path)"
+    }
+    Remove-Item -LiteralPath $successMarker -Force -ErrorAction SilentlyContinue
+    $probeOutput = & $probe.Path -NoProfile -ExecutionPolicy Bypass -File $bindScript `
+        -CheckPrerequisites -WriteSuccessMarker 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Installed usbscan prerequisite probe '$($probe.Name)' failed: $($probeOutput | Out-String)"
+    }
+    $expected = "pnputil=$($probe.ExpectedPnpUtil)"
+    if ($probeOutput -notcontains $expected) {
+        throw "Installed usbscan prerequisite probe '$($probe.Name)' returned '$($probeOutput | Out-String)' instead of '$expected'."
+    }
+    if (-not (Test-Path -LiteralPath $successMarker -PathType Leaf)) {
+        throw "Installed usbscan prerequisite probe '$($probe.Name)' did not write its success marker."
+    }
+}
+Remove-Item -LiteralPath $successMarker -Force -ErrorAction SilentlyContinue
+
 $process = Start-Process -FilePath (Join-Path $InstallDirectory 'negaflow-scanner-sane.exe') `
     -ArgumentList 'detect' -Wait -PassThru
 if ($process.ExitCode -ne 0) {

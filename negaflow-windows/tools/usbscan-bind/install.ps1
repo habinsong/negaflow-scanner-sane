@@ -20,7 +20,12 @@
 param(
     [switch]$Uninstall,
     # 신뢰 저장소에 넣은 자체 서명 인증서까지 지운다.
-    [switch]$RemoveCertificate
+    [switch]$RemoveCertificate,
+    # 설치 프로그램은 상승한 자식 프로세스의 종료 코드를 직접 받지 못한다.
+    # 모든 작업을 마친 뒤에만 고정된 성공 표식을 남겨 부모가 결과를 확인하게 한다.
+    [switch]$WriteSuccessMarker,
+    # 설치 검증이 32/64비트 PowerShell 양쪽의 시스템 도구 경로만 안전하게 확인한다.
+    [switch]$CheckPrerequisites
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +36,42 @@ $here    = $PSScriptRoot
 $inf     = Join-Path $here 'negaflow-usbscan.inf'
 $catalog = Join-Path $here 'negaflow-usbscan.cat'
 $subject = 'CN=negaflow-scanner-sane driver signing'
+$successMarker = Join-Path $here 'install.success'
+
+# 32비트 PowerShell 에서 System32 는 SysWOW64 로 리디렉션된다. 64비트 OS 의
+# 32비트 프로세스만 쓸 수 있는 Sysnative 별칭으로 네이티브 시스템 도구를 연다.
+$nativeSystemDirectory = Join-Path $env:SystemRoot 'System32'
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+    $nativeSystemDirectory = Join-Path $env:SystemRoot 'Sysnative'
+}
+$pnputil = Join-Path $nativeSystemDirectory 'pnputil.exe'
+if (-not (Test-Path -LiteralPath $pnputil -PathType Leaf)) {
+    throw "pnputil.exe 를 찾을 수 없습니다: $pnputil"
+}
+
+function Write-SuccessMarker {
+    if ($WriteSuccessMarker) {
+        Set-Content -LiteralPath $successMarker -Value 'ok' -Encoding ASCII
+    }
+}
+
+function Invoke-PnpUtil {
+    param([Parameter(Mandatory)][string[]]$ArgumentList)
+
+    $output = & $pnputil @ArgumentList 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        $detail = ($output | Out-String).Trim()
+        throw "pnputil.exe 실패 (종료 코드 $exitCode): $detail"
+    }
+    return $output
+}
+
+if ($CheckPrerequisites) {
+    Write-Output "pnputil=$pnputil"
+    Write-SuccessMarker
+    return
+}
 
 $isAdmin = ([Security.Principal.WindowsPrincipal]`
     [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -40,7 +81,7 @@ if (-not $isAdmin) {
 }
 
 function Get-NegaflowPackages {
-    $text = (pnputil /enum-drivers | Out-String)
+    $text = (Invoke-PnpUtil -ArgumentList @('/enum-drivers') | Out-String)
     $found = @()
     foreach ($block in ($text -split "`r?`n`r?`n")) {
         if ($block -match 'negaflow-usbscan\.inf' -and
@@ -77,7 +118,7 @@ function Reenumerate-Scanners {
         try { Enable-PnpDevice  -InstanceId $device.InstanceId -Confirm:$false -ErrorAction Stop | Out-Null } catch {}
     }
     # 그래도 안 붙으면 없는 장치로 남아 있을 수 있다. 버스를 다시 훑는다.
-    try { pnputil /scan-devices | Out-Null } catch {}
+    try { Invoke-PnpUtil -ArgumentList @('/scan-devices') | Out-Null } catch {}
 }
 
 Write-Output '=== 지금 상태 ==='
@@ -86,7 +127,7 @@ Show-ScannerState
 if ($Uninstall) {
     foreach ($package in Get-NegaflowPackages) {
         Write-Output "제거: $package"
-        pnputil /delete-driver $package /uninstall
+        Invoke-PnpUtil -ArgumentList @('/delete-driver', $package, '/uninstall')
     }
     if ($RemoveCertificate) {
         foreach ($store in 'Root', 'TrustedPublisher', 'My') {
@@ -102,6 +143,7 @@ if ($Uninstall) {
     Reenumerate-Scanners
     Write-Output '=== 제거 후 ==='
     Show-ScannerState
+    Write-SuccessMarker
     return
 }
 
@@ -140,10 +182,12 @@ if ($signed.Status -ne 'Valid') {
 
 # --- 3. 설치. 성공을 확인하기 전에는 아무것도 지우지 않는다 ---
 Write-Output '=== 설치 ==='
-pnputil /add-driver $inf /install
-if ($LASTEXITCODE -ne 0) {
+try {
+    Invoke-PnpUtil -ArgumentList @('/add-driver', $inf, '/install')
+}
+catch {
     Write-Warning 'INF 설치 실패. 벤더 바인딩은 그대로 두었으므로 지금 쓰던 스캐너는 계속 동작합니다.'
-    return
+    throw
 }
 
 Reenumerate-Scanners
@@ -152,3 +196,4 @@ Show-ScannerState
 Write-Output ''
 Write-Output 'service=usbscan 이면 통로가 열린 것입니다. 이어서:'
 Write-Output '  negaflow-scanner-sane.exe detect'
+Write-SuccessMarker

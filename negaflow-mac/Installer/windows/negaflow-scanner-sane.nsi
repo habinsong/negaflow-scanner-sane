@@ -378,20 +378,36 @@ Section "설치"
   ${Else}
     MessageBox MB_YESNO|MB_ICONQUESTION "스캐너를 연결할 통로를 지금 엽니다.$\n$\n스캐너를 Windows 의 usbscan 드라이버에 묶는 단계이며 관리자 확인이 필요합니다. 건너뛰면 스캐너 제조사 소프트웨어가 이미 깔린 기계에서만 인식됩니다.$\n$\n지금 열까요?" /SD IDYES IDNO SkipUsbScanBind
     DetailPrint "스캐너 통로를 엽니다 (관리자 확인)."
+    ; NSIS 는 32비트라 $SYSDIR 가 SysWOW64 로 리디렉션된다. Sysnative 를 통해
+    ; 64비트 PowerShell 을 우선 사용하고, 향후 64비트 NSIS 에서는 $SYSDIR 로 돌아간다.
+    StrCpy $2 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+    ${IfNot} ${FileExists} "$2"
+      StrCpy $2 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+    ${EndIf}
+    StrCpy $3 "$INSTDIR\usbscan-bind\install.success"
+    Delete "$3"
     ClearErrors
-    ExecShellWait "runas" "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1"' SW_SHOWNORMAL
+    ExecShellWait "runas" "$2" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1" -WriteSuccessMarker' SW_SHOWNORMAL
     ${If} ${Errors}
       ${LOG} "스캐너 통로 열기를 건너뛰었다 (관리자 확인 거절 또는 실행 실패)"
       DetailPrint "스캐너 통로를 열지 못했습니다. 나중에 usbscan-bind\install.ps1 을 관리자로 실행하십시오."
     ${Else}
-      ${LOG} "스캐너 통로 열기를 실행했다"
-      ; 열렸는지는 말이 아니라 목록으로 확인한다.
-      nsExec::ExecToStack '"$INSTDIR\${EXENAME}" detect'
-      Pop $0
-      Pop $1
-      ${LOG} "통로를 연 뒤 detect (종료 코드 $0): $1"
-      DetailPrint "통로를 연 뒤 장치 목록: $1"
+      ${IfNot} ${FileExists} "$3"
+        ${LOG} "스캐너 통로 열기 실패: 관리자 스크립트가 성공 표식을 남기지 않았다"
+        DetailPrint "스캐너 통로를 열지 못했습니다. 관리자 PowerShell 오류를 확인하십시오."
+        ${SAY} MB_ICONSTOP "플러그인은 설치됐지만 스캐너 통로를 열지 못했습니다.$\n$\n관리자 PowerShell 에 표시된 오류를 확인한 뒤 usbscan-bind\install.ps1 을 다시 실행하십시오."
+        SetErrorLevel 1
+      ${Else}
+        ${LOG} "스캐너 통로 열기를 완료했다"
+        ; 열렸는지는 말이 아니라 목록으로 확인한다.
+        nsExec::ExecToStack '"$INSTDIR\${EXENAME}" detect'
+        Pop $0
+        Pop $1
+        ${LOG} "통로를 연 뒤 detect (종료 코드 $0): $1"
+        DetailPrint "통로를 연 뒤 장치 목록: $1"
+      ${EndIf}
     ${EndIf}
+    Delete "$3"
     SkipUsbScanBind:
   ${EndIf}
 
@@ -412,7 +428,21 @@ Section "Uninstall"
   ${Else}
     ${If} ${FileExists} "$INSTDIR\usbscan-bind\install.ps1"
       MessageBox MB_YESNO|MB_ICONQUESTION "설치할 때 연 스캐너 통로도 함께 되돌립니다.$\n$\n관리자 확인이 필요합니다. 건너뛰면 통로는 그대로 남습니다.$\n$\n지금 되돌릴까요?" /SD IDNO IDNO SkipUsbScanUnbind
-      ExecShellWait "runas" "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1" -Uninstall -RemoveCertificate' SW_SHOWNORMAL
+      StrCpy $0 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+      ${IfNot} ${FileExists} "$0"
+        StrCpy $0 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+      ${EndIf}
+      StrCpy $1 "$INSTDIR\usbscan-bind\install.success"
+      Delete "$1"
+      ClearErrors
+      ExecShellWait "runas" "$0" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\usbscan-bind\install.ps1" -Uninstall -RemoveCertificate -WriteSuccessMarker' SW_SHOWNORMAL
+      ${IfNot} ${Errors}
+        ${IfNot} ${FileExists} "$1"
+          ${SAY} MB_ICONSTOP "스캐너 통로를 되돌리지 못했습니다. 관리자 PowerShell 오류를 확인하십시오."
+          SetErrorLevel 1
+        ${EndIf}
+      ${EndIf}
+      Delete "$1"
       SkipUsbScanUnbind:
     ${EndIf}
   ${EndIf}
