@@ -76,7 +76,9 @@ def main() -> int:
     header.paste(mark, (HEADER[0] - 80 - 24, (HEADER[1] - 80) // 2), mark)
     header.save(arguments.output / "header.bmp", format="BMP")
 
-    print(f"브랜딩 비트맵: {arguments.output} (welcome.bmp, header.bmp)")
+    # GitHub Windows runner can use a legacy cp1252 console. Keep build output
+    # ASCII-only so bitmap generation does not fail after it already succeeded.
+    print(f"Branding bitmaps: {arguments.output} (welcome.bmp, header.bmp)")
     return 0
 
 
