@@ -10,7 +10,7 @@
 # capabilities → scan 을 끝까지 돌리므로, 프로세스 생성·파이프 교착·
 # stdout 오염·토큰 연결이 전부 여기서 드러난다.
 #
-# `paths:` 로 막아 두었으므로 `negaflow-windows/` 가 바뀌지 않으면 돌지 않는다.
+# `paths:` 로 막아 두었으므로 Windows 어댑터나 Windows NSIS 설치기가 바뀌지 않으면 돌지 않는다.
 #
 # 근거(전부 2026-08-05 확인):
 #   windows-latest = Windows Server 2025 + Visual Studio 2026(toolset v145),
@@ -25,9 +25,9 @@ name: Windows adapter
 on:
   push:
     branches: [main]
-    paths: ['negaflow-windows/**', '.github/workflows/windows.yml']
+    paths: ['negaflow-windows/**', 'negaflow-mac/Installer/windows/**', '.github/workflows/windows.yml']
   pull_request:
-    paths: ['negaflow-windows/**', '.github/workflows/windows.yml']
+    paths: ['negaflow-windows/**', 'negaflow-mac/Installer/windows/**', '.github/workflows/windows.yml']
   workflow_dispatch:
 
 permissions:
@@ -178,8 +178,22 @@ jobs:
             -INPUTCHARSET UTF8 `
             "-DPAYLOAD=$env:PAYLOAD" `
             "-DBRANDING=$env:BRANDING" `
-            "-DVERSION=$env:PLUGIN_VERSION" `
-            negaflow-scanner-sane.nsi
+             "-DVERSION=$env:PLUGIN_VERSION" `
+             negaflow-scanner-sane.nsi
+      - name: Assert elevation launcher stays executable
+        shell: pwsh
+        run: |
+          $source = Get-Content negaflow-mac/Installer/windows/negaflow-scanner-sane.nsi -Raw -Encoding UTF8
+          if ($source -match 'Sysnative\\WindowsPowerShell\\v1\.0\\powershell\.exe') {
+            throw 'Sysnative cannot be passed to ShellExecute("runas"): the elevation broker cannot resolve its 32-bit-only alias.'
+          }
+          foreach ($expected in @(
+            'StrCpy $2 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"',
+            'StrCpy $0 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"')) {
+            if (-not $source.Contains($expected)) {
+              throw "Missing expected elevated PowerShell launcher: $expected"
+            }
+          }
       - name: Assert installer exists
         shell: pwsh
         working-directory: negaflow-mac/Installer/windows

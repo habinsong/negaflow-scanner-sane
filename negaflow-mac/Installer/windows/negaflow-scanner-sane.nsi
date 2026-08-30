@@ -378,12 +378,11 @@ Section "설치"
   ${Else}
     MessageBox MB_YESNO|MB_ICONQUESTION "스캐너를 연결할 통로를 지금 엽니다.$\n$\n스캐너를 Windows 의 usbscan 드라이버에 묶는 단계이며 관리자 확인이 필요합니다. 건너뛰면 스캐너 제조사 소프트웨어가 이미 깔린 기계에서만 인식됩니다.$\n$\n지금 열까요?" /SD IDYES IDNO SkipUsbScanBind
     DetailPrint "스캐너 통로를 엽니다 (관리자 확인)."
-    ; NSIS 는 32비트라 $SYSDIR 가 SysWOW64 로 리디렉션된다. Sysnative 를 통해
-    ; 64비트 PowerShell 을 우선 사용하고, 향후 64비트 NSIS 에서는 $SYSDIR 로 돌아간다.
-    StrCpy $2 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
-    ${IfNot} ${FileExists} "$2"
-      StrCpy $2 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
-    ${EndIf}
+    ; ExecShellWait "runas" 는 UAC 승격 브로커를 거친다. 32비트 호출자에게만
+    ; 보이는 Sysnative 별칭은 그 브로커가 해석하지 못해 PowerShell 자체가 시작되지
+    ; 않는다. $SYSDIR 로 32비트 PowerShell 을 열고, install.ps1 이 Sysnative 로
+    ; 네이티브 pnputil.exe 를 명시적으로 찾아 실행한다.
+    StrCpy $2 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
     StrCpy $3 "$INSTDIR\usbscan-bind\install.success"
     Delete "$3"
     ClearErrors
@@ -428,10 +427,9 @@ Section "Uninstall"
   ${Else}
     ${If} ${FileExists} "$INSTDIR\usbscan-bind\install.ps1"
       MessageBox MB_YESNO|MB_ICONQUESTION "설치할 때 연 스캐너 통로도 함께 되돌립니다.$\n$\n관리자 확인이 필요합니다. 건너뛰면 통로는 그대로 남습니다.$\n$\n지금 되돌릴까요?" /SD IDNO IDNO SkipUsbScanUnbind
-      StrCpy $0 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
-      ${IfNot} ${FileExists} "$0"
-        StrCpy $0 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
-      ${EndIf}
+      ; 설치와 같은 이유로 Sysnative 를 ShellExecute("runas")의 대상 경로로
+      ; 넘기지 않는다. 스크립트가 네이티브 pnputil.exe 경로를 알아서 선택한다.
+      StrCpy $0 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
       StrCpy $1 "$INSTDIR\usbscan-bind\install.success"
       Delete "$1"
       ClearErrors
