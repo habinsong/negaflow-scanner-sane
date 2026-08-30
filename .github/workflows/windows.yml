@@ -177,9 +177,30 @@ jobs:
             -V2 `
             -INPUTCHARSET UTF8 `
             "-DPAYLOAD=$env:PAYLOAD" `
-            "-DBRANDING=$env:BRANDING" `
+             "-DBRANDING=$env:BRANDING" `
              "-DVERSION=$env:PLUGIN_VERSION" `
              negaflow-scanner-sane.nsi
+      - name: Check scanner binding prerequisites under both PowerShell architectures
+        shell: pwsh
+        run: |
+          $script = (Resolve-Path negaflow-windows/tools/usbscan-bind/install.ps1).Path
+          $hosts = @(
+            "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe",
+            "$env:SystemRoot\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+          )
+          foreach ($powerShellHost in $hosts) {
+            if (-not (Test-Path -LiteralPath $powerShellHost -PathType Leaf)) {
+              throw "PowerShell host is missing: $powerShellHost"
+            }
+            $output = & $powerShellHost -NoProfile -ExecutionPolicy Bypass -File $script -CheckPrerequisites 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              throw "Binding prerequisite check failed in $powerShellHost (exit $LASTEXITCODE): $($output | Out-String)"
+            }
+            $text = $output | Out-String
+            if ($text -notmatch 'pnputil=.*pnputil\.exe') {
+              throw "Binding prerequisite check did not resolve pnputil in $powerShellHost: $text"
+            }
+          }
       - name: Assert elevation launcher stays executable
         shell: pwsh
         run: |
