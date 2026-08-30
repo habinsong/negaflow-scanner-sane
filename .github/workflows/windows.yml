@@ -184,7 +184,7 @@ jobs:
         shell: pwsh
         working-directory: negaflow-mac/Installer/windows
         run: |
-          $expected = "negaflow-scanner-sane-$env:PLUGIN_VERSION-x64-setup.exe"
+          $expected = "negaflow-sane-$env:PLUGIN_VERSION-win-x64.exe"
           if (-not (Test-Path $expected)) {
             throw "NSIS installer contract did not create $expected."
           }

@@ -103,21 +103,21 @@ jobs:
           VERSION="$(plutil -extract pluginVersion raw negaflow-mac/manifest.json)"
           (
             cd "$ARTIFACTS"
-            shasum -a 256 -c *-SHA256SUMS.txt
+            shasum -a 256 -c negaflow-sane-*-mac.sha256
           )
           bash negaflow-mac/scripts/verify-release.sh "$ARTIFACTS"
           verify_installer() {
             NEGAFLOW_INSTALLER_MODE=distribution \
               bash negaflow-mac/scripts/verify-installer.sh \
-              "$ARTIFACTS/negaflow-scanner-sane-$VERSION-$1-installer.pkg" \
-              "$ARTIFACTS/negaflow-scanner-sane-$VERSION-$1-installer.dmg" \
+              "$ARTIFACTS/negaflow-sane-$VERSION-$1.pkg" \
+              "$ARTIFACTS/negaflow-sane-$VERSION-$1.dmg" \
               "$2" \
               "$3"
           }
-          verify_installer opticfilm-macos14-arm64 arm64 standard
-          verify_installer opticfilm-macos14-universal universal standard
-          verify_installer macos26-arm64 arm64 coolscan
-          verify_installer macos26-universal universal coolscan
+          verify_installer mac14-arm64 arm64 standard
+          verify_installer mac14-universal universal standard
+          verify_installer mac26-arm64 arm64 coolscan
+          verify_installer mac26-universal universal coolscan
       - name: Upload notarized artifacts
         uses: actions/upload-artifact@v7
         with:

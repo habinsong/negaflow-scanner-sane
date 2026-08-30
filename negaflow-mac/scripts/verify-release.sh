@@ -9,12 +9,12 @@ fi
 OUTPUT_DIR="$1"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
-BASE_NAME="negaflow-scanner-sane-$VERSION-macos-universal"
+BASE_NAME="negaflow-sane-$VERSION-mac-universal"
 ZIP="$OUTPUT_DIR/$BASE_NAME.zip"
 DSYM_ZIP="$OUTPUT_DIR/$BASE_NAME.dSYM.zip"
-SOURCE_NAME="negaflow-scanner-sane-$VERSION-source.tar.gz"
+SOURCE_NAME="negaflow-sane-$VERSION-source.tar.gz"
 SOURCE_ARCHIVE="$OUTPUT_DIR/$SOURCE_NAME"
-CHECKSUMS="$OUTPUT_DIR/$BASE_NAME-SHA256SUMS.txt"
+CHECKSUMS="$OUTPUT_DIR/negaflow-sane-$VERSION-mac.sha256"
 for artifact in "$ZIP" "$DSYM_ZIP" "$SOURCE_ARCHIVE" "$CHECKSUMS"; do
   if [ ! -s "$artifact" ]; then
     echo "[verify-release] ERROR: artifact가 없습니다: $artifact" >&2

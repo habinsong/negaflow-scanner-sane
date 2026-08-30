@@ -41,24 +41,24 @@ xcode-select --install
 
 Téléchargez un DMG depuis
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases). Il y en a quatre.
-Prenez un `macos26` sauf si vous ne pouvez pas faire tourner macOS 26.
+Prenez un `mac26` sauf si vous ne pouvez pas faire tourner macOS 26.
 
 | DMG | SANE | Module |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | Corrigé, macOS 26 ou plus | `arm64` |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | Corrigé, macOS 26 ou plus | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | Corrigé, macOS 26 ou plus | `arm64` |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | Corrigé, macOS 26 ou plus | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` + `x86_64` |
 
-Dans un DMG `macos26`, lancez `Install negaflow Scanner.pkg`. Dans un
-`opticfilm-macos14`, lancez `Install negaflow Scanner for OpticFilm.pkg`.
+Dans un DMG `mac26`, lancez `Install negaflow Scanner.pkg`. Dans un
+`mac14`, lancez `Install negaflow Scanner for OpticFilm.pkg`.
 
 Ensuite redémarrez negaflow, regardez les détails du module sous **Charger un scanner**, et
 approuvez-le.
 
 ### Ce qui sépare les deux
 
-La version `macos26` compile la source officielle SANE 1.4.0 sous le nom
+La version `mac26` compile la source officielle SANE 1.4.0 sous le nom
 `sane-backends-negaflow`. C'est elle qui fait fonctionner les Nikon Coolscan et le canal
 infrarouge Epson. Trois correctifs entrent.
 
@@ -68,7 +68,7 @@ infrarouge Epson. Trois correctifs entrent.
 | Hauteur de scan `epson2` | Corrige la hauteur que remontent les scanners à plat Epson |
 | Infrarouge `epson2` | Lève le blocage `SANE_FRAME_IR` pour produire une passe infrarouge |
 
-La version `opticfilm-macos14` installe le `sane-backends` standard de Homebrew, sans ces
+La version `mac14` installe le `sane-backends` standard de Homebrew, sans ces
 correctifs. Elle existe pour macOS 14 et 15, où la version corrigée ne s'installe pas.
 
 L'initialisation Coolscan3 load, eject et reset dont a besoin le micrologiciel 1.03 du

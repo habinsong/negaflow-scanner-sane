@@ -46,7 +46,7 @@ bash "$ROOT/scripts/verify-release.sh" "$OUTPUT_DIR"
 
 if [ "$RELEASE_MODE" = "distribution" ]; then
   VERSION="$(plutil -extract pluginVersion raw "$ROOT/manifest.json")"
-  ZIP="$OUTPUT_DIR/negaflow-scanner-sane-$VERSION-macos-universal.zip"
+  ZIP="$OUTPUT_DIR/negaflow-sane-$VERSION-mac-universal.zip"
   bash "$ROOT/scripts/notarize-plugin.sh" "$ZIP" "$UNIVERSAL_BIN"
 fi
 

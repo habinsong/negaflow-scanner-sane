@@ -125,7 +125,7 @@ Eine interne Staubkorrektur des Backends wird nicht als IR-Kanal gemeldet.
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | Nicht verfügbar | Diese Modelle melden keine IR-Quelle | Nein |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | Verfügbar, wenn `scanimage -A` die IR-Quelle meldet | Separater Durchlauf mit `Transparency Adapter Infrared` | Ja |
 | OpticFilm 8200i `07b3:1825` | Nicht verfügbar | Variante wird von SANE 1.4 nicht unterstützt | Nein |
-| Epson V700/V750/V800/V850 mit dem `macos26`-Installer | Verfügbar, wenn `scanimage -A` den Infrarotmodus meldet | Separater `Infrared`-Durchlauf des gepatchten `epson2` | Ja |
+| Epson V700/V750/V800/V850 mit dem `mac26`-Installer | Verfügbar, wenn `scanimage -A` den Infrarotmodus meldet | Separater `Infrared`-Durchlauf des gepatchten `epson2` | Ja |
 | Epson V700/V750/V800/V850 mit regulärem `epson2` | Nicht verfügbar | Reguläre Builds lassen `SANE_FRAME_IR` auskompiliert | Nein |
 | Nikon `coolscan3` mit `--infrared` | Mit regulärem `scanimage` nicht verfügbar | `coolscan3` liefert einen `SANE_FRAME_RGBI`-Frame; `scanimage` 1.4 trennt ihn nicht in RGB- und IR-TIFF | Nein |
 | Reflecta/PIE nur mit `--clean-image` | Nicht als IR-Kanal verfügbar | Staubkorrektur erfolgt im Backend | Nein |
@@ -147,7 +147,7 @@ sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
 
 | Protokoll | Ursache |
 |---|---|
-| `Your Command Line Tools are too outdated` | Die `macos26`-Variante kompiliert SANE, und Homebrew lehnt Command Line Tools ab, die älter als das laufende macOS sind |
+| `Your Command Line Tools are too outdated` | Die `mac26`-Variante kompiliert SANE, und Homebrew lehnt Command Line Tools ab, die älter als das laufende macOS sind |
 | `Homebrew was not installed at the supported prefix` | Kein `brew` unter `/opt/homebrew` oder `/usr/local` |
 | `no supported logged-in user was found` | Kein Konsolenbenutzer, etwa über SSH oder im Anmeldefenster |
 | `patched scanimage was not installed` | SANE-Build fehlgeschlagen; der Homebrew-Fehler steht oberhalb dieser Zeile |
@@ -170,8 +170,8 @@ Homebrew ist keine Voraussetzung. Das Paket enthält den offiziellen signierten 
 und führt ihn nur aus, wenn `brew` fehlt. Eine vorhandene Installation wird unverändert genutzt,
 nie ersetzt oder aktualisiert.
 
-Die `macos26`-Variante baut SANE 1.4.0 aus den Quellen, das dauert Minuten, und der Fortschrittsbalken
-kann den Build-Fortschritt nicht anzeigen. Die `opticfilm-macos14`-Variante installiert ein
+Die `mac26`-Variante baut SANE 1.4.0 aus den Quellen, das dauert Minuten, und der Fortschrittsbalken
+kann den Build-Fortschritt nicht anzeigen. Die `mac14`-Variante installiert ein
 vorgebautes Bottle und ist schnell fertig.
 
 ## Fehlersuche: kein Scanner gefunden

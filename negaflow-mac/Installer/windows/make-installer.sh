@@ -65,7 +65,7 @@ cd "$HERE"
          -DBRANDING="$(cygpath -w "$BRANDING")" \
          negaflow-scanner-sane.nsi
 
-OUT="$HERE/negaflow-scanner-sane-$VERSION-x64-setup.exe"
+OUT="$HERE/negaflow-sane-$VERSION-win-x64.exe"
 [ -f "$OUT" ] || { echo "설치 프로그램이 안 나왔다" >&2; exit 1; }
 echo
 echo "설치 프로그램: $OUT"

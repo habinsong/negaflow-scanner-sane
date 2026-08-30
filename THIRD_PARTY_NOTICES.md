@@ -99,7 +99,7 @@ the GPL compliance notes kept with the project.
 ### The Windows installer carries NSIS
 
 The single-file installer is built with NSIS, so the shipped
-`negaflow-scanner-sane-<version>-x64-setup.exe` contains NSIS stub code.
+`negaflow-sane-<version>-win-x64.exe` contains NSIS stub code.
 
 - Project: <https://nsis.sourceforge.io/>
 - Licence: zlib/libpng licence, with the exception that the Common Public

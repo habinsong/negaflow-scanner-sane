@@ -34,7 +34,7 @@ The SANE binaries ship inside the installer. There is nothing else to download.
 
 ## Installing
 
-Download `negaflow-scanner-sane-1.1.0-x64-setup.exe` from
+Download `negaflow-sane-1.1.0-win-x64.exe` from
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) and run it.
 
 1. Pick a language and follow the prompts.

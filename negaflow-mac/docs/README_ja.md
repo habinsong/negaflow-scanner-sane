@@ -40,23 +40,23 @@ xcode-select --install
 ## インストール
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) から DMG を取ります。
-四つありますが、macOS 26 が使えないとき以外は `macos26` のほうを選んでください。
+四つありますが、macOS 26 が使えないとき以外は `mac26` のほうを選んでください。
 
 | DMG | SANE | プラグイン |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | パッチ版、macOS 26 以降 | `arm64` |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | パッチ版、macOS 26 以降 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | パッチ版、macOS 26 以降 | `arm64` |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | パッチ版、macOS 26 以降 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` + `x86_64` |
 
-`macos26` の DMG では `Install negaflow Scanner.pkg`、`opticfilm-macos14` の DMG では
+`mac26` の DMG では `Install negaflow Scanner.pkg`、`mac14` の DMG では
 `Install negaflow Scanner for OpticFilm.pkg` を実行します。
 
 終わったら negaflow を開き直し、**スキャナー読み込み**でプラグインを確認して承認します。
 
 ### 二つの違い
 
-`macos26` 版は公式 SANE 1.4.0 のソースを `sane-backends-negaflow` としてビルドします。
+`mac26` 版は公式 SANE 1.4.0 のソースを `sane-backends-negaflow` としてビルドします。
 Nikon Coolscan と Epson の赤外線チャンネルを使えるようにするのがこのビルドです。
 当てているパッチは三つです。
 
@@ -66,7 +66,7 @@ Nikon Coolscan と Epson の赤外線チャンネルを使えるようにする�
 | `epson2` のスキャン高さ | Epson フラットベッドが報告する高さを直します |
 | `epson2` の赤外線 | `SANE_FRAME_IR` の遮断を外し、赤外線パスを出せるようにします |
 
-`opticfilm-macos14` 版は Homebrew 標準の `sane-backends` を入れ、上のパッチは入りません。
+`mac14` 版は Homebrew 標準の `sane-backends` を入れ、上のパッチは入りません。
 macOS 14 と 15 でパッチ版を入れられないときに使います。
 
 LS-5000 のファームウェア 1.03 で要る Coolscan3 の load/eject/reset 初期化は、パッチの範囲に

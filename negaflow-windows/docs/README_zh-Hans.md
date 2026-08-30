@@ -35,7 +35,7 @@ SANE 的可执行文件已经在安装包里，不需要另外下载。
 ## 安装
 
 在 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载
-`negaflow-scanner-sane-1.1.0-x64-setup.exe` 并运行。
+`negaflow-sane-1.1.0-win-x64.exe` 并运行。
 
 1. 选语言，按提示操作。
 2. 快结束时会问要不要打开扫描仪通路。只有这一步需要管理员确认。

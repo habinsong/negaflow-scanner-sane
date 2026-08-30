@@ -118,7 +118,7 @@ Genesys 芯片，目前没有任何后端能驱动。<br>
 | OpticFilm 7200、7200 v2、7300、7400、8100 | 不可用 | 这些型号不提供 IR 源 | 无 |
 | OpticFilm 7200i、7500i、7600i、8200i `07b3:130d` | `scanimage -A` 报告 IR 源时可用 | 单独执行 `Transparency Adapter Infrared` 扫描 | 有 |
 | OpticFilm 8200i `07b3:1825` | 不可用 | 该硬件版本不受 SANE 1.4 支持 | 无 |
-| 使用 `macos26` 安装包的 Epson V700/V750/V800/V850 | `scanimage -A` 报告红外模式时可用 | 打过补丁的 `epson2` 以 `Infrared` 模式单独扫描一遍 | 有 |
+| 使用 `mac26` 安装包的 Epson V700/V750/V800/V850 | `scanimage -A` 报告红外模式时可用 | 打过补丁的 `epson2` 以 `Infrared` 模式单独扫描一遍 | 有 |
 | 使用标准 `epson2` 的 Epson V700/V750/V800/V850 | 不可用 | 标准构建把 `SANE_FRAME_IR` 编译在外 | 无 |
 | 提供 `--infrared` 的 Nikon `coolscan3` | 标准 `scanimage` 路径不可用 | `coolscan3` 返回单个 `SANE_FRAME_RGBI`，但 `scanimage` 1.4 无法将其拆分为 RGB 与 IR TIFF | 无 |
 | 只提供 `--clean-image` 的 Reflecta/PIE | 不作为 IR 通道使用 | 除尘在后端内部完成 | 无 |
@@ -139,7 +139,7 @@ sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
 
 | 日志 | 原因 |
 |---|---|
-| `Your Command Line Tools are too outdated` | `macos26` 版编译 SANE，而 Homebrew 拒绝比当前 macOS 更旧的 Command Line Tools |
+| `Your Command Line Tools are too outdated` | `mac26` 版编译 SANE，而 Homebrew 拒绝比当前 macOS 更旧的 Command Line Tools |
 | `Homebrew was not installed at the supported prefix` | `/opt/homebrew` 或 `/usr/local` 下没有 `brew` |
 | `no supported logged-in user was found` | 没有控制台用户，例如通过 SSH 或在登录窗口执行 |
 | `patched scanimage was not installed` | SANE 构建失败，Homebrew 的报错在该行上方 |
@@ -160,8 +160,8 @@ xcode-select --install
 Homebrew 无需预先安装。安装包内含官方签名的 Homebrew 安装器，仅在没有 `brew` 时运行。
 已有的 Homebrew 按原样使用，不会替换或升级。
 
-`macos26` 版从源码构建 SANE 1.4.0，需要数分钟，进度条无法显示构建进度。
-`opticfilm-macos14` 版安装预编译 bottle，很快完成。
+`mac26` 版从源码构建 SANE 1.4.0，需要数分钟，进度条无法显示构建进度。
+`mac14` 版安装预编译 bottle，很快完成。
 
 ## 故障排查：找不到扫描仪
 

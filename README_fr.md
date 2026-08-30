@@ -123,7 +123,7 @@ Une correction de poussière interne au backend n'est pas annoncée comme canal 
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | Indisponible | Ces modèles n'exposent pas de source IR | Non |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | Disponible si `scanimage -A` publie la source IR | Passage séparé `Transparency Adapter Infrared` | Oui |
 | OpticFilm 8200i `07b3:1825` | Indisponible | Variante non prise en charge par SANE 1.4 | Non |
-| Epson V700/V750/V800/V850 avec l'installeur `macos26` | Disponible quand `scanimage -A` signale le mode infrarouge | Passage séparé en mode `Infrared` de l'`epson2` corrigé | Oui |
+| Epson V700/V750/V800/V850 avec l'installeur `mac26` | Disponible quand `scanimage -A` signale le mode infrarouge | Passage séparé en mode `Infrared` de l'`epson2` corrigé | Oui |
 | Epson V700/V750/V800/V850 avec `epson2` standard | Indisponible | Les versions standard laissent `SANE_FRAME_IR` hors compilation | Non |
 | Nikon `coolscan3` publiant `--infrared` | Indisponible avec le `scanimage` standard | `coolscan3` renvoie une seule trame `SANE_FRAME_RGBI`, que `scanimage` 1.4 ne sépare pas en TIFF RGB et IR | Non |
 | Reflecta/PIE ne publiant que `--clean-image` | Indisponible comme canal IR | La correction s'effectue dans le backend | Non |
@@ -145,7 +145,7 @@ sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
 
 | Journal | Cause |
 |---|---|
-| `Your Command Line Tools are too outdated` | La version `macos26` compile SANE, et Homebrew refuse des Command Line Tools plus anciens que le macOS en cours |
+| `Your Command Line Tools are too outdated` | La version `mac26` compile SANE, et Homebrew refuse des Command Line Tools plus anciens que le macOS en cours |
 | `Homebrew was not installed at the supported prefix` | Pas de `brew` dans `/opt/homebrew` ni `/usr/local` |
 | `no supported logged-in user was found` | Aucun utilisateur en console, par exemple via SSH ou depuis la fenêtre de connexion |
 | `patched scanimage was not installed` | Échec de la compilation de SANE ; l'erreur Homebrew se trouve au-dessus de cette ligne |
@@ -168,8 +168,8 @@ Homebrew n'est pas un prérequis. Le paquet embarque l'installateur Homebrew off
 l'exécute que si `brew` est absent. Une installation existante est utilisée telle quelle, jamais
 remplacée ni mise à niveau.
 
-La version `macos26` compile SANE 1.4.0 depuis les sources : cela prend plusieurs minutes et la
-barre de progression ne peut pas refléter la compilation. La version `opticfilm-macos14` installe un
+La version `mac26` compile SANE 1.4.0 depuis les sources : cela prend plusieurs minutes et la
+barre de progression ne peut pas refléter la compilation. La version `mac14` installe un
 bottle précompilé et se termine rapidement.
 
 ## Dépannage : aucun scanner détecté

@@ -30,13 +30,12 @@ if [ -z "$EXECUTABLE_UUIDS" ] || [ "$EXECUTABLE_UUIDS" != "$DSYM_UUIDS" ]; then
 fi
 
 VERSION="$(plutil -extract pluginVersion raw "$MANIFEST")"
-BASE_NAME="negaflow-scanner-sane-$VERSION-macos-universal"
+BASE_NAME="negaflow-sane-$VERSION-mac-universal"
 ZIP_NAME="$BASE_NAME.zip"
 DSYM_NAME="$BASE_NAME.dSYM.zip"
-SOURCE_NAME="negaflow-scanner-sane-$VERSION-source.tar.gz"
-CHECKSUM_NAME="$BASE_NAME-SHA256SUMS.txt"
+SOURCE_NAME="negaflow-sane-$VERSION-source.tar.gz"
 mkdir -p "$OUTPUT_DIR"
-for name in "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME" "$CHECKSUM_NAME"; do
+for name in "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME"; do
   if [ -e "$OUTPUT_DIR/$name" ] && [ "${NEGAFLOW_OVERWRITE_RELEASE:-0}" != "1" ]; then
     echo "[package-release] ERROR: 기존 artifact가 있습니다: $OUTPUT_DIR/$name" >&2
     exit 1
@@ -71,16 +70,13 @@ bash "$ROOT/scripts/create-source-archive.sh" "$STAGING/$SOURCE_NAME"
 cp "$STAGING/$SOURCE_NAME" "$PLUGIN_DIR/$SOURCE_NAME"
 ditto -c -k --sequesterRsrc --keepParent "$RELEASE_ROOT" "$STAGING/$ZIP_NAME"
 ditto -c -k --sequesterRsrc --keepParent "$DSYM_BUNDLE" "$STAGING/$DSYM_NAME"
-(
-  cd "$STAGING"
-  shasum -a 256 "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME" \
-    | sed 's#  .*/#  #' > "$CHECKSUM_NAME"
-)
-for name in "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME" "$CHECKSUM_NAME"; do
+for name in "$ZIP_NAME" "$DSYM_NAME" "$SOURCE_NAME"; do
   mv -f "$STAGING/$name" "$OUTPUT_DIR/$name"
 done
+
+# 체크섬은 묶음마다 따로 두지 않고 릴리스 폴더 전체를 한 장에 적는다.
+bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR" "$VERSION"
 
 echo "[package-release] zip: $OUTPUT_DIR/$ZIP_NAME"
 echo "[package-release] dSYM: $OUTPUT_DIR/$DSYM_NAME"
 echo "[package-release] source: $OUTPUT_DIR/$SOURCE_NAME"
-echo "[package-release] checksums: $OUTPUT_DIR/$CHECKSUM_NAME"

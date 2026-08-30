@@ -25,8 +25,8 @@ case "$INSTALLER_VARIANT" in
     ;;
   # 변형 키(standard/coolscan)는 설치 패키지 식별자와 postinstall 파일명이 매여 있어 그대로
   # 둔다. 배포 파일명과 설치 화면 문구만 지금의 역할에 맞춘다.
-  #   standard = 시스템 SANE, OpticFilm 전용, macOS 14+
-  #   coolscan = 패치 SANE 동봉(쿨스캔 + epson2 적외선/스캔높이), macOS 26+ — 기본 배포본
+  #   standard = 시스템 SANE, OpticFilm 전용, macOS 14+ — 파일명 mac14
+  #   coolscan = 패치 SANE 동봉(쿨스캔 + epson2 적외선/스캔높이), macOS 26+ — 기본 배포본, 파일명 mac26
   standard)
     MIN_OS_VERSION="14.0"
     INSTALLER_TITLE="negaflow SANE Scanner for OpticFilm"
@@ -34,7 +34,7 @@ case "$INSTALLER_VARIANT" in
     SANE_PACKAGE_NAME="sane-backends"
     SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.setup"
     POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall"
-    ARTIFACT_PLATFORM="opticfilm-macos14"
+    ARTIFACT_PLATFORM="mac14"
     ;;
   coolscan)
     MIN_OS_VERSION="26.0"
@@ -43,7 +43,7 @@ case "$INSTALLER_VARIANT" in
     SANE_PACKAGE_NAME="sane-backends-negaflow"
     SETUP_IDENTIFIER="com.habinsong.negaflow.scanner-sane.coolscan.setup"
     POSTINSTALL_SOURCE="$ROOT/Installer/Scripts/postinstall-coolscan"
-    ARTIFACT_PLATFORM="macos26"
+    ARTIFACT_PLATFORM="mac26"
     ;;
   *)
     echo "[build-installer] ERROR: NEGAFLOW_INSTALLER_VARIANT must be standard, coolscan, or all." >&2
@@ -89,14 +89,13 @@ case "$INSTALLER_MODE" in
     ;;
 esac
 
-BASE_NAME="negaflow-scanner-sane-$VERSION-$ARTIFACT_PLATFORM-$INSTALLER_ARCHITECTURE-installer"
-SOURCE_NAME="negaflow-scanner-sane-$VERSION-source.tar.gz"
+BASE_NAME="negaflow-sane-$VERSION-$ARTIFACT_PLATFORM-$INSTALLER_ARCHITECTURE"
+SOURCE_NAME="negaflow-sane-$VERSION-source.tar.gz"
 PKG_NAME="$BASE_NAME.pkg"
 DMG_NAME="$BASE_NAME.dmg"
-CHECKSUM_NAME="$BASE_NAME-SHA256SUMS.txt"
 
 mkdir -p "$OUTPUT_DIR"
-for name in "$PKG_NAME" "$DMG_NAME" "$CHECKSUM_NAME"; do
+for name in "$PKG_NAME" "$DMG_NAME"; do
   if [[ -e "$OUTPUT_DIR/$name" && "${NEGAFLOW_OVERWRITE_INSTALLER:-0}" != "1" ]]; then
     echo "[build-installer] ERROR: existing artifact: $OUTPUT_DIR/$name" >&2
     exit 1
@@ -274,7 +273,7 @@ fi
 DMG_ROOT="$WORK/dmg"
 mkdir -p "$DMG_ROOT"
 # coolscan 변형은 쿨스캔 전용이 아니다. epson2 의 적외선·스캔 높이 수정도 같이 들어가고
-# 이쪽이 기본 배포본이라, 배포 이름은 파일명 체계(macos26 / opticfilm-macos14)와 같은
+# 이쪽이 기본 배포본이라, 배포 이름은 파일명 체계(mac26 / mac14)와 같은
 # 기준으로 둔다. 기본은 수식어 없이, OpticFilm 판만 용도를 밝힌다.
 if [[ "$INSTALLER_VARIANT" == "coolscan" ]]; then
   DMG_PKG_NAME="Install negaflow Scanner.pkg"
@@ -310,11 +309,6 @@ if [[ "$INSTALLER_MODE" == "distribution" ]]; then
   notarize_artifact "$BUILT_DMG" "dmg"
 fi
 
-(
-  cd "$WORK"
-  shasum -a 256 "$PKG_NAME" "$DMG_NAME" >"$CHECKSUM_NAME"
-)
-
 NEGAFLOW_INSTALLER_MODE="$INSTALLER_MODE" \
   bash "$ROOT/scripts/verify-installer.sh" \
     "$BUILT_PKG" \
@@ -324,11 +318,12 @@ NEGAFLOW_INSTALLER_MODE="$INSTALLER_MODE" \
 
 mv -f "$BUILT_PKG" "$OUTPUT_DIR/$PKG_NAME"
 mv -f "$BUILT_DMG" "$OUTPUT_DIR/$DMG_NAME"
-mv -f "$WORK/$CHECKSUM_NAME" "$OUTPUT_DIR/$CHECKSUM_NAME"
+
+# 체크섬은 변형마다 따로 두지 않고 릴리스 폴더 전체를 한 장에 적는다.
+bash "$ROOT/scripts/write-release-checksums.sh" "$OUTPUT_DIR" "$VERSION"
 
 echo "[build-installer] pkg: $OUTPUT_DIR/$PKG_NAME"
 echo "[build-installer] dmg: $OUTPUT_DIR/$DMG_NAME"
-echo "[build-installer] checksums: $OUTPUT_DIR/$CHECKSUM_NAME"
 echo "[build-installer] mode: $INSTALLER_MODE"
 echo "[build-installer] architecture: $INSTALLER_ARCHITECTURE"
 echo "[build-installer] variant: $INSTALLER_VARIANT"

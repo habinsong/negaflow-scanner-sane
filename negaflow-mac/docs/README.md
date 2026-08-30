@@ -41,16 +41,16 @@ xcode-select --install
 
 Download a DMG from
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases). There are four.
-Take a `macos26` one unless you cannot run macOS 26.
+Take a `mac26` one unless you cannot run macOS 26.
 
 | Download | SANE | Plugin |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | Patched, macOS 26 or later | `arm64` only |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | Patched, macOS 26 or later | `arm64` and `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | For OpticFilm, macOS 14 or later | `arm64` only |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | For OpticFilm, macOS 14 or later | `arm64` and `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | Patched, macOS 26 or later | `arm64` only |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | Patched, macOS 26 or later | `arm64` and `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | For OpticFilm, macOS 14 or later | `arm64` only |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | For OpticFilm, macOS 14 or later | `arm64` and `x86_64` |
 
-In a `macos26` DMG run `Install negaflow Scanner.pkg`. In an `opticfilm-macos14` DMG run
+In a `mac26` DMG run `Install negaflow Scanner.pkg`. In an `mac14` DMG run
 `Install negaflow Scanner for OpticFilm.pkg`.
 
 When it finishes, restart negaflow, look at the plugin details under **Load scanner**, and
@@ -58,7 +58,7 @@ approve it.
 
 ### How the two builds differ
 
-The `macos26` build compiles the official SANE 1.4.0 source as `sane-backends-negaflow`.
+The `mac26` build compiles the official SANE 1.4.0 source as `sane-backends-negaflow`.
 That build is what makes Nikon Coolscan and the Epson infrared channel work. Three patches
 go in.
 
@@ -68,11 +68,11 @@ go in.
 | `epson2` scan height | Corrects the scan height Epson flatbeds report |
 | `epson2` infrared | Lifts the `SANE_FRAME_IR` block so Epson film flatbeds can produce an infrared pass |
 
-The `opticfilm-macos14` build installs the stock Homebrew `sane-backends` without those
+The `mac14` build installs the stock Homebrew `sane-backends` without those
 patches. It exists for macOS 14 and 15, where the patched build cannot be installed.
 
 Neither build blocks Coolscan on macOS 14 or 15. It may work with stock SANE, but without
-the allocation fix, so the supported path is the `macos26` installer.
+the allocation fix, so the supported path is the `mac26` installer.
 
 The Coolscan3 load, eject, and reset parameter setup that LS-5000 firmware 1.03 needs was
 deliberately left out of the patch set. Film loading, ejecting, and resetting on an LS-5000

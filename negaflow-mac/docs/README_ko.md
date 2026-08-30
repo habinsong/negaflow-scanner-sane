@@ -40,25 +40,25 @@ xcode-select --install
 ## 설치
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서 DMG를
-내려받습니다. 네 가지가 있는데, macOS 26을 쓸 수 없는 경우가 아니라면 `macos26` 쪽을
+내려받습니다. 네 가지가 있는데, macOS 26을 쓸 수 없는 경우가 아니라면 `mac26` 쪽을
 받으시면 됩니다.
 
 | 설치 파일 | SANE | 플러그인 |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 패치판, macOS 26 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 패치판, macOS 26 이상 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | OpticFilm용, macOS 14 이상 | `arm64` 전용 |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | OpticFilm용, macOS 14 이상 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | 패치판, macOS 26 이상 | `arm64` 전용 |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | 패치판, macOS 26 이상 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | OpticFilm용, macOS 14 이상 | `arm64` 전용 |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | OpticFilm용, macOS 14 이상 | `arm64` + `x86_64` |
 
-`macos26` DMG에서는 `Install negaflow Scanner.pkg`를,
-`opticfilm-macos14` DMG에서는 `Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.
+`mac26` DMG에서는 `Install negaflow Scanner.pkg`를,
+`mac14` DMG에서는 `Install negaflow Scanner for OpticFilm.pkg`를 실행합니다.
 
 설치가 끝나면 negaflow를 다시 켜고 **스캐너 불러오기**에서 플러그인 정보를 확인한 뒤
 승인 버튼을 누르면 됩니다.
 
 ### 두 설치본의 차이
 
-`macos26` 판은 공식 SANE 1.4.0 소스를 `sane-backends-negaflow`로 빌드합니다.
+`mac26` 판은 공식 SANE 1.4.0 소스를 `sane-backends-negaflow`로 빌드합니다.
 Nikon Coolscan과 Epson 적외선 채널을 쓰게 해 주는 것이 이 빌드입니다. 들어가는 패치는 셋입니다.
 
 | 패치 | 바뀌는 것 |
@@ -67,11 +67,11 @@ Nikon Coolscan과 Epson 적외선 채널을 쓰게 해 주는 것이 이 빌드�
 | `epson2` 스캔 높이 | Epson 평판이 보고하는 스캔 높이를 바로잡습니다 |
 | `epson2` 적외선 | `SANE_FRAME_IR` 차단을 풀어 Epson 필름 평판이 적외선 패스를 낼 수 있게 합니다 |
 
-`opticfilm-macos14` 판은 Homebrew 기본 `sane-backends`를 설치하고 위 패치는 들어가지
+`mac14` 판은 Homebrew 기본 `sane-backends`를 설치하고 위 패치는 들어가지
 않습니다. macOS 14와 15에서 패치판 빌드를 설치할 수 없을 때 쓰는 쪽입니다.
 
 두 설치본 모두 macOS 14와 15에서 Coolscan을 막지는 않습니다. 기본 SANE으로 동작할 수도
-있지만 할당 수정이 없으므로, 지원하는 경로는 `macos26` 설치본입니다.
+있지만 할당 수정이 없으므로, 지원하는 경로는 `mac26` 설치본입니다.
 
 LS-5000 펌웨어 1.03에서 필요한 Coolscan3 load/eject/reset 매개변수 초기화는 패치 범위에
 넣지 않았습니다. 패치판에서도 LS-5000의 필름 로드와 배출, 리셋은 확인하지 못했고 실패할 수

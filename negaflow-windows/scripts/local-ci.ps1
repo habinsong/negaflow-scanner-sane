@@ -28,7 +28,7 @@ try {
     $manifest = Get-Content -LiteralPath (Join-Path $repositoryRoot 'negaflow-mac\manifest.json') `
         -Raw -Encoding UTF8 | ConvertFrom-Json
     $installer = Join-Path $projectRoot `
-        "out\release\x64\negaflow-scanner-sane-$($manifest.pluginVersion)-x64-setup.exe"
+        "out\release\x64\negaflow-sane-$($manifest.pluginVersion)-win-x64.exe"
     Write-Host '[local-ci] install, payload, detect, and uninstall' -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot 'verify-installer.ps1') -InstallerPath $installer
 

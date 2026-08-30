@@ -121,7 +121,7 @@ OpticFilm 8100과 8200i는 각각 같은 제품명 아래 USB 변형이 적어�
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | 사용 불가 | IR 소스를 제공하지 않는 기종 | 없음 |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | `scanimage -A`에 IR 소스가 나오면 사용 가능 | `Transparency Adapter Infrared` 별도 패스 | 있음 |
 | OpticFilm 8200i `07b3:1825` | 사용 불가 | SANE 1.4 미지원 변형 | 없음 |
-| `macos26` 설치본의 Epson V700/V750/V800/V850 | `scanimage -A`가 적외선 모드를 보고하면 사용 가능 | 패치된 `epson2`의 `Infrared` 모드 별도 패스 | 있음 |
+| `mac26` 설치본의 Epson V700/V750/V800/V850 | `scanimage -A`가 적외선 모드를 보고하면 사용 가능 | 패치된 `epson2`의 `Infrared` 모드 별도 패스 | 있음 |
 | 기본 `epson2`의 Epson V700/V750/V800/V850 | 사용 불가 | 기본 빌드는 `SANE_FRAME_IR`이 빠진 채 컴파일됨 | 없음 |
 | `--infrared`를 제공하는 Nikon `coolscan3` | 기본 `scanimage` 경로에서는 사용 불가 | `coolscan3`는 `SANE_FRAME_RGBI` 한 프레임을 반환하지만 `scanimage` 1.4는 이를 RGB와 IR TIFF로 분리하지 못함 | 없음 |
 | `--clean-image`만 제공하는 Reflecta/PIE | IR 채널로는 사용 불가 | 먼지 제거가 백엔드 내부에서 끝남 | 없음 |
@@ -141,7 +141,7 @@ sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
 
 | 로그 | 원인 |
 |---|---|
-| `Your Command Line Tools are too outdated` | `macos26` 판은 SANE을 컴파일하는데, 실행 중인 macOS보다 낡은 Command Line Tools는 Homebrew가 거부함 |
+| `Your Command Line Tools are too outdated` | `mac26` 판은 SANE을 컴파일하는데, 실행 중인 macOS보다 낡은 Command Line Tools는 Homebrew가 거부함 |
 | `Homebrew was not installed at the supported prefix` | `/opt/homebrew` 또는 `/usr/local`에 `brew`가 없음 |
 | `no supported logged-in user was found` | 콘솔 사용자가 없음. SSH나 로그인 창에서 실행한 경우 |
 | `patched scanimage was not installed` | SANE 빌드 실패. Homebrew 오류가 이 줄 위에 있음 |
@@ -163,8 +163,8 @@ Homebrew는 미리 깔아둘 필요가 없습니다. 패키지에 공식 서명�
 `brew`가 없을 때만 실행합니다. 이미 설치된 Homebrew는 그대로 쓰며 교체하거나 업그레이드하지
 않습니다.
 
-`macos26` 판은 SANE 1.4.0을 소스에서 빌드하므로 몇 분이 걸리고, 진행 막대는 빌드 진행 상황을
-보여주지 못합니다. `opticfilm-macos14` 판은 미리 빌드된 bottle을 설치하므로 금방 끝납니다.
+`mac26` 판은 SANE 1.4.0을 소스에서 빌드하므로 몇 분이 걸리고, 진행 막대는 빌드 진행 상황을
+보여주지 못합니다. `mac14` 판은 미리 빌드된 bottle을 설치하므로 금방 끝납니다.
 
 ## 문제 해결: 스캐너가 보이지 않을 때
 

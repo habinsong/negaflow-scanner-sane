@@ -175,12 +175,11 @@ def verify_distribution_policy() -> None:
     # 접미사 없는 쪽이 기본 배포본(패치 SANE 동봉, macOS 26+)이고, OpticFilm 전용이
     # 시스템 SANE을 쓰는 macOS 14+ 빌드다.
     standard_installer_names = tuple(
-        "negaflow-scanner-sane-"
-        f"{manifest['pluginVersion']}-opticfilm-macos14-{architecture}-installer.dmg"
+        f"negaflow-sane-{manifest['pluginVersion']}-mac14-{architecture}.dmg"
         for architecture in ("arm64", "universal")
     )
     coolscan_installer_names = tuple(
-        f"negaflow-scanner-sane-{manifest['pluginVersion']}-macos26-{architecture}-installer.dmg"
+        f"negaflow-sane-{manifest['pluginVersion']}-mac26-{architecture}.dmg"
         for architecture in ("arm64", "universal")
     )
     # 설치 파일 표는 macOS 문서에 있다. 최상위 README 는 두 플랫폼을 함께 소개하고

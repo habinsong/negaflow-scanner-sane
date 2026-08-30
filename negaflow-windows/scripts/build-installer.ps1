@@ -64,7 +64,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 }
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
-$installerName = "negaflow-scanner-sane-$version-x64-setup.exe"
+$installerName = "negaflow-sane-$version-win-x64.exe"
 $installer = Join-Path $OutputDirectory $installerName
 if ((Test-Path -LiteralPath $installer) -and -not $Overwrite) {
     throw "Installer already exists: $installer. Pass -Overwrite to replace this release artifact."
@@ -139,6 +139,6 @@ if (-not (Test-Path -LiteralPath $generated -PathType Leaf)) {
 }
 Copy-Item -LiteralPath $generated -Destination $installer -Force
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash.ToLowerInvariant()
-Set-Content -LiteralPath "$installer.sha256" -Encoding ASCII -NoNewline -Value "$hash *$installerName`n"
+Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($installer, '.sha256')) -Encoding ASCII -NoNewline -Value "$hash *$installerName`n"
 Write-Host "Installer: $installer" -ForegroundColor Green
 Write-Host "SHA-256: $hash" -ForegroundColor Green

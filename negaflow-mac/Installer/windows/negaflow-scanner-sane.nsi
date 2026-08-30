@@ -44,7 +44,7 @@ SetCompressor /SOLID lzma
 !define APP_ICON "${__FILEDIR__}\..\..\..\negaflow-windows\src\app\Negaflow.ico"
 
 Name        "${APPNAME}"
-OutFile     "negaflow-scanner-sane-${VERSION}-x64-setup.exe"
+OutFile     "negaflow-sane-${VERSION}-win-x64.exe"
 ; 기본값은 NSIS 자기 이름과 판번호를 단다. 이 제품의 것이 아니다.
 BrandingText "${APPNAME} ${VERSION}"
 Icon        "${APP_ICON}"

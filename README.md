@@ -120,7 +120,7 @@ A backend's private dust-removal switch is not reported as an IR channel.
 | OpticFilm 7200, 7200 v2, 7300, 7400, 8100 | Not available | These models do not expose an IR source | No |
 | OpticFilm 7200i, 7500i, 7600i, 8200i `07b3:130d` | Available when `scanimage -A` reports the infrared source | Separate `Transparency Adapter Infrared` pass | Yes |
 | OpticFilm 8200i `07b3:1825` | Not available | The device variant is unsupported by SANE 1.4 | No |
-| Epson V700/V750/V800/V850 with the `macos26` installer | Available when `scanimage -A` reports the infrared mode | Separate `Infrared` mode pass from the patched `epson2` | Yes |
+| Epson V700/V750/V800/V850 with the `mac26` installer | Available when `scanimage -A` reports the infrared mode | Separate `Infrared` mode pass from the patched `epson2` | Yes |
 | Epson V700/V750/V800/V850 with stock `epson2` | Not available | Stock builds keep `SANE_FRAME_IR` compiled out | No |
 | Nikon `coolscan3` with `--infrared` | Not available through stock `scanimage` | `coolscan3` returns one `SANE_FRAME_RGBI` frame, which `scanimage` 1.4 does not split into RGB and IR TIFF files | No |
 | Reflecta/PIE with `--clean-image` only | Not available as an IR channel | Dust removal happens inside the backend | No |
@@ -142,7 +142,7 @@ sudo grep -iE "negaflow|Error:" /var/log/install.log | tail -60
 
 | Log line | Cause |
 |---|---|
-| `Your Command Line Tools are too outdated` | The `macos26` package compiles SANE, and Homebrew rejects Command Line Tools older than the running macOS |
+| `Your Command Line Tools are too outdated` | The `mac26` package compiles SANE, and Homebrew rejects Command Line Tools older than the running macOS |
 | `Homebrew was not installed at the supported prefix` | No `brew` at `/opt/homebrew` or `/usr/local` |
 | `no supported logged-in user was found` | No console user, for example over SSH or at the login window |
 | `patched scanimage was not installed` | The SANE build failed; the Homebrew error is above this line |
@@ -163,8 +163,8 @@ the SDK of the running macOS instead and stops before installing anything.
 Homebrew is not a prerequisite. The package carries the official signed Homebrew installer and runs
 it only when `brew` is missing. An existing installation is used as is, never replaced or upgraded.
 
-The `macos26` package builds SANE 1.4.0 from source, so it takes minutes and the progress bar cannot
-show build progress. The `opticfilm-macos14` package installs a prebuilt bottle and is quick.
+The `mac26` package builds SANE 1.4.0 from source, so it takes minutes and the progress bar cannot
+show build progress. The `mac14` package installs a prebuilt bottle and is quick.
 
 ## Troubleshooting: no scanner found
 

@@ -40,23 +40,23 @@ xcode-select --install
 ## 安装
 
 在 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载 DMG。
-一共四个，除非用不了 macOS 26，都选 `macos26` 那两个。
+一共四个，除非用不了 macOS 26，都选 `mac26` 那两个。
 
 | DMG | SANE | 插件 |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | 打过补丁，macOS 26 及以上 | `arm64` |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | 打过补丁，macOS 26 及以上 | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | 打过补丁，macOS 26 及以上 | `arm64` |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | 打过补丁，macOS 26 及以上 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` + `x86_64` |
 
-`macos26` 的 DMG 里运行 `Install negaflow Scanner.pkg`，`opticfilm-macos14` 的运行
+`mac26` 的 DMG 里运行 `Install negaflow Scanner.pkg`，`mac14` 的运行
 `Install negaflow Scanner for OpticFilm.pkg`。
 
 装完重开 negaflow，在**加载扫描仪**里看一下插件信息，点批准。
 
 ### 两个版本的区别
 
-`macos26` 版把官方 SANE 1.4.0 源码编成 `sane-backends-negaflow`。让 Nikon Coolscan 和
+`mac26` 版把官方 SANE 1.4.0 源码编成 `sane-backends-negaflow`。让 Nikon Coolscan 和
 Epson 红外通道能用的就是这个版本。一共打三个补丁。
 
 | 补丁 | 改了什么 |
@@ -65,7 +65,7 @@ Epson 红外通道能用的就是这个版本。一共打三个补丁。
 | `epson2` 扫描高度 | 修正 Epson 平板报告的扫描高度 |
 | `epson2` 红外 | 解除 `SANE_FRAME_IR` 限制，让 Epson 胶片平板能出红外通道 |
 
-`opticfilm-macos14` 版装的是 Homebrew 自带的 `sane-backends`，不含上面的补丁。给
+`mac14` 版装的是 Homebrew 自带的 `sane-backends`，不含上面的补丁。给
 macOS 14 和 15 上装不了补丁版的情况用。
 
 LS-5000 固件 1.03 需要的 Coolscan3 load/eject/reset 初始化没有放进补丁范围。补丁版上

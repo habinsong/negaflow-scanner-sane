@@ -40,24 +40,24 @@ xcode-select --install
 ## Installation
 
 Laden Sie unter [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) ein
-DMG herunter. Es gibt vier. Nehmen Sie ein `macos26`, sofern Sie macOS 26 nutzen können.
+DMG herunter. Es gibt vier. Nehmen Sie ein `mac26`, sofern Sie macOS 26 nutzen können.
 
 | DMG | SANE | Plug-in |
 |---|---|---|
-| `negaflow-scanner-sane-1.1.0-macos26-arm64-installer.dmg` | Gepatcht, macOS 26 oder neuer | `arm64` |
-| `negaflow-scanner-sane-1.1.0-macos26-universal-installer.dmg` | Gepatcht, macOS 26 oder neuer | `arm64` + `x86_64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-arm64-installer.dmg` | Für OpticFilm, macOS 14 oder neuer | `arm64` |
-| `negaflow-scanner-sane-1.1.0-opticfilm-macos14-universal-installer.dmg` | Für OpticFilm, macOS 14 oder neuer | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac26-arm64.dmg` | Gepatcht, macOS 26 oder neuer | `arm64` |
+| `negaflow-sane-1.1.0-mac26-universal.dmg` | Gepatcht, macOS 26 oder neuer | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.0-mac14-arm64.dmg` | Für OpticFilm, macOS 14 oder neuer | `arm64` |
+| `negaflow-sane-1.1.0-mac14-universal.dmg` | Für OpticFilm, macOS 14 oder neuer | `arm64` + `x86_64` |
 
-In einem `macos26`-DMG starten Sie `Install negaflow Scanner.pkg`. In einem
-`opticfilm-macos14`-DMG starten Sie `Install negaflow Scanner for OpticFilm.pkg`.
+In einem `mac26`-DMG starten Sie `Install negaflow Scanner.pkg`. In einem
+`mac14`-DMG starten Sie `Install negaflow Scanner for OpticFilm.pkg`.
 
 Danach öffnen Sie negaflow neu, sehen sich die Angaben unter **Scanner laden** an und
 bestätigen das Plug-in.
 
 ### Was die beiden trennt
 
-Die `macos26`-Fassung baut die offizielle SANE-1.4.0-Quelle als `sane-backends-negaflow`.
+Die `mac26`-Fassung baut die offizielle SANE-1.4.0-Quelle als `sane-backends-negaflow`.
 Diese Fassung bringt Nikon Coolscan und den Epson-Infrarotkanal zum Laufen. Drei Patches
 kommen hinzu.
 
@@ -67,7 +67,7 @@ kommen hinzu.
 | `epson2` Scanhöhe | Korrigiert die von Epson-Flachbettgeräten gemeldete Höhe |
 | `epson2` Infrarot | Hebt die `SANE_FRAME_IR`-Sperre auf, sodass ein Infrarotdurchlauf entsteht |
 
-Die `opticfilm-macos14`-Fassung installiert das normale `sane-backends` aus Homebrew, ohne
+Die `mac14`-Fassung installiert das normale `sane-backends` aus Homebrew, ohne
 diese Patches. Sie ist für macOS 14 und 15 gedacht, wo sich die gepatchte Fassung nicht
 installieren lässt.
 

@@ -35,7 +35,7 @@ SANE の実行ファイルはインストーラに入っています。ほかに
 ## インストール
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) から
-`negaflow-scanner-sane-1.1.0-x64-setup.exe` を取って実行します。
+`negaflow-sane-1.1.0-win-x64.exe` を取って実行します。
 
 1. 言語を選び、案内に従います。
 2. 終わりごろにスキャナーの通り道を開くか聞かれます。管理者確認が要るのはここだけです。

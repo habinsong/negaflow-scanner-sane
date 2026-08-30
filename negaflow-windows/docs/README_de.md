@@ -34,7 +34,7 @@ Die SANE-Programme stecken im Installationsprogramm. Sonst gibt es nichts herunt
 
 ## Installation
 
-Laden Sie `negaflow-scanner-sane-1.1.0-x64-setup.exe` unter
+Laden Sie `negaflow-sane-1.1.0-win-x64.exe` unter
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter und
 starten Sie es.
 
