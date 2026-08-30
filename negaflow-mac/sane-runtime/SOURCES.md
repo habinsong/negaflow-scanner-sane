@@ -223,10 +223,13 @@ host-side Gray는 3채널을 획득한다. native Gray가 멀쩡한 장치에 �
 추가하고 version을 `1.4.0-negaflow.4`로 올렸다. 맥은 008(MUST_WAIT)을 적용하지 않으므로
 `tables_model` hunk는 맥 기준 context로 따로 만들었다. formula의 8개 hunk 전체가 실제 맥
 upstream tarball(`sane-backends-1.4.0.tar.gz`, sha256 `f99205c9…`)에 `patch -p1 --dry-run`
-으로 오프셋 0, fuzz 0으로 적용된다. **맥 실기 검증은 남아 있다** —
-절차와 합격 기준은 `../docs/opticfilm-gray.md`가 소유한다. 맥에서 실패하면 이 패치를
-유지하지 않고 Color RGB 획득 뒤 Negaflow의 흑백 네거/포지티브 현상 프로세스를 쓰는 것으로
-판정한다.
+으로 오프셋 0, fuzz 0으로 적용된다. **맥 실기도 2026-08-30 통과했다** — OpticFilm 8100
+Gray 본스캔이 완주했고 결과가 Color 103 MB 대비 34 MB로 정확히 1/3이다(3배면 hunk 3이
+빠진 것이다). Color 16-bit 도 같은 빌드에서 정상이다.
+
+맥 설치는 `../scripts/install-patched-sane.sh`로 한다. Homebrew 6.0.20은 tap 밖의 로컬
+formula를 `Error: Homebrew requires formulae to be in a tap`으로 거부하므로
+`brew install --build-from-source <formula 경로>`는 쓸 수 없다(2026-08-30 실측).
 
 ### 007 — 취소가 스캐너를 죽이던 것
 

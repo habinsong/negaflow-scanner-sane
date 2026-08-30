@@ -59,3 +59,7 @@ negaflow-windows/out/
 # 한다 (2026-08-30 에 48 개를 그렇게 뺐다).
 negaflow-windows/dev-notes/
 negaflow-mac/dev-notes/
+
+# OpticFilm Gray 진단 기록. 하드웨어 시험 기록이라 위 dev-notes 와 같은 이유로
+# 공개하지 않는다. 파일은 로컬에 그대로 있고 추적만 뺐다 (2026-08-30).
+negaflow-mac/docs/opticfilm-gray.md
