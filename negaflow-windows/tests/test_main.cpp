@@ -759,6 +759,53 @@ void testMediaEpson2() {
     if (m.filmType) CHECK_EQ(*m.filmType, std::string("Negative Film"));
 }
 
+// **실기 V700 은 film-type 값을 넷 내놓는다.** 위 시험은 둘짜리 장치를 흉내 내서
+// 이 결함을 잡지 못했다.
+//
+// `Positive Slide` 는 열거에는 있어도 `sane_start` 에서 거부된다. 실측
+// (Epson V700, 2026-08-31, `--source "Transparency Unit"` · Color · 16bit · 50dpi · 20x20mm):
+//
+//   Negative Film    exit=0  7728 bytes
+//   Positive Film    exit=0  7728 bytes
+//   Positive Slide   exit=4  sane_start: Invalid argument
+//
+// 그래서 컬러/흑백 **포지티브만** "램프 예열" 뒤에 죽었다. 네 종류 모두 "Film" 쪽을
+// 골라야 한다.
+void testMediaEpson2FilmTypeFourValues() {
+    using namespace negaflow::sane;
+    const char* dump =
+        "    --mode Lineart|Gray|Color|Infrared [Lineart]\n"
+        "    --source Flatbed|Transparency Unit|TPU8x10 [Flatbed]\n"
+        "    --film-type Positive Film|Negative Film|Positive Slide|Negative Slide "
+        "[Positive Film]\n"
+        "    --resolution 50..12800dpi [50]\n"
+        "    --depth 8|16 [16]\n"
+        "    -l 0..215.9mm [0]\n"
+        "    -t 0..297.18mm [0]\n"
+        "    -x 0..215.9mm [215.9]\n"
+        "    -y 0..297.18mm [297.18]\n";
+    const OptionDump d{dump};
+
+    const struct {
+        FilmType requested;
+        const char* expected;
+    } cases[] = {
+        {FilmType::ColorNegative, "Negative Film"},
+        {FilmType::BwNegative, "Negative Film"},
+        {FilmType::ColorPositive, "Positive Film"},
+        {FilmType::BwPositive, "Positive Film"},
+    };
+    for (const auto& c : cases) {
+        const auto m = resolveMedia(
+            d,
+            makeOpts("sane-epson2:usbscan:000", 300, BitDepth::Sixteen, c.requested,
+                     ScanArea{0.0, 0.0, 36.0, 24.0}, false),
+            "flatbed scanner");
+        CHECK(m.filmType.has_value());
+        if (m.filmType) CHECK_EQ(*m.filmType, std::string(c.expected));
+    }
+}
+
 void testMediaEmptyDumpAssumesNothing() {
     using namespace negaflow::sane;
     const auto m = resolveMedia(
@@ -3559,6 +3606,7 @@ int main() {
     testMediaIRStrategy();
     testMediaCoolscanNegativeAlwaysNo();
     testMediaEpson2();
+    testMediaEpson2FilmTypeFourValues();
     testMediaEmptyDumpAssumesNothing();
     testMediaCleanImageUnreachable();
 

@@ -394,21 +394,26 @@ MediaSelection resolveMedia(const OptionDump& opts,
             for (const auto& v : opts.enumValues(*filmTypeOptionName)) {
                 if (contains(toLower(v), requestedPolarity)) polarityMatches.push_back(v);
             }
-            if (requiresInversion(options.filmType) && !preserveRawCoolscan) {
-                // 네거티브: "slide" 가 아닌 것을 먼저
-                for (const auto& v : polarityMatches) {
-                    if (!contains(toLower(v), "slide")) {
-                        media.filmType = v;
-                        break;
-                    }
-                }
-            } else {
-                // 포지티브: "slide" 를 먼저
-                for (const auto& v : polarityMatches) {
-                    if (contains(toLower(v), "slide")) {
-                        media.filmType = v;
-                        break;
-                    }
+            // **극성이 무엇이든 "slide" 가 아닌 값을 먼저 고른다.**
+            //
+            // 포지티브만 "slide" 를 먼저 골랐다. 슬라이드가 곧 포지티브라는 말은 맞지만,
+            // epson2 가 열거에 내놓는 `Positive Slide` 는 **목록에는 있어도 `sane_start`
+            // 에서 거부되는 값**이다. 실측 (Epson V700, 2026-08-31,
+            // `--source "Transparency Unit"` · Color · 16bit · 50dpi · 20x20mm):
+            //
+            //   Negative Film    exit=0  7728 bytes
+            //   Positive Film    exit=0  7728 bytes
+            //   Positive Slide   exit=4  sane_start: Invalid argument
+            //
+            // 그래서 컬러/흑백 **포지티브만** "램프 예열" 을 지나 그 자리에서 죽었다.
+            // 네거티브 두 종류는 이 갈래 덕에 `Negative Film` 이 나가 멀쩡했다.
+            //
+            // 우리에게 필요한 것은 극성뿐이고 그것은 `polarityMatches` 가 이미 걸렀다.
+            // 두 갈래를 하나로 둔다. "slide" 밖에 없는 장치는 아래 fallback 이 집는다.
+            for (const auto& v : polarityMatches) {
+                if (!contains(toLower(v), "slide")) {
+                    media.filmType = v;
+                    break;
                 }
             }
             if (!media.filmType.has_value() && !polarityMatches.empty()) {
