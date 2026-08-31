@@ -3,7 +3,7 @@
 <p align="center">SANE フィルムスキャナーを Windows の negaflow につなぐプラグイン</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,7 +27,7 @@
 ## 必要なもの
 
 - Windows 11、64ビット
-- negaflow 1.1.0 以降が先に入っていること
+- negaflow 1.1.1 以降が先に入っていること
 - SANE が対応するフィルムスキャナー
 
 SANE の実行ファイルはインストーラに入っています。ほかに用意するものはありません。
@@ -35,7 +35,7 @@ SANE の実行ファイルはインストーラに入っています。ほかに
 ## インストール
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) から
-`negaflow-sane-1.1.0-win-x64.exe` を取って実行します。
+`negaflow-sane-1.1.1-win-x64.exe` を取って実行します。
 
 1. 言語を選び、案内に従います。
 2. 終わりごろにスキャナーの通り道を開くか聞かれます。管理者確認が要るのはここだけです。

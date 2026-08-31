@@ -3,7 +3,7 @@
 <p align="center">把 SANE 胶片扫描仪接到 macOS 上 negaflow 的插件</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 及以上"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,7 +27,7 @@
 ## 需要什么
 
 - macOS 14.0 或更高
-- 先装好 negaflow 1.1.0 或更高
+- 先装好 negaflow 1.1.1 或更高
 - SANE 支持的胶片扫描仪
 - 安装时需要联网和管理员密码
 
@@ -44,10 +44,10 @@ xcode-select --install
 
 | DMG | SANE | 插件 |
 |---|---|---|
-| `negaflow-sane-1.1.0-mac26-arm64.dmg` | 打过补丁，macOS 26 及以上 | `arm64` |
-| `negaflow-sane-1.1.0-mac26-universal.dmg` | 打过补丁，macOS 26 及以上 | `arm64` + `x86_64` |
-| `negaflow-sane-1.1.0-mac14-arm64.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` |
-| `negaflow-sane-1.1.0-mac14-universal.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.1-mac26-arm64.dmg` | 打过补丁，macOS 26 及以上 | `arm64` |
+| `negaflow-sane-1.1.1-mac26-universal.dmg` | 打过补丁，macOS 26 及以上 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.1-mac14-arm64.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` |
+| `negaflow-sane-1.1.1-mac14-universal.dmg` | 给 OpticFilm 用，macOS 14 及以上 | `arm64` + `x86_64` |
 
 `mac26` 的 DMG 里运行 `Install negaflow Scanner.pkg`，`mac14` 的运行
 `Install negaflow Scanner for OpticFilm.pkg`。

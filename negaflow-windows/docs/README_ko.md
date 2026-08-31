@@ -3,7 +3,7 @@
 <p align="center">SANE 필름 스캐너를 Windows의 negaflow에 연결하는 플러그인</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="버전 1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="버전 1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 이상"></a>
 </p>
@@ -27,7 +27,7 @@
 ## 필요한 것
 
 - Windows 11, 64비트
-- negaflow 1.1.0 이상이 먼저 설치돼 있어야 합니다
+- negaflow 1.1.1 이상이 먼저 설치돼 있어야 합니다
 - SANE이 지원하는 필름 스캐너
 
 SANE 실행 파일은 설치 파일 안에 들어 있습니다. 따로 받으실 것은 없습니다.
@@ -35,7 +35,7 @@ SANE 실행 파일은 설치 파일 안에 들어 있습니다. 따로 받으실
 ## 설치
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
-`negaflow-sane-1.1.0-win-x64.exe`를 내려받아 실행합니다.
+`negaflow-sane-1.1.1-win-x64.exe`를 내려받아 실행합니다.
 
 1. 언어를 고르고 안내를 따릅니다.
 2. 설치가 끝날 무렵 스캐너 통로를 열지 물어봅니다. 여기서만 관리자 확인이 한 번 필요합니다.

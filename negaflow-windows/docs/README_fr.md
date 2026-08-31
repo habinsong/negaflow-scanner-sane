@@ -3,7 +3,7 @@
 <p align="center">Le module qui relie les scanners de film SANE à negaflow sous Windows</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,14 +27,14 @@
 ## Ce qu'il faut
 
 - Windows 11, 64 bits
-- negaflow 1.1.0 ou plus récent, installé au préalable
+- negaflow 1.1.1 ou plus récent, installé au préalable
 - Un scanner de film pris en charge par SANE
 
 Les binaires SANE sont dans l'installateur. Il n'y a rien d'autre à télécharger.
 
 ## Installation
 
-Téléchargez `negaflow-sane-1.1.0-win-x64.exe` depuis
+Téléchargez `negaflow-sane-1.1.1-win-x64.exe` depuis
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) et lancez-le.
 
 1. Choisissez une langue et suivez les indications.

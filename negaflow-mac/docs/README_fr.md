@@ -3,7 +3,7 @@
 <p align="center">Le module qui relie les scanners de film SANE à negaflow sous macOS</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 ou ultérieur"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,7 +27,7 @@
 ## Ce qu'il faut
 
 - macOS 14.0 ou plus récent
-- negaflow 1.1.0 ou plus récent, installé au préalable
+- negaflow 1.1.1 ou plus récent, installé au préalable
 - Un scanner de film pris en charge par SANE
 - Une connexion internet et un mot de passe administrateur pendant l'installation
 
@@ -45,10 +45,10 @@ Prenez un `mac26` sauf si vous ne pouvez pas faire tourner macOS 26.
 
 | DMG | SANE | Module |
 |---|---|---|
-| `negaflow-sane-1.1.0-mac26-arm64.dmg` | Corrigé, macOS 26 ou plus | `arm64` |
-| `negaflow-sane-1.1.0-mac26-universal.dmg` | Corrigé, macOS 26 ou plus | `arm64` + `x86_64` |
-| `negaflow-sane-1.1.0-mac14-arm64.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` |
-| `negaflow-sane-1.1.0-mac14-universal.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.1-mac26-arm64.dmg` | Corrigé, macOS 26 ou plus | `arm64` |
+| `negaflow-sane-1.1.1-mac26-universal.dmg` | Corrigé, macOS 26 ou plus | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.1-mac14-arm64.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` |
+| `negaflow-sane-1.1.1-mac14-universal.dmg` | Pour OpticFilm, macOS 14 ou plus | `arm64` + `x86_64` |
 
 Dans un DMG `mac26`, lancez `Install negaflow Scanner.pkg`. Dans un
 `mac14`, lancez `Install negaflow Scanner for OpticFilm.pkg`.

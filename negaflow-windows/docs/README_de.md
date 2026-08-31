@@ -3,7 +3,7 @@
 <p align="center">Das Plug-in, das SANE-Filmscanner unter Windows mit negaflow verbindet</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,14 +27,14 @@
 ## Voraussetzungen
 
 - Windows 11, 64 Bit
-- negaflow 1.1.0 oder neuer, vorher installiert
+- negaflow 1.1.1 oder neuer, vorher installiert
 - Ein Filmscanner, den SANE unterstützt
 
 Die SANE-Programme stecken im Installationsprogramm. Sonst gibt es nichts herunterzuladen.
 
 ## Installation
 
-Laden Sie `negaflow-sane-1.1.0-win-x64.exe` unter
+Laden Sie `negaflow-sane-1.1.1-win-x64.exe` unter
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter und
 starten Sie es.
 

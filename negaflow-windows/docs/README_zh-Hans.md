@@ -3,7 +3,7 @@
 <p align="center">把 SANE 胶片扫描仪接到 Windows 上 negaflow 的插件</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.0-EF8B26" alt="1.1.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -27,7 +27,7 @@
 ## 需要什么
 
 - Windows 11，64 位
-- 先装好 negaflow 1.1.0 或更高
+- 先装好 negaflow 1.1.1 或更高
 - SANE 支持的胶片扫描仪
 
 SANE 的可执行文件已经在安装包里，不需要另外下载。
@@ -35,7 +35,7 @@ SANE 的可执行文件已经在安装包里，不需要另外下载。
 ## 安装
 
 在 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载
-`negaflow-sane-1.1.0-win-x64.exe` 并运行。
+`negaflow-sane-1.1.1-win-x64.exe` 并运行。
 
 1. 选语言，按提示操作。
 2. 快结束时会问要不要打开扫描仪通路。只有这一步需要管理员确认。
