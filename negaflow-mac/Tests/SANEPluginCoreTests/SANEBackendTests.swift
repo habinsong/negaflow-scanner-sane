@@ -380,24 +380,50 @@ final class SANEBackendCapabilityTests: XCTestCase {
         XCTAssertEqual(media.irStrategy, .none, "IR 옵션이 없으면 요청해도 IR로 처리하지 않는다.")
     }
 
-    func testResolveMediaEpsonPositiveUsesSlideAndNegativeUsesFilm() {
+    /// `Positive Slide` 는 열거에는 있어도 `sane_start` 에서 거부된다. 실측
+    /// (Epson V700, 2026-08-31, `--source "Transparency Unit"` · Color · 16bit · 50dpi · 20x20mm):
+    ///
+    ///   Negative Film    exit=0  7728 bytes
+    ///   Positive Film    exit=0  7728 bytes
+    ///   Positive Slide   exit=4  sane_start: Invalid argument
+    ///
+    /// 그래서 컬러/흑백 **포지티브만** "램프 예열" 뒤에 죽었다. 네 종류 모두 "Film" 쪽을
+    /// 골라야 한다 — 극성은 이미 걸러져 있으므로 "slide" 가 아닌 값을 먼저 고른다.
+    func testResolveMediaEpsonAlwaysPrefersFilmOverSlide() {
         let dump = """
             --mode Color [Color]
             --source Flatbed|TPU8x10 [TPU8x10]
             --film-type Positive Film|Negative Film|Positive Slide|Negative Slide [Positive Film]
         """
-        var positive = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:001:005")
-        positive.filmType = .colorPositive
-        XCTAssertEqual(
-            SANEBackend.resolveMedia(dump: dump, options: positive).filmType,
-            "Positive Slide"
-        )
+        let cases: [(FilmType, String)] = [
+            (.colorNegative, "Negative Film"),
+            (.bwNegative, "Negative Film"),
+            (.colorPositive, "Positive Film"),
+            (.bwPositive, "Positive Film"),
+        ]
+        for (requested, expected) in cases {
+            var options = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:001:005")
+            options.filmType = requested
+            XCTAssertEqual(
+                SANEBackend.resolveMedia(dump: dump, options: options).filmType,
+                expected,
+                "\(requested) 는 \(expected) 로 나가야 합니다"
+            )
+        }
+    }
 
-        var negative = positive
-        negative.filmType = .colorNegative
+    /// "slide" 밖에 없는 장치는 기존 fallback 이 집는다.
+    func testResolveMediaFallsBackToSlideWhenItIsTheOnlyMatch() {
+        let dump = """
+            --mode Color [Color]
+            --source Flatbed|TPU8x10 [TPU8x10]
+            --film-type Positive Slide|Negative Slide [Positive Slide]
+        """
+        var options = ScanOptions.strongDefault(scannerID: "sane-epson2:libusb:001:005")
+        options.filmType = .colorPositive
         XCTAssertEqual(
-            SANEBackend.resolveMedia(dump: dump, options: negative).filmType,
-            "Negative Film"
+            SANEBackend.resolveMedia(dump: dump, options: options).filmType,
+            "Positive Slide"
         )
     }
 
