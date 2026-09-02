@@ -30,8 +30,8 @@
 **negaflow-scanner-sane**는 SANE으로 다룰 수 있는 필름 스캐너를
 [negaflow](https://github.com/habinsong/negaflow)에 연결해 주는 플러그인입니다.
 
-스캔은 negaflow에서 합니다. 이 플러그인은 뒤에서 스캐너와 이야기하는 쪽이라 따로 실행할 일이
-없습니다. 설치하고 negaflow에서 한 번 승인하면 **스캐너 불러오기**에 장치가 나옵니다.
+스캔은 negaflow에서 합니다. 이 플러그인은 스캐너를 제어하며, 따로 실행하지 않아도 작동합니다.
+설치하고 negaflow에서 한 번 승인하면 **스캐너 불러오기**에 장치가 나옵니다.
 
 플러그인과 본체는 서로 다른 프로그램입니다. SANE 관련 코드는 GPL-2.0-or-later인 이 저장소에만
 있고, Apache-2.0인 negaflow와는 별도 프로세스에서 JSON으로만 주고받습니다.

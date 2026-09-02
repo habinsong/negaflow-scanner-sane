@@ -30,9 +30,9 @@
 **negaflow-scanner-sane** relie [negaflow](https://github.com/habinsong/negaflow) aux scanners de
 film que SANE sait piloter.
 
-La numérisation se fait toujours dans negaflow. Le module travaille derrière et dialogue avec le
-scanner, il n'y a donc rien à lancer soi-même. Installez-le, approuvez-le une fois dans negaflow et
-le scanner apparaît dans « Charger le scanner ».
+La numérisation se fait toujours dans negaflow. Le module pilote le scanner et fonctionne sans être
+lancé séparément. Installez-le, approuvez-le une fois dans negaflow et le scanner apparaît dans
+« Charger le scanner ».
 
 Le module et l'application sont deux programmes distincts. Tout le code SANE reste dans ce dépôt
 sous GPL-2.0-or-later, et negaflow, sous Apache-2.0, se contente d'échanger du JSON avec lui d'un

@@ -30,8 +30,8 @@
 **negaflow-scanner-sane** 把 SANE 能驱动的胶片扫描仪接入
 [negaflow](https://github.com/habinsong/negaflow)。
 
-扫描仍然在 negaflow 里完成。插件在后面负责跟扫描仪打交道，不需要单独运行它。装好后在 negaflow 里
-批准一次，扫描仪就会出现在“加载扫描仪”中。
+扫描仍然在 negaflow 里完成。插件负责控制扫描仪，不单独运行也能工作。装好后在 negaflow 里批准
+一次，扫描仪就会出现在“加载扫描仪”中。
 
 插件和主程序是两个独立程序。SANE 代码只在这个采用 GPL-2.0-or-later 的仓库里，采用 Apache-2.0 的
 negaflow 只是跨进程和它交换 JSON。

@@ -30,9 +30,9 @@
 **negaflow-scanner-sane** verbindet Filmscanner, die SANE ansteuern kann, mit
 [negaflow](https://github.com/habinsong/negaflow).
 
-Gescannt wird weiterhin in negaflow. Das Plug-in arbeitet dahinter und spricht mit dem Scanner, es
-gibt also nichts selbst zu starten. Installieren, in negaflow einmal freigeben, und der Scanner
-erscheint unter „Scanner laden“.
+Gescannt wird weiterhin in negaflow. Das Plug-in steuert den Scanner und arbeitet, ohne separat
+gestartet zu werden. Installieren, in negaflow einmal freigeben, und der Scanner erscheint unter
+„Scanner laden“.
 
 Plug-in und Anwendung sind getrennte Programme. Der gesamte SANE-Code bleibt in diesem
 GPL-2.0-or-later-Repository, und das unter Apache-2.0 stehende negaflow tauscht mit ihm nur JSON

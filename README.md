@@ -30,9 +30,9 @@
 **negaflow-scanner-sane** connects film scanners that SANE can drive to
 [negaflow](https://github.com/habinsong/negaflow).
 
-Scanning still happens in negaflow. The plugin sits behind it and does the talking to the scanner,
-so there is nothing here to run yourself. Install it, approve it once in negaflow, and the scanner
-shows up under **Load scanner**.
+Scanning still happens in negaflow. The plugin controls the scanner and works without being started
+separately. Install it, approve it once in negaflow, and the scanner shows up under
+**Load scanner**.
 
 The plugin and the app are separate programs. All the SANE code lives in this GPL-2.0-or-later
 repository, and negaflow, which is Apache-2.0, only exchanges JSON with it across a process
