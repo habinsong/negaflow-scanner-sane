@@ -24,6 +24,7 @@ set -euo pipefail
 OUT=${1:?출력 디렉터리를 달라}
 PLUGIN=${2:?negaflow-scanner-sane.exe 경로를 달라}
 PREFIX=${MINGW_PREFIX:-/c/msys64/ucrt64}
+PLUGIN_SOURCES=${NEGAFLOW_PLUGIN_SOURCES:?정적 링크한 TIFF·zlib·RapidJSON 소스 폴더가 필요하다}
 PRODUCT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 
@@ -96,8 +97,7 @@ cp -f "$REPO/LICENSE" "$OUT/LICENSES/"
 cp -f "$REPO/THIRD_PARTY_NOTICES.md" "$OUT/LICENSES/"
 cp -f "$REPO/PROVENANCE.md" "$OUT/LICENSES/"
 
-# GPL 바이너리를 배포하므로 대응 소스를 함께 싣는다. 빌드 중 생성된 소스 트리와
-# 패키지 산출물까지 복사하지 않고, 재현에 필요한 레시피·원본 해시·패치만 넣는다.
+# GPL 바이너리의 실제 원본과 패치를 함께 싣는다. URL과 해시만으로 대체하지 않는다.
 mkdir -p "$OUT/source/sane-runtime/patches"
 cp -f "$PRODUCT_ROOT/sane-runtime/PKGBUILD" "$OUT/source/sane-runtime/"
 cp -f "$PRODUCT_ROOT/sane-runtime/SOURCES.md" "$OUT/source/sane-runtime/"
@@ -105,20 +105,48 @@ cp -f "$PRODUCT_ROOT/sane-runtime/patches/"*.patch "$OUT/source/sane-runtime/pat
 git -C "$REPO" archive --format=tar --prefix=negaflow-scanner-sane/ HEAD \
     | gzip > "$OUT/source/negaflow-scanner-sane-source.tar.gz"
 
+# 설치된 버전을 기록한다. sync DB의 최신 버전으로 바꾸면 배포 DLL과 달라진다.
+inventory="$OUT/source/msys2-packages.tsv"
+database="$(pacman-conf DBPath)"
+for binary in "$OUT/sane/bin/"*; do
+    case "$(basename "$binary")" in
+        scanimage.exe|libsane-1.dll|cygsane-*-1.dll) continue ;;
+    esac
+    owner="$(pacman -Qqo "$PREFIX/bin/$(basename "$binary")")"
+    read -r name version < <(pacman -Q "$owner")
+    base="$(awk '/^%BASE%$/ { getline; print; exit }' "$database/local/$name-$version/desc")"
+    [ -n "$base" ] || { echo "패키지 base가 없다: $name" >&2; exit 1; }
+    printf '%s\t%s\t%s\n' "$name" "$base" "$version"
+done | sort -u > "$inventory"
+
+# 수집기는 공식 바이너리 패키지와 DLL을 대조하고 해당 source-only 패키지를 받는다.
+# 실제 원본이 없는 패키지, 누락된 DLL, 바뀐 DLL이 하나라도 있으면 배포를 멈춘다.
+"${PYTHON:-python3}" "$REPO/negaflow-windows/scripts/collect-runtime-sources.py" \
+    --payload "$OUT" --inventory "$inventory" \
+    --cache "${NEGAFLOW_SOURCE_CACHE:-$REPO/negaflow-windows/out/source-cache}" \
+    --recipe-directory "$PRODUCT_ROOT/sane-runtime" \
+    --plugin-sources "$PLUGIN_SOURCES" \
+    --vcpkg-status "$(dirname "$(dirname "$PLUGIN")")/vcpkg_installed/vcpkg/status" \
+    --installer-version "$("${MAKENSIS:-makensis}" -VERSION)"
+
 cat > "$OUT/source/README.txt" <<'TXT'
-This directory carries the source that corresponds to the binaries shipped
-here, as GPL-2.0-or-later requires.
+Windows SANE runtime sources
 
-  sane-runtime/       the SANE build recipe and patches applied to it,
-                      and SOURCES.md, which records the upstream tarball URL
-                      and its SHA-256.  Together they rebuild the exact
-                      scanimage.exe and backend DLLs in sane/.
+  sane-runtime/       the actual SANE upstream tarball, build recipe and patches
+  msys2/              source-only packages for every redistributed runtime DLL,
+                      including their upstream archives or Git objects, patches,
+                      PKGBUILD, package metadata and build environment records
+  runtime-sources.json
+                      package versions, source hashes and shipped binary hashes
+  plugin-dependencies/
+                      TIFF, zlib and RapidJSON upstream archives and port recipes,
+                      checked against the installed static vcpkg packages
   negaflow-scanner-sane-source.tar.gz
-                      the plugin's own source at the revision this build came
-                      from.
+                      the plugin repository at the recorded Git revision
 
-The upstream SANE tarball itself is not copied here; sane-runtime/SOURCES.md
-names it with a pinned hash so it can be fetched and verified.
+The original license texts for the runtime DLLs are in ../LICENSES/runtime/.
+The runtime source manifest covers sane/bin/; plugin-dependencies/sources.json
+records the separate static dependency sources.
 TXT
 
 # --- 매니페스트 -------------------------------------------------------------

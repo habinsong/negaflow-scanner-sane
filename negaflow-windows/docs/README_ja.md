@@ -111,8 +111,10 @@ Visual Studio 2022 と CMake 3.28 以降が要ります。
 
 インストーラを作るとき:
 
+[v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1) の Windows 対応ソースアーカイブをダウンロードし、展開した `source/plugin-dependencies` を指定します。`C:\source\plugin-dependencies` は例です。TIFF・zlib・RapidJSON のソースをインストール済み vcpkg のバージョンと照合します。SANE の原本アーカイブと、同梱 DLL のソースパッケージおよびライセンス全文も収集します。ソースの欠落やバージョンの不一致があるとパッケージングは停止します。MSYS2 で `zstd` が必要です。
+
 ```powershell
-.\scripts\build-installer.ps1 -Overwrite
+.\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite
 ```
 
 ## 関連ドキュメント

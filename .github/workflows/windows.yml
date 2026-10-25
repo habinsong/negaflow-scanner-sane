@@ -60,6 +60,10 @@ jobs:
           "vcpkg: $env:VCPKG_INSTALLATION_ROOT"
           & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" version
 
+      - name: Source packaging checks
+        if: matrix.config == 'Release'
+        run: python -m unittest discover -s negaflow-windows/tests -p test_runtime_sources.py -v
+
       # vcpkg.json 은 negaflow-windows/ 에 있다. `-S negaflow-windows` 가 CMAKE_SOURCE_DIR 을
       # <repo>/windows 로 만들고 vcpkg 툴체인이 거기서 매니페스트를 자동
       # 발견한다 — VCPKG_MANIFEST_DIR 은 필요 없다.

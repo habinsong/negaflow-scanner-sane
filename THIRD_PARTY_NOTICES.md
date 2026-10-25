@@ -1,6 +1,6 @@
 # Third-party notices
 
-Last updated: 2026-08-25
+Last updated: 2026-10-26
 
 The standard and Coolscan installers contain or install the following
 independent software.
@@ -87,10 +87,23 @@ obligations are different and stronger.
 
 The other ten are written for this project.
 
-**Because a Windows release distributes GPL binaries, it must carry the
-corresponding source.** The recipe above plus the pinned tarball hash reproduces
-the exact runtime; ship that source alongside, or a written offer for it. The
-plugin's own source is this repository, which is GPL-2.0-or-later.
+Windows releases carry the actual SANE upstream archive, the build recipe and
+all patches in `source/sane-runtime/`. `source/msys2/` contains the complete
+source-only packages for the redistributed runtime DLLs, including their upstream
+archives or Git objects, patches and build recipes. `source/runtime-sources.json`
+records the installed package versions and the SHA-256 of each shipped binary
+and source archive. The packager checks DLLs against their original MSYS2 binary
+packages and refuses missing or mismatched sources. URLs and hashes alone do not
+replace these source files. The plugin repository is GPL-2.0-or-later.
+
+The DLL license texts are copied unchanged into `LICENSES/runtime/`. The payload
+includes JBIG-KIT (GPL-2.0), libiconv and libusb (LGPL), GCC runtime libraries with
+the GCC Runtime Library Exception, and permissively licensed compression and
+image libraries. The exact versions and original notices accompany each release.
+`source/plugin-dependencies/` separately carries the statically linked TIFF, zlib
+and RapidJSON source archives and vcpkg port recipes. Their original license
+texts are in `LICENSES/plugin-dependencies/`. The packager compares their versions
+with the installed static vcpkg packages and checks the source archive hashes.
 
 The runtime links libusb-1.0 (LGPL-2.1-or-later) dynamically, so the user can
 substitute their own build. See
@@ -102,8 +115,10 @@ The single-file installer is built with NSIS, so the shipped
 `negaflow-sane-<version>-win-x64.exe` contains NSIS stub code.
 
 - Project: <https://nsis.sourceforge.io/>
-- Licence: zlib/libpng licence, with the exception that the Common Public
-  Licence covers some plug-ins (none of which this installer uses)
+- Licence: zlib/libpng for the installer and plug-ins; the LZMA compression
+  module uses the Common Public License 1.0. The original texts are provided in
+  `LICENSES/NSIS-COPYING.txt`. The matching NSIS source archive is in
+  `source/plugin-dependencies/installer/`.
 - Version: whatever `mingw-w64-ucrt-x86_64-nsis` provides in the build
   environment; the tested build is 3.12
 - Installer script: [`Installer/windows/negaflow-scanner-sane.nsi`](negaflow-mac/Installer/windows/negaflow-scanner-sane.nsi)

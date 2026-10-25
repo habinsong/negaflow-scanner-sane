@@ -105,8 +105,10 @@ ctest --preset x64-release --output-on-failure
 
 制作安装程序：
 
+下载 [v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1) 的 Windows 对应源码包，指定解压后的 `source/plugin-dependencies` 目录。`C:\source\plugin-dependencies` 是示例路径。打包程序会核对 TIFF、zlib、RapidJSON 源码与已安装的 vcpkg 版本，并收集 SANE 原始源码包、各随附 DLL 的源码包及完整许可证。缺少源码或版本不匹配时会停止打包。MSYS2 中需要有 `zstd`。
+
 ```powershell
-.\scripts\build-installer.ps1 -Overwrite
+.\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite
 ```
 
 ## 相关文档

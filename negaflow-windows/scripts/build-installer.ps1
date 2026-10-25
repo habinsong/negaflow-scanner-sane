@@ -7,6 +7,8 @@ param(
 
     [string]$MsysRoot = 'C:\msys64',
 
+    [string]$PluginDependencySources = $env:NEGAFLOW_PLUGIN_SOURCES,
+
     [string]$OutputDirectory,
 
     [switch]$SkipTests,
@@ -17,6 +19,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $repositoryRoot = Split-Path -Parent $projectRoot
+
+if ([string]::IsNullOrWhiteSpace($PluginDependencySources)) {
+    throw 'Pass -PluginDependencySources with the matching TIFF, zlib and RapidJSON source directory (sources.json and upstream archives).'
+}
+$PluginDependencySources = [System.IO.Path]::GetFullPath($PluginDependencySources)
+if (-not (Test-Path -LiteralPath (Join-Path $PluginDependencySources 'sources.json') -PathType Leaf)) {
+    throw "Plugin dependency source manifest is missing: $PluginDependencySources"
+}
 
 if ([string]::IsNullOrWhiteSpace($VcpkgRoot)) {
     foreach ($candidate in @(
@@ -128,8 +138,17 @@ if ($LASTEXITCODE -ne 0) {
     throw 'cygpath could not convert the Python path.'
 }
 
-& $bash -lc "MINGW_PREFIX=/ucrt64 PYTHON='$posixPython' MAKENSIS='$posixMakensis' '$posixScript' '$posixPlugin'"
-if ($LASTEXITCODE -ne 0) {
+$previousPluginSources = $env:NEGAFLOW_PLUGIN_SOURCES
+try {
+    $env:NEGAFLOW_PLUGIN_SOURCES = (& $cygpath -u $PluginDependencySources).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'cygpath could not convert the dependency source path.' }
+    & $bash -lc "MINGW_PREFIX=/ucrt64 PYTHON='$posixPython' MAKENSIS='$posixMakensis' '$posixScript' '$posixPlugin'"
+    $assemblyExitCode = $LASTEXITCODE
+}
+finally {
+    $env:NEGAFLOW_PLUGIN_SOURCES = $previousPluginSources
+}
+if ($assemblyExitCode -ne 0) {
     throw 'SANE installer assembly failed.'
 }
 
