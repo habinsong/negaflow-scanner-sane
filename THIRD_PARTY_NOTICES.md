@@ -52,6 +52,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - Upstream SHA-256: `f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72`
 - License: GPL-2.0-or-later
 - Upstream fix: <https://gitlab.com/sane-project/backends/-/commit/9bea1ee256c744098576acee98053e094b4a14a2>
+- Upstream backport: fourteen `genesys` commits merged into sane-backends master after 1.4.0
+  for the OpticFilm 8200i SE (GL128), 7400 v1 and 7600i v1, listed in
+  [`sane-runtime/SOURCES.md`](negaflow-mac/sane-runtime/SOURCES.md) and in the header of
+  `012-genesys-upstream-opticfilm.patch`
 - Distribution method: the standard installer asks Homebrew for stock `sane-backends`; the
   Coolscan installer downloads the pinned upstream source and builds it on the user's Mac using
   `Formula/sane-backends-negaflow.rb`
@@ -61,7 +65,8 @@ The Coolscan installer's GPL source payload contains a Homebrew formula whose `_
 the complete patch set applied to the pinned upstream source: the `coolscan2`/`coolscan3` word-list
 allocation fixes, the `epson2` scan-height and infrared-frame fixes, and the `genesys` OpticFilm
 host-side Gray fixes (`genesys.cpp` colour-filter gate, `tables_model.cpp` model flag,
-`gl846.cpp` host-side Gray output length). Homebrew verifies the pinned source SHA-256, applies
+`gl846.cpp` host-side Gray output length), and the upstream `genesys` OpticFilm commits made
+after 1.4.0. Homebrew verifies the pinned source SHA-256, applies
 those patches, and builds the separate `sane-backends-negaflow` keg locally. Every patch is
 GPL-2.0-or-later and is distributed as source inside the formula itself.
 
@@ -75,7 +80,7 @@ obligations are different and stronger.
   <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
 - Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
 - License: GPL-2.0-or-later
-- Modifications: eleven patches, all in [`sane-runtime/patches/`](negaflow-mac/sane-runtime/patches/),
+- Modifications: fourteen patches, all in [`sane-runtime/patches/`](negaflow-mac/sane-runtime/patches/),
   described in [`sane-runtime/SOURCES.md`](negaflow-mac/sane-runtime/SOURCES.md)
 - Build recipe: [`sane-runtime/PKGBUILD`](negaflow-mac/sane-runtime/PKGBUILD), based on the
   MSYS2 `mingw-w64-sane` package
@@ -85,7 +90,9 @@ obligations are different and stronger.
 `mingw-w64-sane` package (GPL-2.0-or-later, same licence as the work it patches):
 <https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane>
 
-The other ten are written for this project.
+`012-genesys-upstream-opticfilm.patch` and `014-coolscan-depth-list.patch` carry upstream
+sane-backends commits unchanged; each names the commits it contains. The other eleven are
+written for this project.
 
 Windows releases carry the actual SANE upstream archive, the build recipe and
 all patches in `source/sane-runtime/`. `source/msys2/` contains the complete

@@ -59,7 +59,7 @@ Windows stecken die SANE-Programme bereits im Installationsprogramm.
 ## Scanner
 
 Die meisten Filmscanner, die SANE unterstützt, funktionieren. Die Tücke liegt darin, dass zwei Geräte
-mit demselben Produktnamen unterschiedliche Chips enthalten können und nur für einen davon ein
+mit demselben Produktnamen unterschiedliche Chips enthalten können und oft nur für einen davon ein
 Backend existiert. Der Infrarotkanal wird nur genutzt, wenn das Gerät ihn wirklich liefert. Was
 welches Modell kann, steht unter [unterstützte Scanner](docs/de/SCANNERS.md).
 

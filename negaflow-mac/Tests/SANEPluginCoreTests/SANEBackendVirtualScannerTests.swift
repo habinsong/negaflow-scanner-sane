@@ -106,7 +106,7 @@ final class SANEBackendVirtualScannerTests: XCTestCase {
 
     func testAllMajorSupportedOpticFilmModelsPreviewAndFullScan() async throws {
         let devices = VirtualSANEDevice.opticFilmScanners
-        XCTAssertEqual(devices.count, 9)
+        XCTAssertEqual(devices.count, 10)
         XCTAssertEqual(Set(devices.map(\.usbProductID)).count, devices.count)
         XCTAssertTrue(Set(devices.map(\.usbProductID)).isDisjoint(
             with: VirtualSANEDevice.unsupportedOpticFilmProductIDs

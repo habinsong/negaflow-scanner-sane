@@ -59,8 +59,8 @@ Windows les binaires SANE sont déjà dans l'installateur.
 ## Scanners
 
 La plupart des scanners de film pris en charge par SANE fonctionnent. Le piège, c'est que deux
-appareils vendus sous le même nom peuvent embarquer des puces différentes, et une seule d'entre
-elles a un backend. Le canal infrarouge n'est utilisé que si l'appareil le fournit réellement. Le
+appareils vendus sous le même nom peuvent embarquer des puces différentes, et souvent une seule
+d'entre elles a un backend. Le canal infrarouge n'est utilisé que si l'appareil le fournit réellement. Le
 détail modèle par modèle est dans [scanners pris en charge](docs/fr/SCANNERS.md).
 
 Un nom de modèle n'active jamais une fonction à lui seul. negaflow reçoit les options que l'appareil

@@ -59,7 +59,7 @@ SANE binaries are already inside the installer.
 ## Scanners
 
 Most film scanners SANE supports will work. The catch is that two units sold under the same product
-name can carry different chips, and only one of them has a backend. The infrared channel is used
+name can carry different chips, and often only one of them has a backend. The infrared channel is used
 only when the device really provides one. Which model does what is in
 [supported scanners](docs/SCANNERS.md).
 

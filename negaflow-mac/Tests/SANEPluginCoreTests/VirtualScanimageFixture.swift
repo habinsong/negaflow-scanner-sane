@@ -36,6 +36,12 @@ struct VirtualSANEDevice: Sendable {
         opticFilm(name: "OpticFilm 7600i", productID: "0x0c3b", resolutions: [900, 1800, 3600, 7200], infrared: true),
         opticFilm(name: "OpticFilm 8100", productID: "0x130c", resolutions: [600, 1200, 2400, 3600, 7200]),
         opticFilm(name: "OpticFilm 8200i", productID: "0x130d", resolutions: [900, 1800, 3600, 7200], infrared: true),
+        // GL128. upstream genesys 백포트(012)로 들어온 행이다. 16-bit 전용, IR 없음.
+        opticFilm(
+            name: "OpticFilm 8200i SE",
+            productID: "0x1825",
+            resolutions: [150, 300, 600, 720, 900, 1200, 1440, 1800, 2400, 3600, 7200]
+        ),
     ]
 
     static let nikonCoolscanScanners: [VirtualSANEDevice] = [
@@ -52,7 +58,10 @@ struct VirtualSANEDevice: Sendable {
         pieusb(name: "Reflecta DigitDia 6000", productID: "0x0142"),
     ]
 
-    static let unsupportedOpticFilmProductIDs: Set<String> = ["0x1824", "0x1825"]
+    /// 어떤 SANE 백엔드도 열지 못하는 OpticFilm USB ID. 8100 V2(1824)와 8300i SE(181f)는
+    /// GL128 이지만 SANE 의 GL128 행은 8200i SE(1825) 하나뿐이다. 9000i Ai(182f)와
+    /// 135i(1436)는 칩조차 확인되지 않았다.
+    static let unsupportedOpticFilmProductIDs: Set<String> = ["0x1824", "0x181f", "0x182f", "0x1436"]
 
     private static func epson(name: String, model: String, productID: String) -> VirtualSANEDevice {
         VirtualSANEDevice(

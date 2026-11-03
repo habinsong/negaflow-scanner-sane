@@ -56,17 +56,24 @@ xcode-select --install
 
 ### 两个版本的区别
 
-`mac26` 版把官方 SANE 1.4.0 源码编成 `sane-backends-negaflow`。让 Nikon Coolscan 和
-Epson 红外通道能用的就是这个版本。一共打三个补丁。
+`mac26` 版把官方 SANE 1.4.0 源码编成 `sane-backends-negaflow`。让 Nikon Coolscan、
+Epson 红外通道、OpticFilm 黑白扫描和 OpticFilm 8200i SE 能用的就是这个版本。打入的补丁如下。
 
 | 补丁 | 改了什么 |
 |---|---|
 | Coolscan 深度列表 | 修正上游 `coolscan2`/`coolscan3` 的分配 |
 | `epson2` 扫描高度 | 修正 Epson 平板报告的扫描高度 |
 | `epson2` 红外 | 解除 `SANE_FRAME_IR` 限制，让 Epson 胶片平板能出红外通道 |
+| OpticFilm Gray | 让 OpticFilm 8100 和 7400 v2 能完成 Gray 扫描 |
+| OpticFilm 上游回移 | 引入 1.4.0 之后 SANE `genesys` 的工作：OpticFilm 8200i SE（`07b3:1825`，GL128）以及 7400 v1、7600i v1 的修正 |
 
 `mac14` 版装的是 Homebrew 自带的 `sane-backends`，不含上面的补丁。给
-macOS 14 和 15 上装不了补丁版的情况用。
+macOS 14 和 15 上装不了补丁版的情况用。它既没有 OpticFilm Gray 修正，也不支持 8200i SE。
+
+两个版本在 macOS 14 和 15 上都不会屏蔽 Coolscan。标准 SANE 也许能用，但没有分配修正，
+所以 USB 机型的支持路径是 `mac26` 版。LS-4000 ED 和 LS-8000 ED 只能通过 FireWire 连接，而
+macOS 26 已经没有 FireWire。在 Mac 上只能在 macOS 14 或 15 用 `mac14` 版尝试，目前还没有人
+验证过。见[扫描仪支持](../../docs/zh-Hans/SCANNERS.md#nikon-coolscan)。
 
 LS-5000 固件 1.03 需要的 Coolscan3 load/eject/reset 初始化没有放进补丁范围。补丁版上
 LS-5000 的进片、退片和复位也未经验证，可能失败。

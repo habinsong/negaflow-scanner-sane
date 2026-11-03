@@ -79,6 +79,7 @@ scanimage -L
 | `sane-find-scanner`에는 보이는데 `no SANE devices found` | 이 모델을 맡는 활성 백엔드가 없음 | [SANE 지원 목록](https://www.sane-project.org/sane-supported-devices.html)을 확인한 뒤 3번 로그 확인 |
 | USB 목록에는 있고 `scanimage -L`은 비었으며 `repair-sane-config`가 `notNeeded` | SANE이 모르는 하드웨어 리비전 | USB product ID를 [지원 스캐너](SCANNERS.md)와 대조. 옛 제품명으로 판매되는 새 리비전은 이쪽에서 해결 불가 |
 | Coolscan LS-50 또는 LS-5000이 USB 목록에서 사라짐 | 이 기종에서 알려진 USB 포트 고장 | 다른 케이블과 포트로 확인. Mac이 아예 열거하지 못하면 하드웨어 고장 |
+| Coolscan LS-4000 ED나 LS-8000 ED가 macOS 26에서 전혀 보이지 않음 | 이 기종은 FireWire로만 연결되는데 macOS 26에는 FireWire가 없음. 어댑터로도 해결되지 않음 | macOS 26에서는 방법이 없음. 시험하지 않은 macOS 14/15와 Windows 경로는 [지원 스캐너](SCANNERS.md#nikon-coolscan) 참고 |
 | `another process has device opened for exclusive access`, `device busy`, `is not configured` | 다른 프로그램이 USB 인터페이스를 이미 점유 | VueScan, SilverFast, 이미지 캡처와 제조사 유틸리티를 종료하고 스캐너를 다시 연결한 뒤 재시도 |
 | `sudo scanimage -L`로만 찾음 | 인터페이스가 점유됐거나 해제되지 않음 | 위 점유 문제를 해결. negaflow는 플러그인을 root로 실행하지 않으므로 `sudo`는 해결책이 아님 |
 | 터미널에서는 찾는데 negaflow에서는 안 보임 | 지원하는 Homebrew keg 경로 밖에 SANE이 있음 | 포함된 설치 파일을 다시 실행. MacPorts(`/opt/local`)나 별도 수동 빌드 경로는 사용하지 않음 |

@@ -90,7 +90,10 @@ set(models
     "of-7300|OpticFilm 7300|900|2400|36|24|0"
     "of-7500i|OpticFilm 7500i|3600|1200|36|24|1"
     "of-8100|OpticFilm 8100|600|1800|36.33|25|0"
-    "of-8200i|OpticFilm 8200i|7200|600|36.33|25|1")
+    "of-8200i|OpticFilm 8200i|7200|600|36.33|25|1"
+    # GL128. 케이스에는 8200i 라고 적혀 있다. 2400 은 구형 8200i 에 없는 값이고,
+    # 4800 은 어느 OpticFilm 에도 없다.
+    "of-8200i-se|OpticFilm 8200i SE|2400|4800|36.58|25|0")
 
 foreach(row IN LISTS models)
     string(REPLACE "|" ";" f "${row}")

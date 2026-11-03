@@ -59,17 +59,28 @@ approuvez-le.
 ### Ce qui sépare les deux
 
 La version `mac26` compile la source officielle SANE 1.4.0 sous le nom
-`sane-backends-negaflow`. C'est elle qui fait fonctionner les Nikon Coolscan et le canal
-infrarouge Epson. Trois correctifs entrent.
+`sane-backends-negaflow`. C'est elle qui fait fonctionner les Nikon Coolscan, le canal
+infrarouge Epson, les numérisations noir et blanc OpticFilm et l'OpticFilm 8200i SE. Ces
+correctifs entrent.
 
 | Correctif | Ce qu'il change |
 |---|---|
 | Liste de profondeurs Coolscan | Corrige l'allocation amont de `coolscan2` et `coolscan3` |
 | Hauteur de scan `epson2` | Corrige la hauteur que remontent les scanners à plat Epson |
 | Infrarouge `epson2` | Lève le blocage `SANE_FRAME_IR` pour produire une passe infrarouge |
+| OpticFilm Gray | Permet à un OpticFilm 8100 ou 7400 v2 de terminer une numérisation Gray |
+| Rétroportage amont OpticFilm | Apporte le travail `genesys` de SANE postérieur à 1.4.0 : l'OpticFilm 8200i SE (`07b3:1825`, GL128) et des corrections pour les 7400 v1 et 7600i v1 |
 
 La version `mac14` installe le `sane-backends` standard de Homebrew, sans ces
-correctifs. Elle existe pour macOS 14 et 15, où la version corrigée ne s'installe pas.
+correctifs. Elle existe pour macOS 14 et 15, où la version corrigée ne s'installe pas. Elle
+n'a ni la correction Gray OpticFilm ni le 8200i SE.
+
+Aucune des deux ne bloque les Coolscan sous macOS 14 ou 15. Ils peuvent fonctionner avec le
+SANE standard, mais sans la correction d'allocation ; le chemin pris en charge pour les modèles
+USB est donc l'installeur `mac26`. Les LS-4000 ED et LS-8000 ED ne se connectent qu'en
+FireWire, que macOS 26 ne gère plus. Sur Mac, on ne peut les essayer que sous macOS 14 ou 15
+avec l'installeur `mac14`, ce qui n'a pas encore été fait. Voir
+[scanners pris en charge](../../docs/fr/SCANNERS.md#nikon-coolscan).
 
 L'initialisation Coolscan3 load, eject et reset dont a besoin le micrologiciel 1.03 du
 LS-5000 a été volontairement laissée de côté. Le chargement, l'éjection et la

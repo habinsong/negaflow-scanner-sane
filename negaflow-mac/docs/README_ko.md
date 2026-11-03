@@ -59,19 +59,26 @@ xcode-select --install
 ### 두 설치본의 차이
 
 `mac26` 판은 공식 SANE 1.4.0 소스를 `sane-backends-negaflow`로 빌드합니다.
-Nikon Coolscan과 Epson 적외선 채널을 쓰게 해 주는 것이 이 빌드입니다. 들어가는 패치는 셋입니다.
+Nikon Coolscan, Epson 적외선 채널, OpticFilm 흑백 스캔과 OpticFilm 8200i SE를 쓰게 해 주는
+것이 이 빌드입니다. 들어가는 패치는 다음과 같습니다.
 
 | 패치 | 바뀌는 것 |
 |---|---|
 | Coolscan 깊이 목록 | upstream `coolscan2`/`coolscan3` 할당 수정 |
 | `epson2` 스캔 높이 | Epson 평판이 보고하는 스캔 높이를 바로잡습니다 |
 | `epson2` 적외선 | `SANE_FRAME_IR` 차단을 풀어 Epson 필름 평판이 적외선 패스를 낼 수 있게 합니다 |
+| OpticFilm Gray | OpticFilm 8100과 7400 v2가 Gray 스캔을 끝까지 마치게 합니다 |
+| OpticFilm upstream 백포트 | 1.4.0 이후 SANE의 `genesys` 작업을 들여옵니다. OpticFilm 8200i SE(`07b3:1825`, GL128)와 7400 v1, 7600i v1 보정입니다 |
 
 `mac14` 판은 Homebrew 기본 `sane-backends`를 설치하고 위 패치는 들어가지
-않습니다. macOS 14와 15에서 패치판 빌드를 설치할 수 없을 때 쓰는 쪽입니다.
+않습니다. macOS 14와 15에서 패치판 빌드를 설치할 수 없을 때 쓰는 쪽입니다. OpticFilm Gray
+수정도, 8200i SE 지원도 없습니다.
 
 두 설치본 모두 macOS 14와 15에서 Coolscan을 막지는 않습니다. 기본 SANE으로 동작할 수도
-있지만 할당 수정이 없으므로, 지원하는 경로는 `mac26` 설치본입니다.
+있지만 할당 수정이 없으므로, USB 기종에 대해 지원하는 경로는 `mac26` 설치본입니다.
+LS-4000 ED와 LS-8000 ED는 FireWire로만 연결되는데 macOS 26에는 FireWire가 없습니다. Mac에서는
+macOS 14나 15에서 `mac14` 설치본으로만 시도해 볼 수 있고, 아직 아무도 확인하지 않았습니다.
+[지원 스캐너](../../docs/ko/SCANNERS.md#nikon-coolscan)를 참고하세요.
 
 LS-5000 펌웨어 1.03에서 필요한 Coolscan3 load/eject/reset 매개변수 초기화는 패치 범위에
 넣지 않았습니다. 패치판에서도 LS-5000의 필름 로드와 배출, 리셋은 확인하지 못했고 실패할 수

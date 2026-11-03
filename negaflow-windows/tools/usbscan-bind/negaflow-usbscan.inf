@@ -2,7 +2,7 @@
 ;
 ; **이 파일은 생성물이다. 손으로 고치지 말고 generate-inf.py 를 다시 돌린다.**
 ; 기기 목록은 SANE upstream 의 doc/descriptions/*.desc 에서 나온다 — 백엔드가 실제로
-; 아는 기기가 곧 우리가 통로를 열 기기다. 332개 기기, 백엔드: genesys, epson2, epsonds, coolscan2, coolscan3.
+; 아는 기기가 곧 우리가 통로를 열 기기다. 333개 기기, 백엔드: genesys, epson2, epsonds, coolscan2, coolscan3.
 ;
 ; 왜 필요한가
 ;   sanei_usb 의 Windows 경로(patch 005)는 still-image 클래스 드라이버 usbscan.sys 가
@@ -352,13 +352,14 @@ CatalogFile = negaflow-usbscan.cat
 %Vendor02Dev269% = Negaflow.UsbScan, USB\VID_04B8&PID_114A
 %Vendor02Dev270% = Negaflow.UsbScan, USB\VID_04B8&PID_114E
 %Vendor02Dev271% = Negaflow.UsbScan, USB\VID_04B8&PID_114F
-%Vendor02Dev272% = Negaflow.UsbScan, USB\VID_04B8&PID_1188
-%Vendor02Dev273% = Negaflow.UsbScan, USB\VID_04B8&PID_1189
-%Vendor02Dev274% = Negaflow.UsbScan, USB\VID_04B8&PID_118A
-%Vendor02Dev275% = Negaflow.UsbScan, USB\VID_04B8&PID_119B
-%Vendor02Dev276% = Negaflow.UsbScan, USB\VID_04B8&PID_11B1
-%Vendor02Dev277% = Negaflow.UsbScan, USB\VID_04B8&PID_11C7
-%Vendor02Dev278% = Negaflow.UsbScan, USB\VID_04B8&PID_1409
+%Vendor02Dev272% = Negaflow.UsbScan, USB\VID_04B8&PID_1187
+%Vendor02Dev273% = Negaflow.UsbScan, USB\VID_04B8&PID_1188
+%Vendor02Dev274% = Negaflow.UsbScan, USB\VID_04B8&PID_1189
+%Vendor02Dev275% = Negaflow.UsbScan, USB\VID_04B8&PID_118A
+%Vendor02Dev276% = Negaflow.UsbScan, USB\VID_04B8&PID_119B
+%Vendor02Dev277% = Negaflow.UsbScan, USB\VID_04B8&PID_11B1
+%Vendor02Dev278% = Negaflow.UsbScan, USB\VID_04B8&PID_11C7
+%Vendor02Dev279% = Negaflow.UsbScan, USB\VID_04B8&PID_1409
 
 [Vendor02.Models.NTarm64]
 %Vendor02Dev000% = Negaflow.UsbScan, USB\VID_04B8&PID_0101
@@ -633,13 +634,14 @@ CatalogFile = negaflow-usbscan.cat
 %Vendor02Dev269% = Negaflow.UsbScan, USB\VID_04B8&PID_114A
 %Vendor02Dev270% = Negaflow.UsbScan, USB\VID_04B8&PID_114E
 %Vendor02Dev271% = Negaflow.UsbScan, USB\VID_04B8&PID_114F
-%Vendor02Dev272% = Negaflow.UsbScan, USB\VID_04B8&PID_1188
-%Vendor02Dev273% = Negaflow.UsbScan, USB\VID_04B8&PID_1189
-%Vendor02Dev274% = Negaflow.UsbScan, USB\VID_04B8&PID_118A
-%Vendor02Dev275% = Negaflow.UsbScan, USB\VID_04B8&PID_119B
-%Vendor02Dev276% = Negaflow.UsbScan, USB\VID_04B8&PID_11B1
-%Vendor02Dev277% = Negaflow.UsbScan, USB\VID_04B8&PID_11C7
-%Vendor02Dev278% = Negaflow.UsbScan, USB\VID_04B8&PID_1409
+%Vendor02Dev272% = Negaflow.UsbScan, USB\VID_04B8&PID_1187
+%Vendor02Dev273% = Negaflow.UsbScan, USB\VID_04B8&PID_1188
+%Vendor02Dev274% = Negaflow.UsbScan, USB\VID_04B8&PID_1189
+%Vendor02Dev275% = Negaflow.UsbScan, USB\VID_04B8&PID_118A
+%Vendor02Dev276% = Negaflow.UsbScan, USB\VID_04B8&PID_119B
+%Vendor02Dev277% = Negaflow.UsbScan, USB\VID_04B8&PID_11B1
+%Vendor02Dev278% = Negaflow.UsbScan, USB\VID_04B8&PID_11C7
+%Vendor02Dev279% = Negaflow.UsbScan, USB\VID_04B8&PID_1409
 
 [Vendor03.Models.NTamd64]
 %Vendor03Dev000% = Negaflow.UsbScan, USB\VID_03F0&PID_0901
@@ -1055,13 +1057,14 @@ Vendor02Dev268 = "L3150 Series (negaflow, epsonds)"
 Vendor02Dev269 = "ET-M2140 Series (negaflow, epsonds)"
 Vendor02Dev270 = "EW-052A Series (negaflow, epsonds)"
 Vendor02Dev271 = "ET-M3140 Series (negaflow, epsonds)"
-Vendor02Dev272 = "L3210 Series (negaflow, epson2)"
-Vendor02Dev273 = "L3200 Series (negaflow, epson2)"
-Vendor02Dev274 = "ET-2810 Series (negaflow, epsonds)"
-Vendor02Dev275 = "XP-2150 Series (negaflow, epsonds)"
-Vendor02Dev276 = "XP-2200 Series (negaflow, epsonds)"
-Vendor02Dev277 = "L3230 Series (negaflow, epson2)"
-Vendor02Dev278 = "L3310 Series (negaflow, epson2)"
+Vendor02Dev272 = "ET-2800 Series (negaflow, epsonds)"
+Vendor02Dev273 = "L3210 Series (negaflow, epson2)"
+Vendor02Dev274 = "L3200 Series (negaflow, epson2)"
+Vendor02Dev275 = "ET-2810 Series (negaflow, epsonds)"
+Vendor02Dev276 = "XP-2150 Series (negaflow, epsonds)"
+Vendor02Dev277 = "XP-2200 Series (negaflow, epsonds)"
+Vendor02Dev278 = "L3230 Series (negaflow, epson2)"
+Vendor02Dev279 = "L3310 Series (negaflow, epson2)"
 Vendor03 = "Hewlett-Packard"
 Vendor03Dev000 = "ScanJet 2300C (negaflow, genesys)"
 Vendor03Dev001 = "ScanJet 2400C (negaflow, genesys)"
@@ -1092,7 +1095,7 @@ Vendor08Dev006 = "OpticFilm 7400 (negaflow, genesys)"
 Vendor08Dev007 = "OpticFilm 7600i (negaflow, genesys)"
 Vendor08Dev008 = "OpticFilm 8100 (negaflow, genesys)"
 Vendor08Dev009 = "OpticFilm 8200i (negaflow, genesys)"
-Vendor08Dev010 = "OpticFilm 8200i (negaflow, genesys)"
+Vendor08Dev010 = "OpticFilm 8200i SE (negaflow, genesys)"
 Vendor09 = "Syscan"
 Vendor09Dev000 = "DocketPort 465 (negaflow, genesys)"
 Vendor09Dev001 = "DocketPort 665 (negaflow, genesys)"

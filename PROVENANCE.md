@@ -1,6 +1,6 @@
 # Code and distribution provenance
 
-Last updated: 2026-08-25
+Last updated: 2026-11-03
 
 This file records the source and release boundary of `negaflow-scanner-sane`.
 It is an auditable project record, not a legal opinion.
@@ -40,15 +40,16 @@ in the tree is there a vendored native dependency, a vendored SANE tree, or a
 prebuilt SANE binary. Release verification rejects those additions. The patches
 embedded in the Homebrew formula are GPL-2.0-or-later and are distributed as
 source with the plug-in: coolscan2/coolscan3 word-list, epson2 scan-height and
-infrared frame, and the genesys OpticFilm host-side Gray fixes.
+infrared frame, the genesys OpticFilm host-side Gray fixes, and the upstream genesys
+OpticFilm commits made after 1.4.0.
 
 ## SANE and negaflow boundary
 
 SANE is installed independently. The standard macOS 14 installer uses
 Homebrew's stock `sane-backends`; the separate macOS 26 Coolscan installer uses
 the keg-only `sane-backends-negaflow` formula. That formula downloads the pinned
-official SANE 1.4.0 source and builds it locally after applying the upstream
-two-line Coolscan fix. Neither installer contains a SANE bottle or runtime
+official SANE 1.4.0 source and builds it locally after applying the patches embedded
+in the formula. Neither installer contains a SANE bottle or runtime
 binary. The plug-in and SANE remain separately replaceable command-line
 programs.
 
@@ -66,7 +67,7 @@ build it on the user's machine, so the plug-in distribution contains GPL
 binaries and must carry the corresponding source.
 
 - Recipe and patches: [`sane-runtime/`](negaflow-mac/sane-runtime/),
-  `PKGBUILD`, eleven patches, and `SOURCES.md` describing each one
+  `PKGBUILD`, fourteen patches, and `SOURCES.md` describing each one
 - The pinned tarball hash plus that recipe reproduces the exact runtime
 
 The chain stays process-separated at every link:

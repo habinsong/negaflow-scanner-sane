@@ -58,18 +58,27 @@ bestätigen das Plug-in.
 ### Was die beiden trennt
 
 Die `mac26`-Fassung baut die offizielle SANE-1.4.0-Quelle als `sane-backends-negaflow`.
-Diese Fassung bringt Nikon Coolscan und den Epson-Infrarotkanal zum Laufen. Drei Patches
-kommen hinzu.
+Diese Fassung bringt Nikon Coolscan, den Epson-Infrarotkanal, Schwarzweißscans mit OpticFilm
+und den OpticFilm 8200i SE zum Laufen. Diese Patches kommen hinzu.
 
 | Patch | Was sich ändert |
 |---|---|
 | Coolscan-Tiefenliste | Korrigiert die Zuteilung in `coolscan2` und `coolscan3` |
 | `epson2` Scanhöhe | Korrigiert die von Epson-Flachbettgeräten gemeldete Höhe |
 | `epson2` Infrarot | Hebt die `SANE_FRAME_IR`-Sperre auf, sodass ein Infrarotdurchlauf entsteht |
+| OpticFilm Gray | Lässt einen OpticFilm 8100 oder 7400 v2 einen Gray-Scan abschließen |
+| OpticFilm-Upstream-Backport | Übernimmt die `genesys`-Arbeit von SANE nach 1.4.0: den OpticFilm 8200i SE (`07b3:1825`, GL128) und Korrekturen für 7400 v1 und 7600i v1 |
 
 Die `mac14`-Fassung installiert das normale `sane-backends` aus Homebrew, ohne
 diese Patches. Sie ist für macOS 14 und 15 gedacht, wo sich die gepatchte Fassung nicht
-installieren lässt.
+installieren lässt. Sie hat weder die OpticFilm-Gray-Korrektur noch den 8200i SE.
+
+Keine der beiden sperrt Coolscan unter macOS 14 oder 15. Mit dem regulären SANE kann es
+funktionieren, aber ohne die Zuteilungskorrektur; der unterstützte Weg für die USB-Modelle ist
+daher der `mac26`-Installer. LS-4000 ED und LS-8000 ED lassen sich nur per FireWire anschließen,
+das macOS 26 nicht mehr unterstützt. Auf dem Mac lassen sie sich nur unter macOS 14 oder 15 mit
+dem `mac14`-Installer ausprobieren, was noch niemand getan hat. Siehe
+[unterstützte Scanner](../../docs/de/SCANNERS.md#nikon-coolscan).
 
 Die Coolscan3-Initialisierung für Laden, Auswerfen und Zurücksetzen, die Firmware 1.03 des
 LS-5000 braucht, blieb bewusst außerhalb der Patches. Laden, Auswerfen und Zurücksetzen von

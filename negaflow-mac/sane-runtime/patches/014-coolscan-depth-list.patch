@@ -1,0 +1,35 @@
+coolscan2/coolscan3: allocate the whole depth word list
+
+The two coolscan hunks of upstream 9bea1ee2 ("various: Some minor warnings
+dealt with", 2026-02-23).  The depth constraint is a SANE word list: a
+count, then the values 8 and the scanner's maximum bit depth, three words.
+1.4.0 allocates two and writes the third past the end of the allocation.
+The macOS formula has carried this fix since 1.0.3; the Windows runtime
+built coolscan2 and coolscan3 without it.
+
+diff --git a/backend/coolscan2.c b/backend/coolscan2.c
+index 641784a8..5beef511 100644
+--- a/backend/coolscan2.c
++++ b/backend/coolscan2.c
+@@ -543,7 +543,7 @@ sane_open (SANE_String_Const name, SANE_Handle * h)
+ 	  o.size = WSIZE;
+ 	  o.cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
+ 	  o.constraint_type = SANE_CONSTRAINT_WORD_LIST;
+-	  word_list = (SANE_Word *) cs2_xmalloc (2 * sizeof (SANE_Word));
++	  word_list = (SANE_Word *) cs2_xmalloc (3 * sizeof (SANE_Word));
+ 	  if (!word_list)
+ 	    alloc_failed = 1;
+ 	  else
+diff --git a/backend/coolscan3.c b/backend/coolscan3.c
+index 77a1a5c6..17dacdd0 100644
+--- a/backend/coolscan3.c
++++ b/backend/coolscan3.c
+@@ -503,7 +503,7 @@ sane_open(SANE_String_Const name, SANE_Handle * h)
+ 			o.cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
+ 			o.constraint_type = SANE_CONSTRAINT_WORD_LIST;
+ 			word_list =
+-				(SANE_Word *) cs3_xmalloc(2 *
++				(SANE_Word *) cs3_xmalloc(3 *
+ 							  sizeof(SANE_Word));
+ 			if (!word_list)
+ 				alloc_failed = 1;

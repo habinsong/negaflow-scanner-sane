@@ -1,0 +1,26 @@
+Keep MUST_WAIT on the OpticFilm 7400 v1 once 012 is applied
+
+In 1.4.0 the 7400 v1 row is a copy of the 7300 row, so 008 reached it
+through the 7300's flags.  Upstream's own 7400 v1 definition (eddc62c1, in
+012) writes a fresh flag set, which would leave the 7400 v1 as the one
+OpticFilm on Windows that returns from sane_read while its head is still
+travelling home.  008 explains what that costs on usbscan.sys.
+
+diff --git a/backend/genesys/tables_model.cpp b/backend/genesys/tables_model.cpp
+index 5aa5857b..417afaa8 100644
+--- a/backend/genesys/tables_model.cpp
++++ b/backend/genesys/tables_model.cpp
+@@ -2550,8 +2550,12 @@ void genesys_init_usb_device_tables()
+     // same as 7300, same USB ID as 7400-v2
+     model.name = "plustek-opticfilm-7400-v1";
+     model.model = "OpticFilm 7400 (v1)";
++    /* MUST_WAIT: this row used to inherit it from the 7300 row above, where
++       008-opticfilm-wait-for-park.patch sets it.  Upstream's own 7400 v1
++       definition writes a fresh flag set, so it is restated here.  */
+     model.flags = ModelFlag::WARMUP |
+-                 ModelFlag::DISABLE_SHADING_CALIBRATION;
++                 ModelFlag::DISABLE_SHADING_CALIBRATION |
++                 ModelFlag::MUST_WAIT;
+     model.sensor_id = SensorId::CCD_PLUSTEK_OPTICFILM_7400_V1;
+     model.bpp_gray_values = {8, 16};
+     model.bpp_color_values = {8, 16};

@@ -77,6 +77,7 @@ scanimage -L
 | `sane-find-scanner` 能看到，但提示 `no SANE devices found` | 没有已启用的后端支持该型号 | 查看 [SANE 支持设备列表](https://www.sane-project.org/sane-supported-devices.html)，再阅读第 3 步的日志 |
 | USB 列表中有，`scanimage -L` 为空，且 `repair-sane-config` 返回 `notNeeded` | SANE 不认识的硬件版本 | 将 USB product ID 与[扫描仪支持](SCANNERS.md)对照。沿用旧产品名销售的新版本无法从这一侧解决 |
 | Coolscan LS-50 或 LS-5000 从 USB 列表中消失 | 这些机型上已知的 USB 端口故障 | 换线缆和端口确认。如果 Mac 完全无法枚举，则是硬件故障 |
+| Coolscan LS-4000 ED 或 LS-8000 ED 在 macOS 26 上完全不出现 | 这些机型只能通过 FireWire 连接，而 macOS 26 已没有 FireWire，转接器也无济于事 | 在 macOS 26 上没有办法。尚未试过的 macOS 14/15 和 Windows 路径见[扫描仪支持](SCANNERS.md#nikon-coolscan) |
 | `another process has device opened for exclusive access`、`device busy`、`is not configured` | 其他程序已占用 USB 接口 | 退出 VueScan、SilverFast、图像捕捉和厂商工具，重新连接扫描仪后再试 |
 | 只有 `sudo scanimage -L` 能找到 | 接口被占用或未释放 | 先解决上面的占用问题。negaflow 不会以 root 运行插件，所以 `sudo` 不是解决办法 |
 | 终端能找到，negaflow 找不到 | SANE 不在支持的 Homebrew keg 路径 | 重新运行随附安装程序；不会使用 MacPorts 或其他手动编译路径 |

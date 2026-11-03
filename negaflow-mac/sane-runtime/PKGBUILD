@@ -4,7 +4,7 @@ _realname=sane
 pkgbase=mingw-w64-${_realname}
 pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
 pkgver=1.4.0
-pkgrel=5
+pkgrel=6
 pkgdesc="Scanner Access Now Easy ― Backends. (mingw-w64)"
 arch=('any')
 mingw_arch=('ucrt64' 'clang64' 'clangarm64')
@@ -39,9 +39,15 @@ source=("https://gitlab.com/sane-project/backends/-/archive/${pkgver}/backends-$
         "008-opticfilm-wait-for-park.patch"
         "009-expose-infrared-frame.patch"
         "010-bundled-backend-dir.patch"
-        "011-opticfilm-host-side-gray.patch")
+        "011-opticfilm-host-side-gray.patch"
+        "012-genesys-upstream-opticfilm.patch"
+        "013-opticfilm-7400-v1-wait-for-park.patch"
+        "014-coolscan-depth-list.patch")
 sha256sums=('813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d'
             'c7d84a80d4f91000024562500b95de165b8200bae66f48d807e9f07e7e8f4bb2'
+            'SKIP'
+            'SKIP'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -66,6 +72,9 @@ prepare() {
   patch -p1 -i "${srcdir}"/009-expose-infrared-frame.patch
   patch -p1 -i "${srcdir}"/010-bundled-backend-dir.patch
   patch -p1 -i "${srcdir}"/011-opticfilm-host-side-gray.patch
+  patch -p1 -i "${srcdir}"/012-genesys-upstream-opticfilm.patch
+  patch -p1 -i "${srcdir}"/013-opticfilm-7400-v1-wait-for-park.patch
+  patch -p1 -i "${srcdir}"/014-coolscan-depth-list.patch
 
   # https://gitlab.com/sane-project/backends/-/issues/440
   printf "%s\n" "$pkgver" > .tarball-version

@@ -1,6 +1,6 @@
 # SANE runtime — sources and patches
 
-최종 갱신: 2026-08-25
+최종 갱신: 2026-11-03
 
 Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 플러그인은 이 런타임을 **자식 프로세스(`scanimage.exe`)로 실행**하고 링크하지
@@ -36,6 +36,9 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | `009-expose-infrared-frame.patch` | 이 저장소 | `epson2`가 IR 프레임을 별도 `SANE_FRAME_IR`로 반환하도록 한다 |
 | `010-bundled-backend-dir.patch` | 이 저장소 | 설치 번들의 백엔드 디렉터리를 `SANE_BACKEND_DIR`로 지정할 수 있게 한다 |
 | `011-opticfilm-host-side-gray.patch` | 이 저장소 | OpticFilm 7400-v2/8100의 멎는 단일채널 Gray 대신 기존 스트리밍 RGB→Gray 경로를 사용하고 GL845/GL846 의 빠진 출력 길이 계산을 바로잡는다 |
+| `012-genesys-upstream-opticfilm.patch` | [sane-backends master](https://gitlab.com/sane-project/backends) (GPL-2.0-or-later) | 1.4.0 이후 upstream 이 받은 `genesys` 커밋 14개를 그대로 옮긴다. OpticFilm 8200i SE(GL128), 7400 v1, 7600i v1 과 그것이 기대는 수정. 아래 참조 |
+| `013-opticfilm-7400-v1-wait-for-park.patch` | 이 저장소 | 012 가 새로 쓴 7400 v1 행에 008 의 `MUST_WAIT` 을 되살린다 |
+| `014-coolscan-depth-list.patch` | [sane-backends 9bea1ee2](https://gitlab.com/sane-project/backends/-/commit/9bea1ee256c744098576acee98053e094b4a14a2) | `coolscan2`/`coolscan3` 의 깊이 word list 할당 수정. 맥 formula 에는 1.0.3 부터 있었고 Windows 에만 빠져 있었다 |
 
 ### 005 — usbscan.sys 백엔드
 
@@ -319,6 +322,106 @@ usbscan_control_msg: request 0x04 failed, error 121
 
 OpticFilm 6개 항목에만 켰다. 8100 으로만 확인했고 나머지는 같은 계열이라는
 이유로 함께 켰다.
+
+### 012 — 1.4.0 이후 upstream 이 받은 OpticFilm 작업
+
+1.4.0 은 아직 최신 릴리스다. 그 뒤 upstream master 가 검토하고 합친 OpticFilm 커밋을 **고치지
+않고** 옮긴다. 1.4.0 에 001~011 을 적용한 트리 위에 아래 순서로 cherry-pick 했고 충돌은
+없었다. upstream 의 newsfragments 는 뺐다.
+
+| 커밋 | 내용 |
+|---|---|
+| `eddc62c1` | OpticFilm 7400 v1 |
+| `ca7b306b` | `<iterator>` include 누락(LLVM 22 libc++ 에서 컴파일 실패) |
+| `f561b049` | 벡터로 만드는 문자열 옵션 크기에 NUL 1바이트 포함 |
+| `2bf54be6` `a4444f83` `3fd47933` `068e509e` | GL128 이 쓰는 영상 파이프라인 노드와 정확한 slope 테이블 |
+| `19f59f5f` `288d813a` `8534b728` `f753d218` | GL128 command set 과 OpticFilm 8200i SE (`07b3:1825`) |
+| `90a16470` `908b0cb7` | OpticFilm 7600i v1 전체 프레임과 기본 노출 |
+| `be064801` | 되돌린 `--scan-exposure-time` MR 이 GL128 에 남긴 두 줄 제거 |
+
+`--scan-exposure-time` MR(`87969366`)은 upstream 이 되돌렸으므로 가져오지 않는다.
+
+#### 장치에 닿는 것 — 세션 비교
+
+upstream 자신의 `genesys_session_config_tests` 로 OpticFilm 구성 148개(컬러·Gray·적외선, 모델별
+전 해상도)를 012 전후에서 돌려 레지스터 기록을 비교했다. 012 가 더한 디버그 출력 필드
+(`table size`, `lamp_*_pending`)는 빼고 본 결과다.
+
+| 모델 | 결과 |
+|---|---|
+| 7200, 7400 v2, **8100**, 8200i, 7600i v2 | 바이트 단위로 같다 |
+| 7200i, 7200 v2, 7300, 7500i (GL843) | 레지스터 하나, 단일채널 패스(Gray 와 단일채널 캘리브레이션)의 `REG_0x04` 만 `0x1a→0x2a`, `0x5a→0x6a` |
+| 7600i v1 | upstream 의 36.6 x 24.7 mm 전체 프레임과 기본 line period |
+| 7400 v1 | upstream 의 새 정의 |
+| 8200i SE | 새 모델 |
+
+`REG_0x04` 변화는 `eddc62c1` 이 단일채널 패스에도 Analog Devices 의 “slow color pixel by
+pixel” AFE 모드를 쓰게 한 것이다. 1.4.0 은 거기에 Wolfson 값을 썼다. GL843 OpticFilm 은 전부
+AD9826 프론트엔드이고, 컬러 패스는 원래 AD 값을 쓰고 있었다. Wolfson 프론트엔드를 쓰는 GL843
+(Canon 4400F/8400F/8600F, HP G4010/G4050, Panasonic KV-SS080)은 전후 모두 같은 바이트를 쓴다.
+GL843 OpticFilm 의 Gray 는 이 프로젝트가 실기로 본 적이 없으므로, 이 변화의 실기 근거는 upstream
+의 7400 v1 뿐이다.
+
+#### 8200i SE
+
+본체에는 “8200i” 라고 적혀 있고 USB ID 만 다르다(`07b3:1825`, GL128). upstream 상태는
+`:basic` — 투과 전용, 150~7200 dpi, 16-bit 컬러와 Gray, 적외선 없음 — 이고 모델에
+`ModelFlag::UNTESTED` 가 붙어 경고만 출력한다. 값은 vendor 드라이버의 USB 캡처를 pyopticfilm
+이 해독한 것에서 왔다. 이 프로젝트는 실기로 돌려 본 적이 없다.
+
+`MUST_WAIT` 은 켜지 않는다. GL128 은 독립적인 홈 탐색이 없고 이미지 패스 끝에서 `AGOHOME` 으로
+파킹을 기다린 뒤 끝나므로, 008 이 막으려던 “헤드가 움직이는 채로 프로세스가 끝나는” 경로가
+없다(`gl128.cpp` 의 `end_scan` / `move_back_home`).
+
+#### 넣지 않은 GL128 기종
+
+pyopticfilm 이 실기로 구동하는 같은 계열 둘은 SANE 에 행이 없고, 여기서도 만들지 않는다.
+
+| 기종 | USB ID | 8200i SE 와 다른 점(pyopticfilm) |
+|---|---|---|
+| OpticFilm 8100 V2 | `07b3:1824` | 부트 레지스터 `0x0B`(0x8C ↔ 0x4C), 부트 ASIC 클록(0x0E ↔ 0x0C), 적외선 없음 |
+| OpticFilm 8300i SE / Ai | `07b3:181f` | 노출 15000, 센서 타이밍, 픽셀 클록, 모터 slope ROM, 라인 수 단위 |
+
+8200i SE 행에 ID 만 바꿔 붙이면 부트 클록과 모터 테이블을 짐작으로 쓰게 된다. pyopticfilm 은
+8100 V2 에서 레지스터 비트 하나를 켠 직후 모터가 걸려 전원을 내린 사고를 기록해 두었다.
+실기 없이 켤 수 있는 것이 아니다.
+
+#### 확인
+
+- 고정한 upstream 아카이브(`813ef881…`)에 001~014 를 PKGBUILD 순서대로 `patch -p1` — 012~014
+  는 offset·fuzz 0
+- `autoreconf` → `genesys epson2 epsonds coolscan2 coolscan3 test` 빌드(Linux, 2026-11-03)
+- `genesys_unit_tests` 1043/1043 통과(GL128 지오메트리 시험 포함)
+- 위 세션 비교
+
+실기 확인은 아니다. 8100 의 레지스터 기록이 바이트 단위로 같다는 것이 지금 가진 가장 강한
+회귀 근거다.
+
+#### macOS
+
+같은 커밋을 formula 의 `__END__` payload 에 더하고 version 을 `1.4.0-negaflow.5` 로 올렸다.
+맥은 008 과 013 을 적용하지 않는다. formula 는 `autoreconf` 없이 릴리스 tarball 의 생성된
+`backend/Makefile.in` 으로 빌드하므로, 그 파일에 gl124 항목을 본떠 gl128 항목 8곳을 손으로
+넣었다. 이 파일은 automake 1.16.3 생성물이라 다른 버전으로 다시 만들면 전체가 바뀐다.
+payload 는 `Makefile.am` 다음에 `Makefile.in` 을 쓰므로 make 가 automake 를 다시 부르지 않는다. 테스트
+소스는 `make install` 이 빌드하지 않으므로 맥 payload 에서는 뺐다.
+
+릴리스 tarball(`f99205c9…`)에 payload 전체를 `patch -g 0 -f -p1` 로 한 번에 적용 — offset·fuzz
+0 — 하고 `./configure && make` 가 automake 를 부르지 않고 `gl128` 까지 빌드되는 것을 확인했다
+(Linux, 2026-11-03). macOS 의 BSD `patch(1)` 와 Homebrew 실빌드는 아직 돌려 보지 않았다.
+
+### 013 — 7400 v1 의 `MUST_WAIT`
+
+1.4.0 의 7400 v1 행은 7300 행을 복사한 것이라 008 의 `MUST_WAIT` 을 7300 의 flag 로 물려받았다.
+012 의 `eddc62c1` 은 7400 v1 에 새 flag 집합을 쓰므로 그대로 두면 7400 v1 만 Windows 에서 헤드가
+돌아가는 중에 `sane_read` 가 끝나는 OpticFilm 이 된다. 008 이 설명한 비용이 그대로 돌아온다.
+
+### 014 — Coolscan 깊이 목록
+
+`coolscan2`/`coolscan3` 의 `--depth` 제약은 개수 다음에 8 과 최대 비트 깊이가 오는 word list,
+즉 세 word 인데 1.4.0 은 두 word 를 할당하고 세 번째를 그 끝 너머에 쓴다. upstream `9bea1ee2`
+의 coolscan 두 hunk 그대로다. 맥 formula 에는 1.0.3 부터 있었고 Windows 런타임만 이것 없이
+`coolscan2`/`coolscan3` 를 빌드하고 있었다.
 
 ## 다시 만드는 법
 
