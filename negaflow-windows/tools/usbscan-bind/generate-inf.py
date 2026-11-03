@@ -11,6 +11,14 @@
     우리가 배포하는 백엔드(dll.conf 에 있는 것)만 대상으로 한다. 없는 백엔드의 기기를
     usbscan 에 묶으면 열리지도 않을 장치를 우리 이름으로 잡는 꼴이 된다.
 
+    그 안에서도 **필름을 스캔할 수 있는 기종만** 넣는다(FILM_MODELS). 이 INF 는 장치의
+    원래 드라이버를 밀어낼 수 있다. 프린터 복합기는 USB 복합 장치라 부모 장치가
+    `USB\\VID_…&PID_…` 하드웨어 ID 를 갖고, 원래 드라이버 usbccgp 는 호환 ID 로 잡혀
+    있다. 하드웨어 ID 로 맞물리는 이 INF 가 이기면 부모가 usbscan 에 묶이고 그 아래
+    인쇄·스캔·카드 리더 인터페이스가 통째로 사라진다. 필름을 못 읽는 기기는 이 플러그인이
+    쓸 일이 없으므로 처음부터 넣지 않는다. desc 가 `:unsupported` 로 적은 기종도 뺀다 —
+    우리 백엔드가 열지 못하는 기기의 드라이버를 바꿀 이유가 없다.
+
 쓰는 법
     py generate-inf.py                 # gitlab 에서 받아 생성
     py generate-inf.py --source <dir>  # 받아 둔 sane-backends 체크아웃에서 생성
@@ -31,11 +39,26 @@ RAW = "https://gitlab.com/sane-project/backends/-/raw/master/doc/descriptions/"
 # dll.conf 에 있는 것과 같아야 한다. 늘리려면 백엔드부터 배포에 넣는다.
 BACKENDS = ("genesys", "epson2", "epsonds", "coolscan2", "coolscan3")
 
-# 여는 통로만 만드는 INF 다. 필름 스캐너가 아닌 것까지 잡을 이유가 없으므로 백엔드 단위로
-# 거른다 — epson2 는 평판 겸용이라 전 기종을 받고, 나머지는 필름 전용이다.
+# 필름을 스캔할 수 있는 기종만 받는다(모델 이름 기준, 위 설명 참조).
+FILM_MODELS: dict[str, re.Pattern[str]] = {
+    # genesys 가 투과(TRANSPARENCY) 스캔 방식을 정의한 기종: OpticFilm 전부와 필름
+    # 어댑터가 있는 CanoScan 네 종. LiDE·OpticBook·문서 스캐너는 평판뿐이다
+    # (backend/genesys/tables_model.cpp 의 model.resolutions).
+    "genesys": re.compile(r"^(OpticFilm\b|CanoScan (4400F|5600F|8400F|8600F)$)"),
+    # 투과 유닛이 있는 Perfection(이름 끝이 PHOTO/Photo/Pro)과 그 일본 이름인 GT-X.
+    # V600·V550·V500 처럼 epson2 가 :unsupported 로 적은 기종은 상태 검사에서 빠진다.
+    "epson2": re.compile(r"^(Perfection .* (PHOTO|Photo|Pro)|GT-X\d+)$"),
+    # 투과 유닛이 있는 기종이 없다. 복합기와 문서 스캐너뿐이다.
+    "epsonds": re.compile(r"(?!)"),
+    # Nikon Coolscan 은 전부 필름 스캐너다.
+    "coolscan2": re.compile(r""),
+    "coolscan3": re.compile(r""),
+}
+
 MODEL_PATTERN = re.compile(r':model\s+"([^"]+)"')
 USBID_PATTERN = re.compile(r':usbid\s+"(0x[0-9a-fA-F]{4})"\s+"(0x[0-9a-fA-F]{4})"')
 MFG_PATTERN = re.compile(r':mfg\s+"([^"]+)"')
+STATUS_PATTERN = re.compile(r':status\s+:(\w+)')
 
 
 def read_desc(backend: str, source: pathlib.Path | None) -> str:
@@ -46,26 +69,37 @@ def read_desc(backend: str, source: pathlib.Path | None) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
-def parse(text: str) -> list[tuple[str, str, str, str]]:
-    """(vid, pid, 제조사, 모델) 을 문서 순서대로 뽑는다.
+def parse(text: str) -> list[tuple[str, str, str, str, str]]:
+    """(vid, pid, 제조사, 모델, 상태) 를 문서 순서대로 뽑는다.
 
-    `.desc` 는 `:mfg` 아래에 `:model` 이 오고 그 아래에 `:usbid` 가 오는 구조다. 앞선
-    이름을 들고 가다 usbid 를 만나면 짝을 짓는다. 이름이 없는 항목은 버리지 않고 백엔드
-    이름으로 채운다 — 통로를 여는 것이 목적이지 이름이 목적이 아니다.
+    `.desc` 는 `:mfg` 아래에 `:model` 이 오고, 그 모델의 `:usbid` 와 `:status` 가 다음
+    `:model` 이나 `:mfg` 전까지 이어진다. `:status` 가 `:usbid` 보다 뒤에 오기도 하므로
+    모델 단위로 모은 뒤에 짝을 짓는다.
     """
-    entries: list[tuple[str, str, str, str]] = []
+    entries: list[tuple[str, str, str, str, str]] = []
     mfg = ""
-    model = ""
+    # [제조사, 모델, [(vid, pid)], 상태]
+    current: list | None = None
+
+    def flush() -> None:
+        if current is None:
+            return
+        for vid, pid in current[2]:
+            entries.append((vid, pid, current[0], current[1], current[3]))
+
     for line in text.splitlines():
         if (found := MFG_PATTERN.search(line)) is not None:
+            flush()
+            current = None
             mfg = found.group(1).strip()
-            continue
-        if (found := MODEL_PATTERN.search(line)) is not None:
-            model = found.group(1).strip()
-            continue
-        if (found := USBID_PATTERN.search(line)) is not None:
-            vid, pid = found.group(1)[2:].upper(), found.group(2)[2:].upper()
-            entries.append((vid, pid, mfg, model))
+        elif (found := MODEL_PATTERN.search(line)) is not None:
+            flush()
+            current = [mfg, found.group(1).strip(), [], ""]
+        elif current is not None and (found := USBID_PATTERN.search(line)) is not None:
+            current[2].append((found.group(1)[2:].upper(), found.group(2)[2:].upper()))
+        elif current is not None and (found := STATUS_PATTERN.search(line)) is not None:
+            current[3] = found.group(1)
+    flush()
     return entries
 
 
@@ -91,8 +125,16 @@ def main() -> int:
     for backend in BACKENDS:
         entries = parse(read_desc(backend, arguments.source))
         added = 0
-        for vid, pid, mfg, model in entries:
+        for vid, pid, mfg, model, status in entries:
+            if status == "unsupported" or not FILM_MODELS[backend].search(model):
+                continue
             if (vid, pid) in seen:
+                # 같은 ID 에 일본 이름(GT-X900)과 해외 이름(Perfection V700 Photo)이 함께
+                # 적혀 있으면 장치 관리자에서 알아보기 쉬운 Perfection 이름을 쓴다.
+                known_backend, known_mfg, known_model = seen[(vid, pid)]
+                if (known_backend == backend and model.startswith("Perfection")
+                        and not known_model.startswith("Perfection")):
+                    seen[(vid, pid)] = (backend, known_mfg, model)
                 continue
             seen[(vid, pid)] = (backend, mfg, model)
             added += 1
@@ -142,7 +184,11 @@ HEADER = """\
 ;
 ; **이 파일은 생성물이다. 손으로 고치지 말고 generate-inf.py 를 다시 돌린다.**
 ; 기기 목록은 SANE upstream 의 doc/descriptions/*.desc 에서 나온다 — 백엔드가 실제로
-; 아는 기기가 곧 우리가 통로를 열 기기다. {count}개 기기, 백엔드: {backends}.
+; 아는 기기 가운데 **필름을 스캔할 수 있는 기종만** 넣는다. {count}개 기기, 백엔드:
+; {backends}.
+;
+; 프린터 복합기와 문서 스캐너는 넣지 않는다. 복합기는 USB 복합 장치라, 이 INF 가 부모
+; 장치에 붙으면 원래 드라이버 usbccgp 를 밀어내고 인쇄·스캔 인터페이스가 통째로 사라진다.
 ;
 ; 왜 필요한가
 ;   sanei_usb 의 Windows 경로(patch 005)는 still-image 클래스 드라이버 usbscan.sys 가
@@ -152,7 +198,9 @@ HEADER = """\
 ;
 ; 무엇을 설치하는가
 ;   **아무 바이너리도 설치하지 않는다.** Include=sti.inf / Needs=STI.USBSection 으로
-;   Windows 가 이미 갖고 있는 usbscan.sys 를 가리킬 뿐이다. 벤더 스택을 밀어내지 않는다.
+;   Windows 가 이미 갖고 있는 usbscan.sys 를 가리킬 뿐이다. 다만 같은 하드웨어 ID 를
+;   가진 기기의 드라이버는 Windows 의 순위 규칙에 따라 이것으로 바뀔 수 있다. 목록을
+;   필름 스캐너로 좁힌 이유가 그것이다.
 
 [Version]
 Signature   = "$Windows NT$"
