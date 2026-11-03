@@ -45,9 +45,10 @@ FILM_MODELS: dict[str, re.Pattern[str]] = {
     # 어댑터가 있는 CanoScan 네 종. LiDE·OpticBook·문서 스캐너는 평판뿐이다
     # (backend/genesys/tables_model.cpp 의 model.resolutions).
     "genesys": re.compile(r"^(OpticFilm\b|CanoScan (4400F|5600F|8400F|8600F)$)"),
-    # 투과 유닛이 있는 Perfection(이름 끝이 PHOTO/Photo/Pro)과 그 일본 이름인 GT-X.
+    # 투과 유닛이 있는 Perfection(이름 끝이 PHOTO/Photo/Pro)과 그 일본 이름인 GT-X,
+    # 투과 유닛을 달 수 있는 Expression. 복합기가 아니라 부모 장치를 밀어낼 일이 없다.
     # V600·V550·V500 처럼 epson2 가 :unsupported 로 적은 기종은 상태 검사에서 빠진다.
-    "epson2": re.compile(r"^(Perfection .* (PHOTO|Photo|Pro)|GT-X\d+)$"),
+    "epson2": re.compile(r"^(Perfection .* (PHOTO|Photo|Pro)|GT-X\d+|Expression .+)$"),
     # 투과 유닛이 있는 기종이 없다. 복합기와 문서 스캐너뿐이다.
     "epsonds": re.compile(r"(?!)"),
     # Nikon Coolscan 은 전부 필름 스캐너다.

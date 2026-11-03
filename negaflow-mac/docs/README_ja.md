@@ -3,7 +3,7 @@
 <p align="center">SANE フィルムスキャナーを macOS の negaflow につなぐプラグイン</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.2-EF8B26" alt="1.1.2"></a>
   <a href="#"><img src="https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white" alt="macOS 14 以降"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -44,10 +44,10 @@ xcode-select --install
 
 | DMG | SANE | プラグイン |
 |---|---|---|
-| `negaflow-sane-1.1.1-mac26-arm64.dmg` | パッチ版、macOS 26 以降 | `arm64` |
-| `negaflow-sane-1.1.1-mac26-universal.dmg` | パッチ版、macOS 26 以降 | `arm64` + `x86_64` |
-| `negaflow-sane-1.1.1-mac14-arm64.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` |
-| `negaflow-sane-1.1.1-mac14-universal.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.2-mac26-arm64.dmg` | パッチ版、macOS 26 以降 | `arm64` |
+| `negaflow-sane-1.1.2-mac26-universal.dmg` | パッチ版、macOS 26 以降 | `arm64` + `x86_64` |
+| `negaflow-sane-1.1.2-mac14-arm64.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` |
+| `negaflow-sane-1.1.2-mac14-universal.dmg` | OpticFilm 用、macOS 14 以降 | `arm64` + `x86_64` |
 
 `mac26` の DMG では `Install negaflow Scanner.pkg`、`mac14` の DMG では
 `Install negaflow Scanner for OpticFilm.pkg` を実行します。

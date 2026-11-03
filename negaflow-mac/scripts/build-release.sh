@@ -23,12 +23,16 @@ esac
 cd "$ROOT"
 python3 "$ROOT/scripts/verify-provenance.py"
 swift test
-ARM_BIN_DIR="$(swift build -c release --triple arm64-apple-macosx13.0 \
+# Swift 6.4 부터 기본값인 swiftbuild 는 LC_BUILD_VERSION 의 sdk 칸에 배포 대상(13.0)을 적는다.
+# 그러면 OS 가 이 실행 파일을 macOS 13 SDK 로 빌드한 것으로 보고 옛 호환 동작을 고른다.
+# 1.1.1 까지 쓰던 native 로 고정해 실제 SDK 가 기록되게 한다. verify-release.sh 가 확인한다.
+BUILD_SYSTEM=(--build-system native)
+ARM_BIN_DIR="$(swift build "${BUILD_SYSTEM[@]}" -c release --triple arm64-apple-macosx13.0 \
   --scratch-path "$ARM_SCRATCH" --show-bin-path)"
-X86_BIN_DIR="$(swift build -c release --triple x86_64-apple-macosx13.0 \
+X86_BIN_DIR="$(swift build "${BUILD_SYSTEM[@]}" -c release --triple x86_64-apple-macosx13.0 \
   --scratch-path "$X86_SCRATCH" --show-bin-path)"
-swift build -c release --triple arm64-apple-macosx13.0 --scratch-path "$ARM_SCRATCH"
-swift build -c release --triple x86_64-apple-macosx13.0 --scratch-path "$X86_SCRATCH"
+swift build "${BUILD_SYSTEM[@]}" -c release --triple arm64-apple-macosx13.0 --scratch-path "$ARM_SCRATCH"
+swift build "${BUILD_SYSTEM[@]}" -c release --triple x86_64-apple-macosx13.0 --scratch-path "$X86_SCRATCH"
 
 mkdir -p "$UNIVERSAL_DIR"
 UNIVERSAL_BIN="$UNIVERSAL_DIR/negaflow-scanner-sane"

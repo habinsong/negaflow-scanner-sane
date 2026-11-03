@@ -3,7 +3,7 @@
 <p align="center">Das Plug-in, das SANE-Filmscanner unter Windows mit negaflow verbindet</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.2-EF8B26" alt="1.1.2"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -34,7 +34,7 @@ Die SANE-Programme stecken im Installationsprogramm. Sonst gibt es nichts herunt
 
 ## Installation
 
-Laden Sie `negaflow-sane-1.1.1-win-x64.exe` unter
+Laden Sie `negaflow-sane-1.1.2-win-x64.exe` unter
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) herunter und
 starten Sie es.
 
@@ -118,7 +118,7 @@ Sie brauchen Visual Studio 2022 und CMake 3.28 oder neuer.
 
 Für das Installationsprogramm:
 
-Laden Sie das Windows-Quellarchiv von [v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1) herunter und geben Sie den entpackten Ordner `source/plugin-dependencies` an. `C:\source\plugin-dependencies` ist ein Beispielpfad. Das Skript gleicht die Quellen von TIFF, zlib und RapidJSON mit den installierten vcpkg-Versionen ab. Es sammelt auch das ursprüngliche SANE-Archiv sowie Quellpakete und vollständige Lizenztexte aller mitgelieferten DLLs. Fehlende Quellen oder abweichende Versionen stoppen die Paketierung. MSYS2 muss `zstd` bereitstellen.
+Laden Sie das Windows-Quellarchiv von [v1.1.2](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.2) herunter und geben Sie den entpackten Ordner `source/plugin-dependencies` an. `C:\source\plugin-dependencies` ist ein Beispielpfad. Das Skript gleicht die Quellen von TIFF, zlib und RapidJSON mit den installierten vcpkg-Versionen ab. Es sammelt auch das ursprüngliche SANE-Archiv sowie Quellpakete und vollständige Lizenztexte aller mitgelieferten DLLs. Fehlende Quellen oder abweichende Versionen stoppen die Paketierung. MSYS2 muss `zstd` bereitstellen.
 
 ```powershell
 .\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite

@@ -3,7 +3,7 @@
 <p align="center">把 SANE 胶片扫描仪接到 Windows 上 negaflow 的插件</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="1.1.1"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.2-EF8B26" alt="1.1.2"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0+"></a>
 </p>
@@ -35,7 +35,7 @@ SANE 的可执行文件已经在安装包里，不需要另外下载。
 ## 安装
 
 在 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) 下载
-`negaflow-sane-1.1.1-win-x64.exe` 并运行。
+`negaflow-sane-1.1.2-win-x64.exe` 并运行。
 
 1. 选语言，按提示操作。
 2. 快结束时会问要不要打开扫描仪通路。只有这一步需要管理员确认。
@@ -105,7 +105,7 @@ ctest --preset x64-release --output-on-failure
 
 制作安装程序：
 
-下载 [v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1) 的 Windows 对应源码包，指定解压后的 `source/plugin-dependencies` 目录。`C:\source\plugin-dependencies` 是示例路径。打包程序会核对 TIFF、zlib、RapidJSON 源码与已安装的 vcpkg 版本，并收集 SANE 原始源码包、各随附 DLL 的源码包及完整许可证。缺少源码或版本不匹配时会停止打包。MSYS2 中需要有 `zstd`。
+下载 [v1.1.2](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.2) 的 Windows 对应源码包，指定解压后的 `source/plugin-dependencies` 目录。`C:\source\plugin-dependencies` 是示例路径。打包程序会核对 TIFF、zlib、RapidJSON 源码与已安装的 vcpkg 版本，并收集 SANE 原始源码包、各随附 DLL 的源码包及完整许可证。缺少源码或版本不匹配时会停止打包。MSYS2 中需要有 `zstd`。
 
 ```powershell
 .\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite

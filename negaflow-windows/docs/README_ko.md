@@ -3,7 +3,7 @@
 <p align="center">SANE 필름 스캐너를 Windows의 negaflow에 연결하는 플러그인</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="버전 1.1.1"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.2-EF8B26" alt="버전 1.1.2"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 이상"></a>
 </p>
@@ -35,7 +35,7 @@ SANE 실행 파일은 설치 파일 안에 들어 있습니다. 따로 받으실
 ## 설치
 
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases)에서
-`negaflow-sane-1.1.1-win-x64.exe`를 내려받아 실행합니다.
+`negaflow-sane-1.1.2-win-x64.exe`를 내려받아 실행합니다.
 
 1. 언어를 고르고 안내를 따릅니다.
 2. 설치가 끝날 무렵 스캐너 통로를 열지 물어봅니다. 여기서만 관리자 확인이 한 번 필요합니다.
@@ -111,7 +111,7 @@ Visual Studio 2022와 CMake 3.28 이상이 필요합니다.
 
 설치 파일을 만들 때:
 
-[v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1)의 Windows 대응 소스 압축 파일을 받으세요. 아래 경로에는 압축을 푼 `source/plugin-dependencies` 폴더를 넣습니다. `C:\source\plugin-dependencies`는 예시입니다. 패키징은 TIFF·zlib·RapidJSON 소스를 설치된 vcpkg 버전과 대조합니다. SANE 원본 압축 파일과 동봉 DLL 각각의 소스 패키지·라이선스 전문도 수집합니다. 소스가 없거나 버전이 다르면 패키징이 멈춥니다. MSYS2에서 `zstd`를 실행할 수 있어야 합니다.
+[v1.1.2](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.2)의 Windows 대응 소스 압축 파일을 받으세요. 아래 경로에는 압축을 푼 `source/plugin-dependencies` 폴더를 넣습니다. `C:\source\plugin-dependencies`는 예시입니다. 패키징은 TIFF·zlib·RapidJSON 소스를 설치된 vcpkg 버전과 대조합니다. SANE 원본 압축 파일과 동봉 DLL 각각의 소스 패키지·라이선스 전문도 수집합니다. 소스가 없거나 버전이 다르면 패키징이 멈춥니다. MSYS2에서 `zstd`를 실행할 수 있어야 합니다.
 
 ```powershell
 .\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite

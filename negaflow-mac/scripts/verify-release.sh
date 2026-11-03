@@ -67,6 +67,15 @@ codesign --verify --strict --verbose=2 "$EXECUTABLE"
 architectures="$(lipo -archs "$EXECUTABLE")"
 grep -qw arm64 <<< "$architectures"
 grep -qw x86_64 <<< "$architectures"
+for architecture in arm64 x86_64; do
+  build_info="$(vtool -show-build -arch "$architecture" "$EXECUTABLE")"
+  minimum_os="$(awk '$1 == "minos" { print $2 }' <<< "$build_info")"
+  linked_sdk="$(awk '$1 == "sdk" { print $2 }' <<< "$build_info")"
+  if [ -z "$linked_sdk" ] || [ "$linked_sdk" = "$minimum_os" ]; then
+    echo "[verify-release] ERROR: $architecture 실행 파일에 실제 SDK 가 기록되지 않았습니다: sdk=$linked_sdk minos=$minimum_os" >&2
+    exit 1
+  fi
+done
 executable_uuids="$(dwarfdump --uuid "$EXECUTABLE" | awk '{print $2}' | sort)"
 dsym_bundle="$(find "$TEMPORARY/dsym" -type d -name '*.dSYM' -print -quit)"
 dsym_uuids="$(dwarfdump --uuid "$dsym_bundle" | awk '{print $2}' | sort)"

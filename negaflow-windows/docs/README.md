@@ -3,7 +3,7 @@
 <p align="center">The plugin that connects SANE film scanners to negaflow on Windows</p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/version-1.1.1-EF8B26" alt="version 1.1.1"></a>
+  <a href="#"><img src="https://img.shields.io/badge/version-1.1.2-EF8B26" alt="version 1.1.2"></a>
   <a href="#"><img src="https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white" alt="Windows 11"></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-6E7781" alt="GPL 2.0 or later"></a>
 </p>
@@ -34,7 +34,7 @@ The SANE binaries ship inside the installer. There is nothing else to download.
 
 ## Installing
 
-Download `negaflow-sane-1.1.1-win-x64.exe` from
+Download `negaflow-sane-1.1.2-win-x64.exe` from
 [Releases](https://github.com/habinsong/negaflow-scanner-sane/releases) and run it.
 
 1. Pick a language and follow the prompts.
@@ -113,7 +113,7 @@ You need Visual Studio 2022 and CMake 3.28 or later.
 
 To build the installer:
 
-Download the Windows corresponding-source archive from [v1.1.1](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.1). Pass its extracted `source/plugin-dependencies` directory below; `C:\source\plugin-dependencies` is an example path. The packager checks the TIFF, zlib and RapidJSON sources against the installed vcpkg versions. It also collects the actual SANE upstream archive and the source-only packages and license texts for every bundled runtime DLL. Missing or mismatched sources stop packaging. MSYS2 must have `zstd` available.
+Download the Windows corresponding-source archive from [v1.1.2](https://github.com/habinsong/negaflow-scanner-sane/releases/tag/v1.1.2). Pass its extracted `source/plugin-dependencies` directory below; `C:\source\plugin-dependencies` is an example path. The packager checks the TIFF, zlib and RapidJSON sources against the installed vcpkg versions. It also collects the actual SANE upstream archive and the source-only packages and license texts for every bundled runtime DLL. Missing or mismatched sources stop packaging. MSYS2 must have `zstd` available.
 
 ```powershell
 .\scripts\build-installer.ps1 -PluginDependencySources C:\source\plugin-dependencies -Overwrite

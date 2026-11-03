@@ -4,3 +4,8 @@
 # 저장소 루트 기준의 전체 경로를 적는다.
 negaflow-mac/sane-runtime/patches/*.patch text eol=lf
 negaflow-mac/sane-runtime/PKGBUILD        text eol=lf
+
+# 드라이버 INF 는 1.1.1 까지 CRLF 로 배포됐다. 빌드 기계의 autocrlf 설정에 매이지 않게 고정한다.
+negaflow-windows/tools/usbscan-bind/negaflow-usbscan.inf text eol=crlf
+# Windows 의 MSYS2 bash 가 설치본 조립 스크립트를 돌린다. CR 이 섞이면 `set -euo pipefail` 부터 깨진다.
+*.sh text eol=lf
