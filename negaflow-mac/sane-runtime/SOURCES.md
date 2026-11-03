@@ -39,6 +39,7 @@ Windows 빌드가 쓰는 SANE 런타임의 출처와 변경 내용을 적는다.
 | `012-genesys-upstream-opticfilm.patch` | [sane-backends master](https://gitlab.com/sane-project/backends) (GPL-2.0-or-later) | 1.4.0 이후 upstream 이 받은 `genesys` 커밋 14개를 그대로 옮긴다. OpticFilm 8200i SE(GL128), 7400 v1, 7600i v1 과 그것이 기대는 수정. 아래 참조 |
 | `013-opticfilm-7400-v1-wait-for-park.patch` | 이 저장소 | 012 가 새로 쓴 7400 v1 행에 008 의 `MUST_WAIT` 을 되살린다 |
 | `014-coolscan-depth-list.patch` | [sane-backends 9bea1ee2](https://gitlab.com/sane-project/backends/-/commit/9bea1ee256c744098576acee98053e094b4a14a2) | `coolscan2`/`coolscan3` 의 깊이 word list 할당 수정. 맥 formula 에는 1.0.3 부터 있었고 Windows 에만 빠져 있었다 |
+| `015-gl128-libcxx-constexpr-pair.patch` | 이 저장소 | 012 의 `gl128.cpp` 한 줄이 libc++ 의 C++11 모드에서 컴파일되지 않던 것을 고친다. 아래 참조 |
 
 ### 005 — usbscan.sys 백엔드
 
@@ -422,6 +423,32 @@ payload 는 `Makefile.am` 다음에 `Makefile.in` 을 쓰므로 make 가 automak
 즉 세 word 인데 1.4.0 은 두 word 를 할당하고 세 번째를 그 끝 너머에 쓴다. upstream `9bea1ee2`
 의 coolscan 두 hunk 그대로다. 맥 formula 에는 1.0.3 부터 있었고 Windows 런타임만 이것 없이
 `coolscan2`/`coolscan3` 를 빌드하고 있었다.
+
+### 015 — GL128 이 libc++ 에서 컴파일되지 않던 것
+
+012 의 upstream `gl128.cpp` 에서 `CommandSetGl128::asic_boot` 의 `static constexpr`
+`std::pair` 배열 한 줄이 Apple clang 에서 멈췄다.
+
+```text
+genesys/gl128.cpp:1580: error: constexpr variable 'STARTUP_REGS' must be initialized
+by a constant expression — non-constexpr constructor 'pair<int, int, 0>'
+```
+
+libc++ 는 이 `pair` 생성자를 C++14 부터 constexpr 로 두는데 SANE 의 configure 는 C++ 를
+`-std=c++11` 로 빌드한다. GCC 의 libstdc++ 는 받아 주므로 리눅스와 UCRT64 빌드에서는 드러나지
+않았고, 맥 CI 의 `install-patched-sane.sh` 에서 처음 실패했다. MSYS2 의 clang64·clangarm64 도
+libc++ 라 같은 자리에서 멈춘다.
+
+`static const` 로 바꿨다. 레지스터 세 개를 같은 값, 같은 순서로 쓴다. upstream 원본을 담은
+012 는 그대로 두고 별도 패치로 얹는다. 맥 formula 는 같은 hunk 를 payload 끝에 따로 붙였다.
+
+확인(Linux, 2026-11-03):
+
+- 릴리스 tarball 에 formula payload 전체를 `patch -g 0 -f -p1` — offset·fuzz 0 — 하고 clang 18
+  + libc++ 로 `./configure && make install` 통과. genesys 백엔드를 `make -k` 로 끝까지 돌려도 이
+  한 줄 말고 오류가 없었다
+- 아카이브에 001~015 를 적용해 GCC 와 clang + libc++ 각각으로 빌드, `genesys_unit_tests`
+  1043/1043 통과
 
 ## 다시 만드는 법
 

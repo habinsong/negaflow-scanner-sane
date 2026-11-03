@@ -80,7 +80,7 @@ obligations are different and stronger.
   <https://gitlab.com/sane-project/backends/-/archive/1.4.0/backends-1.4.0.tar.bz2>
 - Upstream SHA-256: `813ef8818a498cbb11615f657cd6dc66536ef34df4a557d9cd63086622f6123d`
 - License: GPL-2.0-or-later
-- Modifications: fourteen patches, all in [`sane-runtime/patches/`](negaflow-mac/sane-runtime/patches/),
+- Modifications: fifteen patches, all in [`sane-runtime/patches/`](negaflow-mac/sane-runtime/patches/),
   described in [`sane-runtime/SOURCES.md`](negaflow-mac/sane-runtime/SOURCES.md)
 - Build recipe: [`sane-runtime/PKGBUILD`](negaflow-mac/sane-runtime/PKGBUILD), based on the
   MSYS2 `mingw-w64-sane` package
@@ -91,7 +91,7 @@ obligations are different and stronger.
 <https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-sane>
 
 `012-genesys-upstream-opticfilm.patch` and `014-coolscan-depth-list.patch` carry upstream
-sane-backends commits unchanged; each names the commits it contains. The other eleven are
+sane-backends commits unchanged; each names the commits it contains. The other twelve are
 written for this project.
 
 Windows releases carry the actual SANE upstream archive, the build recipe and

@@ -1,0 +1,28 @@
+genesys: build the GL128 command set against libc++ in C++11 mode
+
+012 carries upstream's gl128.cpp unchanged, and one line of it does not
+compile with libc++: a `static constexpr` array of `std::pair` in
+CommandSetGl128::asic_boot.  libc++ makes the pair constructor constexpr only
+from C++14, and SANE's configure builds C++ with -std=c++11, so Apple clang
+stops with "constexpr variable 'STARTUP_REGS' must be initialized by a
+constant expression".  GCC's libstdc++ accepts it, which is why the UCRT64
+build never saw it; the clang64 and clangarm64 environments would.
+
+`static const` keeps the same three register writes in the same order.
+
+diff --git a/backend/genesys/gl128.cpp b/backend/genesys/gl128.cpp
+index 750c8f22..6cc15085 100644
+--- a/backend/genesys/gl128.cpp
++++ b/backend/genesys/gl128.cpp
+@@ -1577,7 +1577,10 @@ void CommandSetGl128::asic_boot(Genesys_Device* dev, bool cold) const
+     // until power-off.
+     dev->interface->write_0x8c(0x10, 0x0c);
+     dev->interface->write_0x8c(0x13, 0x0c);
+-    static constexpr std::pair<std::uint16_t, std::uint8_t> STARTUP_REGS[] = {
++    // const, not constexpr: libc++ makes this std::pair constructor constexpr
++    // only from C++14, and SANE builds with -std=c++11, so Apple clang rejects
++    // a constexpr array here. Same values, same order.
++    static const std::pair<std::uint16_t, std::uint8_t> STARTUP_REGS[] = {
+         { 0x0b, 0x44 }, { 0x13, 0x0f }, { 0x0b, 0x4c },
+     };
+     for (const auto& r : STARTUP_REGS) {

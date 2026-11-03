@@ -67,7 +67,7 @@ build it on the user's machine, so the plug-in distribution contains GPL
 binaries and must carry the corresponding source.
 
 - Recipe and patches: [`sane-runtime/`](negaflow-mac/sane-runtime/),
-  `PKGBUILD`, fourteen patches, and `SOURCES.md` describing each one
+  `PKGBUILD`, fifteen patches, and `SOURCES.md` describing each one
 - The pinned tarball hash plus that recipe reproduces the exact runtime
 
 The chain stays process-separated at every link:

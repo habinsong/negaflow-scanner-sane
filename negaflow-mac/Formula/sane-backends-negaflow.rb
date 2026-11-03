@@ -4052,3 +4052,19 @@ index 43b0736..4f2f805 100644
  
  ; -----------------------------------------------------------------------------
  
+diff --git a/backend/genesys/gl128.cpp b/backend/genesys/gl128.cpp
+index 750c8f2..6cc1508 100644
+--- a/backend/genesys/gl128.cpp
++++ b/backend/genesys/gl128.cpp
+@@ -1577,7 +1577,10 @@ void CommandSetGl128::asic_boot(Genesys_Device* dev, bool cold) const
+     // until power-off.
+     dev->interface->write_0x8c(0x10, 0x0c);
+     dev->interface->write_0x8c(0x13, 0x0c);
+-    static constexpr std::pair<std::uint16_t, std::uint8_t> STARTUP_REGS[] = {
++    // const, not constexpr: libc++ makes this std::pair constructor constexpr
++    // only from C++14, and SANE builds with -std=c++11, so Apple clang rejects
++    // a constexpr array here. Same values, same order.
++    static const std::pair<std::uint16_t, std::uint8_t> STARTUP_REGS[] = {
+         { 0x0b, 0x44 }, { 0x13, 0x0f }, { 0x0b, 0x4c },
+     };
+     for (const auto& r : STARTUP_REGS) {
