@@ -687,6 +687,11 @@ extension SANEBackend {
             || s.contains("device i/o")
     }
 
+    /// 비활성 옵션에 값을 준 scanimage 의 오류인지 판별한다(`attempted to set inactive option`).
+    static func isInactiveOptionError(_ stderr: String) -> Bool {
+        stderr.lowercased().contains("attempted to set inactive option")
+    }
+
     /// scanimage 는 요청값을 장치 표현으로 옮길 때 `rounded value of <opt> from <a> to <b>` 를
     /// stderr 에 남긴다. 그런데 SANE 은 값을 고정소수점(1/65536)으로 들고 있어 mm 요청은 대개
     /// 정확히 표현되지 않고, 그래서 **표시상 같은 값**에도 이 경고가 붙는다 — GT-X900 의
