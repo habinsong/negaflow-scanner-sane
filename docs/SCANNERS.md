@@ -83,12 +83,13 @@ already contains.
   the USB ID to the backend's list.
 - The transparency area is 68.58 x 236.98 mm. A position and size that leave it are rejected with
   `Invalid argument`.
-- The scanner reports 200, 400, 800, 1600 and 6400 dpi, at 8 or 16 bit. In `Negative Film` the
-  scanner compensates the orange mask and does not invert the image.
+- The scanner reports 200, 400, 800, 1600 and 6400 dpi, at 8 or 16 bit. In `Negative Film` the scanner compensates the
+  orange mask and does not invert the image.
 - The infrared pass runs at 800, 1600 or 3200 dpi, as an 8 or 16-bit gray image. At 3200 dpi the
   scanner reads 2400 lines per inch, so the pixels are not square. While the mode is `Infrared`,
-  `scanimage -A` lists just those three resolutions. The plugin requires the infrared image to have
-  the pixel size of the color scan, so the infrared pass works for color scans at 800 dpi and 1600 dpi.
+  `scanimage -A` lists just those three resolutions. For a color scan at another resolution (for
+  example 6400 dpi) the plugin reads infrared at the closest lower resolution and resamples it to the
+  pixel size of the color scan, and reports that in the scan warnings.
 - Close VueScan and Image Capture before scanning, because either holds the scanner exclusively. An
   aborted scan can leave the scanner unresponsive until its power is cycled.
 
@@ -136,7 +137,7 @@ removal switch that runs inside the backend is not reported as an IR channel.
 | OpticFilm 8200i, newer units `07b3:1825` | Not available | SANE's GL128 code has no infrared pass yet | No |
 | OpticFilm 8100 V2, 8300i, 9000i | Not available | No SANE backend | No |
 | Epson V700/V750/V800/V850 with the `mac26` installer | Available when `scanimage -A` reports the infrared mode | Separate `Infrared` mode pass from the patched `epson2` | Yes |
-| Epson V500 Photo with the `mac26` installer and Epson's ICA driver | Available | Separate `Infrared` mode pass through Epson's interpreter at 800 or 1600 dpi, matching a color scan at the same resolution | Yes |
+| Epson V500 Photo with the `mac26` installer and Epson's ICA driver | Available | Separate `Infrared` mode pass through Epson's interpreter at 800, 1600 or 3200 x 2400 dpi, resampled to the size of the color scan | Yes |
 | Epson V700/V750/V800/V850 with stock `epson2` | Not available | Stock builds keep `SANE_FRAME_IR` compiled out | No |
 | Nikon `coolscan3` with `--infrared` | Not available through `scanimage` | `coolscan3` returns one `SANE_FRAME_RGBI` frame, which `scanimage` 1.4 does not split into RGB and IR TIFF files | No |
 | Reflecta/PIE with `--clean-image` only | Not available as an IR channel | Dust removal happens inside the backend | No |
