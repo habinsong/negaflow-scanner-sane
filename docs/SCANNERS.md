@@ -24,6 +24,7 @@ Homebrew's stock SANE 1.4.0 without them.
 | Plustek OpticFilm 9000i Ai, USB `07b3:182f` | None | Unsupported | Not treated as usable |
 | Plustek OpticFilm 120, 120 Pro, 135, 135i | None | Unsupported | Not treated as usable |
 | Epson Perfection V700/V750 (GT-X900), V800/V850 (GT-X980) | `epson2` | Good | Transparency source and positioned flatbed area when reported |
+| Epson Perfection V500 Photo (GT-X770, USB `04b8:0130`) | `epson2`, patched SANE only | Checked on hardware: flatbed, transparency, 16-bit, infrared | Needs Epson's ICA driver on the Mac, see below |
 | Nikon Coolscan LS-40 ED, LS-50 ED, LS-5000 ED (USB) | `coolscan3`, `coolscan2` | Complete (LS-40), Minimal (LS-50), Untested (LS-5000) | Dedicated film-scanner path with the limits below; not checked on hardware |
 | Nikon Coolscan LS-4000 ED, LS-8000 ED (IEEE 1394 / FireWire) | `coolscan3`, `coolscan2` through SBP-2 | Good on Linux | Not usable on macOS 26; Windows and macOS 14/15 unverified, see below |
 | Nikon Coolscan LS-30, LS-2000 (SCSI) | `coolscan3` | Complete (LS-30), Good (LS-2000) | Needs a SCSI host adapter |
@@ -66,6 +67,36 @@ Two more identification traps are worth knowing.
   `05e3:0145`, so a unit is usable only when its model number is listed in `pieusb.conf`.
 - `epson2` knows Epson scanners by their Japanese model names. `scanimage -L` reports a Perfection
   V800/V850 as `GT-X980` and a V700/V750 as `GT-X900`. That is the same scanner.
+
+## Epson Perfection V500 Photo
+
+The V500 Photo does not speak plain ESC/I on the USB bus, so stock `epson2` cannot open it. SANE's
+documented route is the `epkowa` backend with Epson's `iscan-plugin-gt-x770`, which exists only for
+Linux on i386 and amd64. Patched SANE instead loads the interpreter that Epson's macOS ICA driver
+already contains.
+
+- Install Epson's scanner driver (the ICA driver for the V500 from Epson's website, which VueScan
+  also asks for). The patched `epson2` loads `Interpreter 7C` from
+  `/Library/Image Capture/Devices/EPSON Scanner.app`. The file belongs to Epson and is not part of
+  this repository or the installers. `EPSON2_INTERPRETER` overrides the path.
+- `scanimage -L` lists the scanner as `GT-X770`. Plain `epson2.conf` is enough, because the patch adds
+  the USB ID to the backend's list.
+- The transparency area is 68.58 x 236.98 mm. A position and size that leave it are rejected with
+  `Invalid argument`.
+- The scanner reports 200, 400, 800, 1600 and 6400 dpi, at 8 or 16 bit. In `Negative Film` the scanner compensates the
+  orange mask and does not invert the image.
+- The infrared pass runs at 800, 1600 or 3200 dpi, as an 8 or 16-bit gray image. At 3200 dpi the
+  scanner reads 2400 lines per inch, so the pixels are not square. While the mode is `Infrared`,
+  `scanimage -A` lists just those three resolutions. For a color scan at another resolution (for
+  example 6400 dpi) the plugin reads infrared at the closest lower resolution and resamples it to the
+  pixel size of the color scan, and reports that in the scan warnings.
+- The infrared pass is offset from the color pass by a few pixels, and the offset changes between
+  scans. After each infrared pass the plugin measures it from the dust (infrared dust map against dark
+  specks in the color image, in eight bands along the frame, fitted with a line), shifts the infrared,
+  and reports the shift in the scan warnings. With too little dust to measure, it leaves the infrared
+  unshifted and says so.
+- Close VueScan and Image Capture before scanning, because either holds the scanner exclusively. An
+  aborted scan can leave the scanner unresponsive until its power is cycled.
 
 ## Nikon Coolscan
 
@@ -111,6 +142,7 @@ removal switch that runs inside the backend is not reported as an IR channel.
 | OpticFilm 8200i, newer units `07b3:1825` | Not available | SANE's GL128 code has no infrared pass yet | No |
 | OpticFilm 8100 V2, 8300i, 9000i | Not available | No SANE backend | No |
 | Epson V700/V750/V800/V850 with the `mac26` installer | Available when `scanimage -A` reports the infrared mode | Separate `Infrared` mode pass from the patched `epson2` | Yes |
+| Epson V500 Photo with the `mac26` installer and Epson's ICA driver | Available | Separate `Infrared` mode pass through Epson's interpreter at 800, 1600 or 3200 x 2400 dpi, resampled to the size of the color scan | Yes |
 | Epson V700/V750/V800/V850 with stock `epson2` | Not available | Stock builds keep `SANE_FRAME_IR` compiled out | No |
 | Nikon `coolscan3` with `--infrared` | Not available through `scanimage` | `coolscan3` returns one `SANE_FRAME_RGBI` frame, which `scanimage` 1.4 does not split into RGB and IR TIFF files | No |
 | Reflecta/PIE with `--clean-image` only | Not available as an IR channel | Dust removal happens inside the backend | No |

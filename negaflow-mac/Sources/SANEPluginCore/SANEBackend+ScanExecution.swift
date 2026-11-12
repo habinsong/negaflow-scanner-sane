@@ -541,6 +541,7 @@ extension SANEBackend {
         pass: AcquisitionPass,
         outputURL: URL,
         brightness: Int?,
+        resolutionOverride: Int? = nil,
         staleRetryProgress: Double,
         scanProgressRange: ClosedRange<Double>,
         progress: @escaping @Sendable (ScanProgress) -> Void
@@ -567,7 +568,8 @@ extension SANEBackend {
                     options: options,
                     media: media,
                     pass: pass,
-                    brightness: brightness
+                    brightness: brightness,
+                    resolutionOverride: resolutionOverride
                 )
                 let acquisition = try await runScanimageTo(
                     args: args,
@@ -645,6 +647,8 @@ extension SANEBackend {
     ) async -> (URL?, [String]) {
         let irURL = Self.infraredURL(for: mainOutputURL)
         progress(ScanProgress(phase: .scanningIR, fraction: 0.86, message: "Scanning infrared"))
+        // 장치의 IR 모드가 본 스캔 해상도를 받지 않으면 가까운 해상도로 읽고 아래에서 늘린다.
+        let infraredDPI = await infraredResolutionOverride(options: options, media: media)
         do {
             try await runSingleAcquisition(
                 options: options,
@@ -652,6 +656,7 @@ extension SANEBackend {
                 pass: .infrared,
                 outputURL: irURL,
                 brightness: nil,
+                resolutionOverride: infraredDPI,
                 staleRetryProgress: 0.86,
                 scanProgressRange: 0.80...0.96,
                 progress: progress
@@ -665,7 +670,43 @@ extension SANEBackend {
             try? FileManager.default.removeItem(at: irURL)
             return (nil, ["Infrared pass produced an unreadable image; IR channel dropped."])
         }
-        return (irURL, [])
+        var warnings: [String] = []
+        let backend = Self.backendName(
+            of: options.scannerID.replacingOccurrences(of: "sane-", with: "")
+        )
+        // epson2(V500 Photo)의 IR 은 800/1600/3200(x2400) dpi 로만 읽혀 본 스캔과 픽셀 격자가 다를 수
+        // 있다. 다른 백엔드는 격자가 달라지면 아래 검증에서 실패하도록 그대로 둔다.
+        let (mainWidth, mainHeight) = Self.imageSize(at: mainOutputURL)
+        if backend == "epson2", mainWidth > 0, mainHeight > 0 {
+            // IR 패스는 컬러 패스와 스캔마다 다른 양만큼 어긋난다. 먼지로 이동량을 재서 맞춘다.
+            let registration = try? Self.estimateInfraredRegistration(colorURL: mainOutputURL, infraredURL: irURL)
+            let resized = (w, h) != (mainWidth, mainHeight)
+            do {
+                if resized || registration != nil {
+                    try Self.resampleGray16TIFF(
+                        at: irURL, width: mainWidth, height: mainHeight, registration: registration
+                    )
+                }
+                if resized {
+                    warnings.append(
+                        "Infrared scanned at \(w)x\(h) pixels and resampled to \(mainWidth)x\(mainHeight) pixels to match the color scan."
+                    )
+                }
+                if let registration {
+                    let middle = registration.shift(atRow: Double(mainHeight) / 2)
+                    warnings.append(String(
+                        format: "Infrared registered to the color scan (shift at the middle row: %.0f rows, %.0f columns).",
+                        middle.dy, middle.dx
+                    ))
+                } else {
+                    warnings.append("Infrared could not be registered to the color scan (too little dust); it is used unshifted.")
+                }
+            } catch {
+                try? FileManager.default.removeItem(at: irURL)
+                return (nil, ["Infrared pass could not be resampled: \(error.localizedDescription)"])
+            }
+        }
+        return (irURL, warnings)
     }
 
     static func infraredURL(for outputURL: URL) -> URL {
@@ -685,6 +726,11 @@ extension SANEBackend {
             || s.contains("no such device")
             || s.contains("i/o error")
             || s.contains("device i/o")
+    }
+
+    /// 비활성 옵션에 값을 준 scanimage 의 오류인지 판별한다(`attempted to set inactive option`).
+    static func isInactiveOptionError(_ stderr: String) -> Bool {
+        stderr.lowercased().contains("attempted to set inactive option")
     }
 
     /// scanimage 는 요청값을 장치 표현으로 옮길 때 `rounded value of <opt> from <a> to <b>` 를
@@ -713,7 +759,7 @@ extension SANEBackend {
         return false
     }
 
-    private func resolveDeviceAddress(
+    func resolveDeviceAddress(
         for options: ScanOptions,
         media: MediaSelection,
         forceRefresh: Bool
@@ -807,7 +853,8 @@ extension SANEBackend {
         options: ScanOptions,
         media: MediaSelection,
         pass: AcquisitionPass = .main,
-        brightness: Int? = nil
+        brightness: Int? = nil,
+        resolutionOverride: Int? = nil
     ) -> [String] {
         var args: [String] = ["-d", devname, "-p"]
 
@@ -893,7 +940,7 @@ extension SANEBackend {
             }
         }
 
-        if let dpi = media.resolvedDPI { args += ["--resolution", "\(dpi)"] }
+        if let dpi = resolutionOverride ?? media.resolvedDPI { args += ["--resolution", "\(dpi)"] }
         if let depth = media.depthArgument { args += ["--depth", "\(depth)"] }
         if media.usesCornerPixelGeometry,
            let left = media.originXPixels,

@@ -20,6 +20,11 @@ documented command output. The standard installer asks Homebrew for stock
 formula that downloads SANE 1.4.0 and applies the upstream `coolscan2`/`coolscan3`
 word-list allocation fix before building SANE as a separate keg.
 
+That formula also applies a patch to `epson2` for the Epson Perfection V500 Photo. The patch loads
+Epson's own interpreter library from the Epson ICA driver that the user has installed, through the
+library's exported `INTInit`, `INTRead`, `INTWrite` and `INTClose` functions. The library is never
+copied into this repository, the plug-in, or the installers.
+
 SANE option names, device identifiers, USB identifiers, and values returned by
 `scanimage -L` or `scanimage -A` are interoperability facts. The plug-in keeps
 the complete reported device identifier and builds arguments only from options

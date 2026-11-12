@@ -81,6 +81,27 @@ final class SANEBackendDepthCapabilityTests: XCTestCase {
         )
     }
 
+    /// Color 모드에서도 color-correction 이 비활성인 기종(V500 Photo)은 그 옵션 없이 재조회한다.
+    func testRedumpCanOmitColorCorrection() {
+        XCTAssertEqual(
+            SANEBackend.capabilityRedumpArguments(
+                baseDump: lineartDefaultDump,
+                devname: "epson2:libusb:002:002",
+                includeColorCorrection: false
+            ),
+            [
+                "-A", "-d", "epson2:libusb:002:002",
+                "--source", "Transparency Unit",
+                "--mode", "Color",
+                "--gamma-correction", "User defined",
+            ]
+        )
+        XCTAssertTrue(SANEBackend.isInactiveOptionError(
+            "scanimage: attempted to set inactive option color-correction"
+        ))
+        XCTAssertFalse(SANEBackend.isInactiveOptionError("scanimage: open of device failed"))
+    }
+
     /// 심도를 되살리려면 모드가 필요하지만 투과 소스가 없는 장치도 재조회한다.
     func testDepthOnlyRedumpAppliesModeWithoutSource() {
         let noSourceDump = lineartDefaultDump.replacingOccurrences(

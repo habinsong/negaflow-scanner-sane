@@ -708,10 +708,25 @@ extension SANEBackend {
                 ) else {
                     return (currentDevname, baseDump)
                 }
-                let selectedDump = try await runScanimage(
-                    args: args,
-                    ownedByScanSession: ownedByScanSession
-                )
+                let selectedDump: String
+                do {
+                    selectedDump = try await runScanimage(
+                        args: args,
+                        ownedByScanSession: ownedByScanSession
+                    )
+                } catch let error where Self.isInactiveOptionError(error.localizedDescription) {
+                    // Color 모드에서도 color-correction 이 비활성인 기종(V500 Photo)은 그 옵션 없이
+                    // 다시 조회한다. 장치를 다시 열지 않아도 되는 즉시 실패다.
+                    guard let fallbackArgs = Self.capabilityRedumpArguments(
+                        baseDump: baseDump,
+                        devname: currentDevname,
+                        includeColorCorrection: false
+                    ), fallbackArgs != args else { throw error }
+                    selectedDump = try await runScanimage(
+                        args: fallbackArgs,
+                        ownedByScanSession: ownedByScanSession
+                    )
+                }
                 guard !SaneOptionDump(selectedDump).isEmpty else {
                     throw ScannerError(
                         .ioFailure,
@@ -778,14 +793,22 @@ extension SANEBackend {
     /// acquisition을 깨뜨릴 수 있으므로(§canReuseSinglePassOptionsDump), 이미 `--depth`가
     /// 활성인 장치는 모드 때문에 다시 열지 않는다. 소스 때문에 어차피 다시 열 때는 같은
     /// 호출에 모드를 함께 실어 추가 open 없이 심도를 활성화한다.
-    static func capabilityRedumpArguments(baseDump: String, devname: String) -> [String]? {
+    ///
+    /// `includeColorCorrection`이 false이면 `--color-correction`을 싣지 않는다. Perfection V500 Photo처럼
+    /// Color 모드에서도 그 옵션이 비활성인 기종은 값을 주면 scanimage가 거절한다.
+    static func capabilityRedumpArguments(
+        baseDump: String,
+        devname: String,
+        includeColorCorrection: Bool = true
+    ) -> [String]? {
         let opts = SaneOptionDump(baseDump)
         let backend = backendName(of: devname)
         let source = preferredTransparencySource(in: opts.enumValues("source"))
         let depthNeedsMode = opts.hasOption("depth") && !opts.isActive("depth")
         let mode = (source != nil || depthNeedsMode) ? capabilityDumpMode(in: baseDump) : nil
         let selectedMode = mode ?? opts.selectedEnumValue("mode")
-        let colorCorrection = backend == "epson2"
+        let colorCorrection = includeColorCorrection
+            && backend == "epson2"
             && selectedMode?.lowercased().contains("color") == true
             ? epsonRawColorCorrection(in: opts)
             : nil
