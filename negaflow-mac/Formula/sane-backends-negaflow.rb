@@ -1,8 +1,8 @@
 class SaneBackendsNegaflow < Formula
-  desc "SANE backends with Coolscan, epson2 and OpticFilm fixes and upstream OpticFilm 8200i SE support"
+  desc "SANE backends with Coolscan, epson2 (incl. V500 Photo) and OpticFilm fixes and upstream OpticFilm 8200i SE support"
   homepage "https://www.sane-project.org/"
   url "https://gitlab.com/-/project/429008/uploads/843c156420e211859e974f78f64c3ea3/sane-backends-1.4.0.tar.gz"
-  version "1.4.0-negaflow.5"
+  version "1.4.0-negaflow.6"
   sha256 "f99205c903dfe2fb8990f0c531232c9a00ec9c2c66ac7cb0ce50b4af9f407a72"
   license "GPL-2.0-or-later"
 
@@ -4068,3 +4068,529 @@ index 750c8f2..6cc1508 100644
          { 0x0b, 0x44 }, { 0x13, 0x0f }, { 0x0b, 0x4c },
      };
      for (const auto& r : STARTUP_REGS) {
+diff --git a/backend/epson2-io.c b/backend/epson2-io.c
+--- a/backend/epson2-io.c
++++ b/backend/epson2-io.c
+@@ -20,6 +20,8 @@
+ #include "sane/config.h"
+ 
+ #include <ctype.h>
++#include <stdlib.h>
++#include <string.h>
+ 
+ #include "epson2.h"
+ #include "epson2-io.h"
+@@ -35,12 +37,220 @@
+ 
+ #include "byteorder.h"
+ 
++#ifdef __APPLE__
++#include <dlfcn.h>
++#endif
++
+ /* flaming hack to get USB scanners
+  * working without timeouts under linux
+  * (cribbed from fujitsu.c)
+  */
+ unsigned int r_cmd_count = 0;
+ unsigned int w_cmd_count = 0;
++
++/*
++ * Epson interpreter (macOS only)
++ *
++ * The Perfection V500 Photo (GT-X770, USB 04b8:0130) does not speak ESC/I on
++ * the USB bus.  Epson's driver reaches it through a closed-source interpreter
++ * that emulates a D2-level ESC/I scanner and drives the scanner's own
++ * protocol.  The interpreter does not open the device itself.  The host hands
++ * it two callbacks that perform one bulk transfer each, and then exchanges
++ * ESC/I bytes with INTWrite and INTRead.
++ *
++ * The library is loaded from the Epson ICA driver installed on the machine,
++ * or from the path in the EPSON2_INTERPRETER environment variable.  It is
++ * not distributed with SANE.  Only one device is supported at a time.
++ */
++
++#ifdef __APPLE__
++
++#define E2I_DEFAULT_PATH \
++	"/Library/Image Capture/Devices/EPSON Scanner.app/Contents/PlugIns/" \
++	"Interpreter 7C.bundle/Contents/MacOS/Interpreter 7C"
++
++/* Slack for INTRead, which can write up to a word past the requested size. */
++#define E2I_READ_SLACK 64
++
++static struct {
++	void *lib;
++	unsigned char (*init) (void *read_cb, void *write_cb, void *refcon);
++	unsigned char (*close) (void);
++	unsigned char (*read) (void *buf, unsigned int size);
++	unsigned char (*write) (void *buf, unsigned int size);
++	SANE_Int dn;		/* sanei_usb handle used by the callbacks */
++	SANE_Bool active;
++	unsigned char *scratch;	/* padded buffer for INTRead */
++	size_t scratch_size;
++} e2i;
++
++/*
++ * USB callbacks for the interpreter: bool cb(buf, size, refcon, aux).  Only
++ * the low byte of the return value counts, so return 1 or 0, never a length.
++ */
++static unsigned char
++e2i_usb_read(void *buf, unsigned int size, void *refcon, void *aux)
++{
++	size_t n = size;
++
++	(void) refcon;
++	(void) aux;
++
++	return sanei_usb_read_bulk(e2i.dn, buf, &n) == SANE_STATUS_GOOD &&
++		n == size;
++}
++
++static unsigned char
++e2i_usb_write(void *buf, unsigned int size, void *refcon, void *aux)
++{
++	size_t n = size;
++
++	(void) refcon;
++	(void) aux;
++
++	return sanei_usb_write_bulk(e2i.dn, buf, &n) == SANE_STATUS_GOOD &&
++		n == size;
++}
++
++SANE_Bool
++e2_interpreter_wanted(SANE_Int dn)
++{
++	SANE_Word vendor = 0, product = 0;
++
++	if (sanei_usb_get_vendor_product(dn, &vendor, &product) !=
++	    SANE_STATUS_GOOD)
++		return SANE_FALSE;
++
++	return vendor == SANE_EPSON_VENDOR_ID && product == 0x0130;
++}
++
++SANE_Bool
++e2_interpreter_active(void)
++{
++	return e2i.active;
++}
++
++SANE_Status
++e2_interpreter_open(SANE_Int dn)
++{
++	const char *path = getenv("EPSON2_INTERPRETER");
++
++	if (path == NULL || *path == '\0')
++		path = E2I_DEFAULT_PATH;
++
++	e2i.lib = dlopen(path, RTLD_NOW);
++	if (e2i.lib == NULL) {
++		DBG(1, "%s: cannot load %s: %s\n", __func__, path, dlerror());
++		DBG(1, "%s: install the Epson ICA driver for this scanner\n",
++		    __func__);
++		return SANE_STATUS_UNSUPPORTED;
++	}
++
++	e2i.init = (unsigned char (*)(void *, void *, void *))
++		dlsym(e2i.lib, "INTInit");
++	e2i.close = (unsigned char (*)(void)) dlsym(e2i.lib, "INTClose");
++	e2i.read = (unsigned char (*)(void *, unsigned int))
++		dlsym(e2i.lib, "INTRead");
++	e2i.write = (unsigned char (*)(void *, unsigned int))
++		dlsym(e2i.lib, "INTWrite");
++
++	if (!e2i.init || !e2i.close || !e2i.read || !e2i.write) {
++		DBG(1, "%s: %s does not export the interpreter interface\n",
++		    __func__, path);
++		dlclose(e2i.lib);
++		memset(&e2i, 0, sizeof(e2i));
++		return SANE_STATUS_UNSUPPORTED;
++	}
++
++	e2i.dn = dn;
++	if (!e2i.init(e2i_usb_read, e2i_usb_write, NULL)) {
++		DBG(1, "%s: the interpreter failed to initialize the scanner\n",
++		    __func__);
++		dlclose(e2i.lib);
++		memset(&e2i, 0, sizeof(e2i));
++		return SANE_STATUS_IO_ERROR;
++	}
++
++	e2i.active = SANE_TRUE;
++	DBG(1, "%s: using %s\n", __func__, path);
++
++	return SANE_STATUS_GOOD;
++}
++
++void
++e2_interpreter_close(void)
++{
++	if (!e2i.active)
++		return;
++
++	e2i.close();
++	dlclose(e2i.lib);
++	free(e2i.scratch);
++	memset(&e2i, 0, sizeof(e2i));
++}
++
++static SANE_Status
++e2i_send(void *buf, size_t buf_size)
++{
++	if (!e2i.write(buf, buf_size))
++		return SANE_STATUS_IO_ERROR;
++
++	return SANE_STATUS_GOOD;
++}
++
++/* Returns the number of bytes copied to buf, 0 on failure. */
++static ssize_t
++e2i_recv(void *buf, ssize_t buf_size)
++{
++	size_t need = (size_t) buf_size + E2I_READ_SLACK;
++
++	if (e2i.scratch_size < need) {
++		unsigned char *p = realloc(e2i.scratch, need);
++
++		if (p == NULL)
++			return 0;
++		e2i.scratch = p;
++		e2i.scratch_size = need;
++	}
++
++	memset(e2i.scratch, 0, need);
++	if (!e2i.read(e2i.scratch, buf_size))
++		return 0;
++
++	memcpy(buf, e2i.scratch, buf_size);
++
++	return buf_size;
++}
++
++#else /* !__APPLE__ */
++
++SANE_Bool
++e2_interpreter_wanted(SANE_Int dn)
++{
++	(void) dn;
++	return SANE_FALSE;
++}
++
++SANE_Bool
++e2_interpreter_active(void)
++{
++	return SANE_FALSE;
++}
++
++SANE_Status
++e2_interpreter_open(SANE_Int dn)
++{
++	(void) dn;
++	return SANE_STATUS_UNSUPPORTED;
++}
++
++void
++e2_interpreter_close(void)
++{
++}
++
++#endif /* __APPLE__ */
++
+ 
+ int
+ e2_send(Epson_Scanner * s, void *buf, size_t buf_size, size_t reply_len,
+@@ -94,6 +304,13 @@
+ 
+ 		return n;
+ 
++#ifdef __APPLE__
++	} else if (s->hw->connection == SANE_EPSON_USB && e2i.active) {
++		*status = e2i_send(buf, buf_size);
++		w_cmd_count++;
++
++		return *status == SANE_STATUS_GOOD ? buf_size : 0;
++#endif
+ 	} else if (s->hw->connection == SANE_EPSON_USB) {
+ 		size_t n;
+ 		n = buf_size;
+@@ -132,6 +349,11 @@
+ 			else
+ 				*status = SANE_STATUS_INVAL;
+ 		}
++#ifdef __APPLE__
++	} else if (s->hw->connection == SANE_EPSON_USB && e2i.active) {
++		if (n)
++			n = e2i_recv(buf, buf_size);
++#endif
+ 	} else if (s->hw->connection == SANE_EPSON_USB) {
+ 		/* !!! only report an error if we don't read anything */
+ 		if (n) {
+diff --git a/backend/epson2-io.h b/backend/epson2-io.h
+--- a/backend/epson2-io.h
++++ b/backend/epson2-io.h
+@@ -23,6 +23,12 @@
+ 
+ 
+ SANE_Status e2_cmd_simple(Epson_Scanner * s, void *buf, size_t buf_size);
++/* Epson interpreter (macOS only), see epson2-io.c. */
++SANE_Bool e2_interpreter_wanted(SANE_Int dn);
++SANE_Bool e2_interpreter_active(void);
++SANE_Status e2_interpreter_open(SANE_Int dn);
++void e2_interpreter_close(void);
++
+ int e2_send(Epson_Scanner * s, void *buf, size_t buf_size,
+ 		size_t reply_len, SANE_Status * status);
+ ssize_t e2_recv(Epson_Scanner * s, void *buf, ssize_t buf_size,
+diff --git a/backend/epson2-ops.c b/backend/epson2-ops.c
+--- a/backend/epson2-ops.c
++++ b/backend/epson2-ops.c
+@@ -668,9 +668,15 @@
+ 				dev->y_range = &dev->tpu_y_range;
+ 			}
+ 
++			/*
++			 * The interpreter of the V500 Photo reports the TPU
++			 * area in units of 1/3200 inch (68.58 x 236.98 mm),
++			 * not in units of the maximum resolution.
++			 */
+ 			e2_set_tpu_area(s,
+ 					(es[8] << 8 | es[7]),
+ 					(es[10] << 8 | es[9]),
++					e2_interpreter_active() ? 3200 :
+ 					dev->dpi_range.max);
+ 
+ 			*source_list_add++ = TPU_STR;
+@@ -799,17 +805,20 @@
+ 	/* add default depth */
+ 	e2_add_depth(dev, 8);
+ 
+-	if (dev->maxDepth >= 12 || dev->maxDepth == 0) {
++	if (dev->maxDepth >= 12 || dev->maxDepth == 0 ||
++	    e2_interpreter_active()) {
+ 		if (esci_set_data_format(s, 12) == SANE_STATUS_GOOD)
+ 			e2_add_depth(dev, 12);
+ 	}
+ 
+-	if (dev->maxDepth >= 14 || dev->maxDepth == 0) {
++	if (dev->maxDepth >= 14 || dev->maxDepth == 0 ||
++	    e2_interpreter_active()) {
+ 		if (esci_set_data_format(s, 14) == SANE_STATUS_GOOD)
+ 			e2_add_depth(dev, 14);
+ 	}
+ 
+-	if (dev->maxDepth >= 16 || dev->maxDepth == 0) {
++	if (dev->maxDepth >= 16 || dev->maxDepth == 0 ||
++	    e2_interpreter_active()) {
+ 		if (esci_set_data_format(s, 16) == SANE_STATUS_GOOD)
+ 			e2_add_depth(dev, 16);
+ 	}
+@@ -864,6 +873,21 @@
+ 	return status;
+ }
+ 
++
++/*
++ * Resolution in the sub scan (line) direction. The interpreter of the V500
++ * Photo scans infrared at 3200 x 2400 dpi, so the lines of an infrared scan
++ * at 3200 dpi are three quarters as dense as its pixels.
++ */
++static int
++e2_sub_resolution(Epson_Scanner *s)
++{
++	if (e2_interpreter_active() && s->val[OPT_MODE].w == MODE_INFRARED &&
++	    s->val[OPT_RESOLUTION].w == 3200)
++		return 2400;
++
++	return s->val[OPT_RESOLUTION].w;
++}
+ 
+ SANE_Status
+ e2_set_extended_scanning_parameters(Epson_Scanner * s)
+@@ -880,7 +904,7 @@
+ 
+ 	/* ESC R, resolution */
+ 	htole32a(&buf[0], s->val[OPT_RESOLUTION].w);
+-	htole32a(&buf[4], s->val[OPT_RESOLUTION].w);
++	htole32a(&buf[4], e2_sub_resolution(s));
+ 
+ 	/* ESC A, scanning area */
+ 	htole32a(&buf[8], s->left);
+@@ -1007,6 +1031,23 @@
+ 
+ 	/* ESC t, threshold */
+ 	buf[33] = s->val[OPT_THRESHOLD].w;
++
++	/*
++	 * The interpreter of the V500 Photo scans infrared with option control
++	 * 3 at 800, 1600 or 3200 (x 2400) dpi, gray, with gamma 3 and no color
++	 * correction.
++	 */
++	if (s->val[OPT_MODE].w == MODE_INFRARED && e2_interpreter_active()) {
++		if (s->val[OPT_RESOLUTION].w != 800 &&
++		    s->val[OPT_RESOLUTION].w != 1600 &&
++		    s->val[OPT_RESOLUTION].w != 3200) {
++			DBG(1, "%s: infrared needs 800, 1600 or 3200 dpi\n",
++			    __func__);
++			return SANE_STATUS_INVAL;
++		}
++		buf[29] = 3;
++		buf[31] = 0;
++	}
+ 
+ 	return esci_set_scanning_parameter(s, buf);
+ }
+@@ -1288,7 +1329,7 @@
+ SANE_Status
+ e2_init_parameters(Epson_Scanner * s)
+ {
+-	int dpi, bytes_per_pixel;
++	int dpi, ydpi, bytes_per_pixel;
+ 	struct mode_param *mparam;
+ 
+ 	DBG(5, "%s\n", __func__);
+@@ -1296,6 +1337,7 @@
+ 	memset(&s->params, 0, sizeof(SANE_Parameters));
+ 
+ 	dpi = s->val[OPT_RESOLUTION].w;
++	ydpi = e2_sub_resolution(s);
+ 
+ 	mparam = &mode_params[s->val[OPT_MODE].w];
+ 
+@@ -1307,14 +1349,14 @@
+ 		s->val[OPT_RESOLUTION].w) + 0.5;
+ 
+ 	s->top = ((SANE_UNFIX(s->val[OPT_TL_Y].w) / MM_PER_INCH) *
+-		s->val[OPT_RESOLUTION].w) + 0.5;
++		ydpi) + 0.5;
+ 
+ 	s->params.pixels_per_line =
+ 		((SANE_UNFIX(s->val[OPT_BR_X].w -
+ 			   s->val[OPT_TL_X].w) / MM_PER_INCH) * dpi) + 0.5;
+ 	s->params.lines =
+ 		((SANE_UNFIX(s->val[OPT_BR_Y].w -
+-			   s->val[OPT_TL_Y].w) / MM_PER_INCH) * dpi) + 0.5;
++			   s->val[OPT_TL_Y].w) / MM_PER_INCH) * ydpi) + 0.5;
+ 
+ 
+ 	DBG(1, "%s: resolution = %d, preview = %d\n",
+@@ -1415,11 +1457,11 @@
+ 	 * XXX: precalculate the maximum scanning area elsewhere (use dev max_y)
+ 	 */
+ 
+-	if (SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * dpi <
++	if (SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH * ydpi <
+ 	    (s->params.lines + s->top)) {
+ 		s->params.lines =
+ 			(SANE_UNFIX(s->val[OPT_BR_Y].w) / MM_PER_INCH *
+-			 dpi + 0.5) - s->top;
++			 ydpi + 0.5) - s->top;
+ 	}
+ 
+ 	s->block = SANE_FALSE;
+diff --git a/backend/epson2.c b/backend/epson2.c
+--- a/backend/epson2.c
++++ b/backend/epson2.c
+@@ -365,6 +365,7 @@
+ 	} else if (s->hw->connection == SANE_EPSON_PIO) {
+ 		sanei_pio_close(s->fd);
+ 	} else if (s->hw->connection == SANE_EPSON_USB) {
++		e2_interpreter_close();
+ 		sanei_usb_close(s->fd);
+ 	}
+ 
+@@ -492,8 +493,19 @@
+ 		/* device name has the form pio:0xnnn */
+ 		status = sanei_pio_open(&s->hw->sane.name[4], &s->fd);
+ 
+-	else if (s->hw->connection == SANE_EPSON_USB)
++	else if (s->hw->connection == SANE_EPSON_USB) {
+ 		status = sanei_usb_open(s->hw->sane.name, &s->fd);
++
++		/* scanners that need the Epson interpreter (V500 Photo) */
++		if (status == SANE_STATUS_GOOD && e2_interpreter_wanted(s->fd)) {
++			status = e2_interpreter_open(s->fd);
++			if (status != SANE_STATUS_GOOD)
++				sanei_usb_close(s->fd);
++			else
++				/* the interpreter returns infrared as gray */
++				mode_params[MODE_INFRARED].depth = 8;
++		}
++	}
+ 
+ 	if (status == SANE_STATUS_ACCESS_DENIED) {
+ 		DBG(1, "please check that you have permissions on the device.\n");
+@@ -978,7 +990,8 @@
+ 	s->val[OPT_MODE].w = 0;	/* Lineart */
+ 
+ 	/* disable infrared on unsupported scanners */
+-	if (!e2_model(s, "GT-X800") && !e2_model(s, "GT-X700") && !e2_model(s, "GT-X900") && !e2_model(s, "GT-X980"))
++	if (!e2_model(s, "GT-X800") && !e2_model(s, "GT-X700") && !e2_model(s, "GT-X900") && !e2_model(s, "GT-X980") &&
++	    !e2_model(s, "GT-X770"))
+ 		mode_list[MODE_INFRARED] = NULL;
+ 
+ 	/* bit depth */
+@@ -1675,6 +1688,32 @@
+ 	}
+ 
+ 	return SANE_STATUS_GOOD;
++}
++
++/*
++ * The interpreter of the V500 Photo scans infrared at 800, 1600 and 3200 dpi
++ * (3200 x 2400) only. Offer just those resolutions while the infrared mode is
++ * selected.
++ */
++static void
++limit_infrared_resolution(Epson_Scanner *s, SANE_Bool infrared)
++{
++	static SANE_Word infrared_resolution_list[] = { 3, 800, 1600, 3200 };
++
++	if (!e2_interpreter_active())
++		return;
++
++	if (infrared) {
++		s->opt[OPT_RESOLUTION].constraint.word_list =
++			infrared_resolution_list;
++		if (s->val[OPT_RESOLUTION].w != 800 &&
++		    s->val[OPT_RESOLUTION].w != 1600 &&
++		    s->val[OPT_RESOLUTION].w != 3200)
++			s->val[OPT_RESOLUTION].w = 800;
++	} else {
++		s->opt[OPT_RESOLUTION].constraint.word_list =
++			s->hw->resolution_list;
++	}
+ }
+ 
+ /*
+@@ -1947,6 +1986,7 @@
+ 		}
+ 
+ 		handle_depth_halftone(s, &reload);
++		limit_infrared_resolution(s, optindex == MODE_INFRARED);
+ 		reload = SANE_TRUE;
+ 
+ 		break;
+@@ -2110,8 +2150,8 @@
+ 
+ 	print_params(s->params);
+ 
+-	/* enable infrared */
+-	if (s->val[OPT_MODE].w == MODE_INFRARED)
++	/* enable infrared, the interpreter needs no unlock sequence */
++	if (s->val[OPT_MODE].w == MODE_INFRARED && !e2_interpreter_active())
+ 		esci_enable_infrared(handle);
+ 
+ 	/* ESC , bay */
+diff --git a/backend/epson2_usb.c b/backend/epson2_usb.c
+--- a/backend/epson2_usb.c
++++ b/backend/epson2_usb.c
+@@ -27,6 +27,7 @@
+   0x012a, /* GT-X800, Perfection 4990 PHOTO */
+   0x012b, /* ES-H300, GT-2500 */
+   0x012c, /* GT-X900, Perfection V700 Photo, Perfection V750 Photo */
++  0x0130, /* GT-X770, Perfection V500 Photo (needs the Epson interpreter) */
+   0x0135, /* GT-X970 */
+   0x0138, /* ES-H7200, GT-20000 */
+   0x014b, /* ES-G11000, Expression 11000XL */

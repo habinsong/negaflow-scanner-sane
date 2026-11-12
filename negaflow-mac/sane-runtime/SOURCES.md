@@ -450,6 +450,31 @@ libc++ 라 같은 자리에서 멈춘다.
 - 아카이브에 001~015 를 적용해 GCC 와 clang + libc++ 각각으로 빌드, `genesys_unit_tests`
   1043/1043 통과
 
+### macOS 전용 — `epson2` 의 Epson 인터프리터
+
+formula 의 `__END__` payload 끝에 붙은 패치이고 version 은 `1.4.0-negaflow.6` 이다. Windows 의
+패치 목록(001~015)에는 없다. 코드가 `dlfcn.h` 를 쓰므로 `#ifdef __APPLE__` 안에 두었고, 그 밖에서는
+아무것도 하지 않는 대체 함수만 남는다.
+
+Perfection V500 Photo(GT-X770, `04b8:0130`)는 버스 위에서 ESC/I 를 쓰지 않는다. Epson 의 macOS
+ICA 드라이버에 든 `Interpreter 7C` 번들이 ESC/I 를 에뮬레이트하며 스캐너 고유의 프로토콜로 바꾼다.
+번들은 USB 를 직접 열지 않고, 호스트가 넘긴 콜백 두 개(벌크 읽기와 쓰기)로 전송한다. 패치는
+`epson2` 의 USB 경로를 `INTInit` / `INTWrite` / `INTRead` 로 돌린다.
+
+| 항목 | 내용 |
+| --- | --- |
+| 라이브러리 | `/Library/Image Capture/Devices/EPSON Scanner.app/Contents/PlugIns/Interpreter 7C.bundle`. 환경 변수 `EPSON2_INTERPRETER` 로 경로를 바꾼다. Epson 의 파일이므로 저장소와 설치본에 넣지 않는다 |
+| 콜백 | `unsigned char cb(void *buf, unsigned size, void *refcon, void *aux)`. 반환값은 하위 1바이트만 본다. 길이를 돌려주면 256 의 배수에서 실패로 읽힌다 |
+| 읽기 | `INTRead` 가 요청한 크기 뒤로 쓸 수 있어 여유를 둔 버퍼로 읽는다 |
+| 식별 | USB `04b8:0130` 하나. `epson2_usb.c` 의 제품 ID 목록에 더한다 |
+| 적외선 | `FS W` 블록의 옵션 컨트롤 3, 감마 3, 색 보정 0. 800, 1600, 3200 dpi 만 받으므로 그 모드에서 해상도 목록을 세 값으로 줄인다. 3200 dpi 에서는 줄 방향이 2400 dpi 라 픽셀이 정사각형이 아니다(`FS W` 의 sub 해상도 2400). `ESC #` 해제 열을 보내지 않는다 |
+| 투과 영역 | 인터프리터가 1/3200 인치 단위로 보고한다(68.58 x 236.98 mm) |
+| 깊이 | 스캐너는 최대 8 비트로 보고하지만 16 비트를 받으므로 12·14·16 비트 탐색을 켠다 |
+
+확인: 실기(Perfection V500 Photo, macOS 27, Apple Silicon)에서 평판, 투과, 16비트, 800, 1600, 3200 dpi
+적외선 스캔을 했다. 800 dpi 한 프레임의 RGB 와 IR 은 1 픽셀 안에서 겹친다. 호출 규약은 번들의
+디스어셈블리로 읽었고, 적외선 `FS W` 값은 VueScan 의 호출 기록과 같다. 다른 모델은 확인하지 않았다.
+
 ## 다시 만드는 법
 
 Windows 는 스크립트를 쓴다. 손으로 복사하지 말 것 — 아래 §"손으로 하면 틀리는 것" 참고.
