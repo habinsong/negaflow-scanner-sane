@@ -90,6 +90,11 @@ already contains.
   `scanimage -A` lists just those three resolutions. For a color scan at another resolution (for
   example 6400 dpi) the plugin reads infrared at the closest lower resolution and resamples it to the
   pixel size of the color scan, and reports that in the scan warnings.
+- The infrared pass is offset from the color pass by a few pixels, and the offset changes between
+  scans. After each infrared pass the plugin measures it from the dust (infrared dust map against dark
+  specks in the color image, in eight bands along the frame, fitted with a line), shifts the infrared,
+  and reports the shift in the scan warnings. With too little dust to measure, it leaves the infrared
+  unshifted and says so.
 - Close VueScan and Image Capture before scanning, because either holds the scanner exclusively. An
   aborted scan can leave the scanner unresponsive until its power is cycled.
 

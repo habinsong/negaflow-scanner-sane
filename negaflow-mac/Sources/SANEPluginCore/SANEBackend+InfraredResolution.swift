@@ -49,8 +49,11 @@ extension SANEBackend {
         return Self.infraredFallbackDPI(requested: requested, available: available)
     }
 
-    /// 16-bit Gray TIFF 를 지정한 크기로 다시 샘플링해 같은 경로에 쓴다.
-    static func resampleGray16TIFF(at url: URL, width: Int, height: Int) throws {
+    /// 16-bit Gray TIFF 를 지정한 크기로 다시 샘플링해 같은 경로에 쓴다. `registration` 이 있으면
+    /// IR 내용을 그만큼 위·왼쪽으로 옮겨 컬러 패스에 맞추고, 비는 가장자리는 흰색(먼지 없음)으로 채운다.
+    static func resampleGray16TIFF(
+        at url: URL, width: Int, height: Int, registration: InfraredRegistration? = nil
+    ) throws {
         guard width > 0, height > 0,
               let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
@@ -71,6 +74,18 @@ extension SANEBackend {
             throw ScannerError(.ioFailure, "IR 크기 변환용 비트맵을 만들 수 없습니다.")
         }
         context.interpolationQuality = .high
+        if let registration {
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            // 이미지 좌표(아래쪽이 +y)에서 내용은 (x, y) -> (x - dx(y), y - dy(y)) 로 옮겨진다.
+            // CGContext 좌표(위쪽이 +y)로 바꾸면 아래 행렬이 된다.
+            let h = Double(height)
+            context.concatenate(CGAffineTransform(
+                a: 1, b: 0, c: registration.dxPerRow, d: 1 - registration.dyPerRow,
+                tx: -(registration.dx0 + registration.dxPerRow * h),
+                ty: registration.dyPerRow * h + registration.dy0
+            ))
+        }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let temporaryURL = url.deletingLastPathComponent()

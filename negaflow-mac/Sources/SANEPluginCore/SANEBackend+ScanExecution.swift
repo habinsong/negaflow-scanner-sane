@@ -677,13 +677,30 @@ extension SANEBackend {
         // epson2(V500 Photo)의 IR 은 800/1600/3200(x2400) dpi 로만 읽혀 본 스캔과 픽셀 격자가 다를 수
         // 있다. 다른 백엔드는 격자가 달라지면 아래 검증에서 실패하도록 그대로 둔다.
         let (mainWidth, mainHeight) = Self.imageSize(at: mainOutputURL)
-        if backend == "epson2", mainWidth > 0, mainHeight > 0,
-           (w, h) != (mainWidth, mainHeight) {
+        if backend == "epson2", mainWidth > 0, mainHeight > 0 {
+            // IR 패스는 컬러 패스와 스캔마다 다른 양만큼 어긋난다. 먼지로 이동량을 재서 맞춘다.
+            let registration = try? Self.estimateInfraredRegistration(colorURL: mainOutputURL, infraredURL: irURL)
+            let resized = (w, h) != (mainWidth, mainHeight)
             do {
-                try Self.resampleGray16TIFF(at: irURL, width: mainWidth, height: mainHeight)
-                warnings.append(
-                    "Infrared scanned at \(w)x\(h) pixels and resampled to \(mainWidth)x\(mainHeight) pixels to match the color scan."
-                )
+                if resized || registration != nil {
+                    try Self.resampleGray16TIFF(
+                        at: irURL, width: mainWidth, height: mainHeight, registration: registration
+                    )
+                }
+                if resized {
+                    warnings.append(
+                        "Infrared scanned at \(w)x\(h) pixels and resampled to \(mainWidth)x\(mainHeight) pixels to match the color scan."
+                    )
+                }
+                if let registration {
+                    let middle = registration.shift(atRow: Double(mainHeight) / 2)
+                    warnings.append(String(
+                        format: "Infrared registered to the color scan (shift at the middle row: %.0f rows, %.0f columns).",
+                        middle.dy, middle.dx
+                    ))
+                } else {
+                    warnings.append("Infrared could not be registered to the color scan (too little dust); it is used unshifted.")
+                }
             } catch {
                 try? FileManager.default.removeItem(at: irURL)
                 return (nil, ["Infrared pass could not be resampled: \(error.localizedDescription)"])
